@@ -10,7 +10,7 @@ api_key = st.secrets["GOOGLE_API_KEY"]
 genai.configure(api_key=api_key)
 
 # Configuração do Modelo
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-pro')
 
 # Campo para o usuário digitar
 user_input = st.text_input("Digite sua pergunta:", placeholder="Ex: Crie um poema sobre café")
@@ -26,3 +26,4 @@ if st.button("Enviar"):
                 st.write(response.text)
         except Exception as e:
             st.error(f"Erro: {e}")
+
