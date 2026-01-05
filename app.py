@@ -5,7 +5,7 @@ import datetime
 from datetime import timedelta
 from fpdf import FPDF
 import base64
-import calendar  # <--- NOVA IMPORTAÇÃO NECESSÁRIA
+import calendar
 
 # --- 1. CONFIGURAÇÃO VISUAL E CSS ---
 st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide")
@@ -297,12 +297,12 @@ def main():
         try:
             resp = supabase.table("reservas").select("valor_cobrado").eq("user_id", user_id).eq("status", "confirmada").execute()
             df = pd.DataFrame(resp.data)
-            # Conta TUDO (Canceladas + Confirmadas) para o número de reservas
-            r_all = supabase.table("reservas").select("id").eq("user_id", user_id).execute()
-            df_all = pd.DataFrame(r_all.data)
-            total = len(df_all)
             
-            # Soma SÓ CONFIRMADAS para o dinheiro
+            # Conta Total (Incluindo canceladas para o numero de reservas)
+            r_all = supabase.table("reservas").select("id").eq("user_id", user_id).execute()
+            total = len(r_all.data) if r_all.data else 0
+            
+            # Dinheiro só confirmado
             if not df.empty:
                 inv = df['valor_cobrado'].sum()
         except: pass
@@ -319,6 +319,7 @@ def main():
         try:
             resp_futuro = supabase.table("reservas").select("*").eq("user_id", user_id).eq("status", "confirmada").gte("data_reserva", str(datetime.date.today())).order("data_reserva").execute()
             df_f = pd.DataFrame(resp_futuro.data)
+            
             if not df_f.empty:
                 for idx, row in df_f.iterrows():
                     dt_evento = datetime.datetime.strptime(f"{row['data_reserva']} {row['hora_inicio']}", "%Y-%m-%d %H:%M:%S")
@@ -353,9 +354,33 @@ def main():
                 except: pass
                 
         with tab_relat:
-            st.write("Gerar PDF de faturamento.")
-            mes_sel = st.selectbox("Mês", ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"])
+            st.write("Selecione o Mês para ver o faturamento.")
+            mes_sel = st.selectbox("Mês de Referência", ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"])
             
+            # --- CÁLCULO DO TOTAL MENSAL GERAL (SUA SOLICITAÇÃO) ---
+            try:
+                ano, mes = map(int, mes_sel.split('-'))
+                ultimo_dia = calendar.monthrange(ano, mes)[1]
+                dt_ini = f"{ano}-{mes:02d}-01"
+                dt_fim = f"{ano}-{mes:02d}-{ultimo_dia}"
+
+                # Query para somar tudo do mês (Todos profissionais)
+                r_total_mes = supabase.table("reservas").select("valor_cobrado")\
+                    .eq("status", "confirmada")\
+                    .gte("data_reserva", dt_ini)\
+                    .lte("data_reserva", dt_fim)\
+                    .execute()
+                
+                df_tm = pd.DataFrame(r_total_mes.data)
+                total_mes_geral = df_tm['valor_cobrado'].sum() if not df_tm.empty else 0.0
+                
+                st.metric(f"Faturamento Total ({mes_sel})", f"R$ {total_mes_geral:.2f}")
+                st.divider()
+
+            except Exception as e: st.error(f"Erro ao calcular total: {e}")
+            # --------------------------------------------------------
+
+            st.write("Baixar PDF Individual:")
             # Lista de usuários
             users_resp = supabase.table("reservas").select("email_profissional, nome_profissional").execute()
             df_u = pd.DataFrame(users_resp.data)
@@ -364,14 +389,9 @@ def main():
                 lista_users = df_u['display'].unique()
                 user_sel = st.selectbox("Profissional", lista_users)
                 
-                if st.button("Gerar Relatório"):
-                    # CORREÇÃO DO ERRO APIERROR: Usando gte e lte em vez de ilike para Datas
+                if st.button("Gerar Relatório Individual"):
                     try:
-                        ano, mes = map(int, mes_sel.split('-'))
-                        ultimo_dia = calendar.monthrange(ano, mes)[1]
-                        dt_ini = f"{ano}-{mes:02d}-01"
-                        dt_fim = f"{ano}-{mes:02d}-{ultimo_dia}"
-
+                        # Reusa as datas calculadas acima
                         r_fatura = supabase.table("reservas").select("*")\
                             .eq("status", "confirmada")\
                             .gte("data_reserva", dt_ini)\
