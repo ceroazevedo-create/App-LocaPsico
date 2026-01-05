@@ -5,6 +5,7 @@ import datetime
 from datetime import timedelta
 from fpdf import FPDF
 import base64
+import calendar  # <--- NOVA IMPORTAÇÃO NECESSÁRIA
 
 # --- 1. CONFIGURAÇÃO VISUAL E CSS ---
 st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide")
@@ -100,7 +101,6 @@ def gerar_pdf_fatura(df, nome_usuario, mes_referencia):
     pdf.set_font("Arial", "", 10)
     total = 0
     for index, row in df.iterrows():
-        # Formatar data
         data_fmt = pd.to_datetime(row['data_reserva']).strftime('%d/%m/%Y')
         val = float(row['valor_cobrado'])
         total += val
@@ -215,7 +215,7 @@ def login_screen():
                                 "email": new_email, "password": new_senha,
                                 "options": { "data": { "nome": new_nome } }
                             })
-                            if response.user: st.success("Conta criada!")
+                            if response.user: st.success("Conta criada! Faça login.")
                         except Exception as e: st.error(f"Erro: {e}")
 
 # --- 6. APP PRINCIPAL ---
@@ -297,9 +297,14 @@ def main():
         try:
             resp = supabase.table("reservas").select("valor_cobrado").eq("user_id", user_id).eq("status", "confirmada").execute()
             df = pd.DataFrame(resp.data)
+            # Conta TUDO (Canceladas + Confirmadas) para o número de reservas
+            r_all = supabase.table("reservas").select("id").eq("user_id", user_id).execute()
+            df_all = pd.DataFrame(r_all.data)
+            total = len(df_all)
+            
+            # Soma SÓ CONFIRMADAS para o dinheiro
             if not df.empty:
                 inv = df['valor_cobrado'].sum()
-                total = len(df)
         except: pass
 
         st.markdown("<br>", unsafe_allow_html=True)
@@ -310,35 +315,27 @@ def main():
         
         st.markdown("<br><h4>Minhas Reservas Ativas</h4>", unsafe_allow_html=True)
         
-        # LISTA DE AGENDAMENTOS FUTUROS COM LÓGICA DE CANCELAMENTO
         agora = datetime.datetime.now()
         try:
             resp_futuro = supabase.table("reservas").select("*").eq("user_id", user_id).eq("status", "confirmada").gte("data_reserva", str(datetime.date.today())).order("data_reserva").execute()
             df_f = pd.DataFrame(resp_futuro.data)
-            
             if not df_f.empty:
                 for idx, row in df_f.iterrows():
-                    # Monta data hora do evento
                     dt_evento = datetime.datetime.strptime(f"{row['data_reserva']} {row['hora_inicio']}", "%Y-%m-%d %H:%M:%S")
                     diff = dt_evento - agora
                     horas_restantes = diff.total_seconds() / 3600
                     
                     c_info, c_canc = st.columns([4, 1])
-                    with c_info:
-                        st.write(f"📅 **{row['data_reserva']}** | ⏰ {row['hora_inicio']} | {row['sala_nome']}")
+                    with c_info: st.write(f"📅 **{row['data_reserva']}** | ⏰ {row['hora_inicio']} | {row['sala_nome']}")
                     with c_canc:
-                        # REGRA DE 24 HORAS
                         if horas_restantes > 24:
                             if st.button("Cancelar", key=f"canc_{row['id']}"):
                                 supabase.table("reservas").update({"status": "cancelada"}).eq("id", row['id']).execute()
                                 st.rerun()
-                        elif horas_restantes > 0:
-                            st.caption("🔒 < 24h")
-                        else:
-                            st.caption("Concluído")
+                        elif horas_restantes > 0: st.caption("🔒 < 24h")
+                        else: st.caption("Concluído")
                     st.divider()
-            else:
-                st.info("Você não tem agendamentos futuros.")
+            else: st.info("Sem agendamentos futuros.")
         except: pass
 
     # --- TELA 3: GESTÃO (ADMIN) ---
@@ -356,52 +353,50 @@ def main():
                 except: pass
                 
         with tab_relat:
-            st.write("Baixe o faturamento mensal individual por profissional.")
+            st.write("Gerar PDF de faturamento.")
+            mes_sel = st.selectbox("Mês", ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"])
             
-            # 1. Seleciona Mês
-            mes_sel = st.selectbox("Mês de Referência", ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"])
-            
-            # 2. Seleciona Usuário (Busca lista no banco)
+            # Lista de usuários
             users_resp = supabase.table("reservas").select("email_profissional, nome_profissional").execute()
             df_u = pd.DataFrame(users_resp.data)
             if not df_u.empty:
-                # Remove duplicatas para criar lista unica
                 df_u['display'] = df_u.apply(lambda x: resolver_nome_display(x['email_profissional'], nome_banco=x['nome_profissional']), axis=1)
                 lista_users = df_u['display'].unique()
-                user_sel = st.selectbox("Selecione o Profissional", lista_users)
+                user_sel = st.selectbox("Profissional", lista_users)
                 
-                if st.button("Gerar Prévia e Baixar PDF"):
-                    # Busca dados desse user nesse mes
-                    # Filtro SQL like '2026-01%'
-                    r_fatura = supabase.table("reservas").select("*")\
-                        .eq("status", "confirmada")\
-                        .ilike("data_reserva", f"{mes_sel}%")\
-                        .execute() # Filtramos user no pandas para garantir match do nome
-                    
-                    df_fat = pd.DataFrame(r_fatura.data)
-                    
-                    # Filtra pelo nome exibido
-                    if not df_fat.empty:
-                        df_fat['nome_calc'] = df_fat.apply(lambda x: resolver_nome_display(x['email_profissional'], nome_banco=x['nome_profissional']), axis=1)
-                        df_final = df_fat[df_fat['nome_calc'] == user_sel]
+                if st.button("Gerar Relatório"):
+                    # CORREÇÃO DO ERRO APIERROR: Usando gte e lte em vez de ilike para Datas
+                    try:
+                        ano, mes = map(int, mes_sel.split('-'))
+                        ultimo_dia = calendar.monthrange(ano, mes)[1]
+                        dt_ini = f"{ano}-{mes:02d}-01"
+                        dt_fim = f"{ano}-{mes:02d}-{ultimo_dia}"
+
+                        r_fatura = supabase.table("reservas").select("*")\
+                            .eq("status", "confirmada")\
+                            .gte("data_reserva", dt_ini)\
+                            .lte("data_reserva", dt_fim)\
+                            .execute()
                         
-                        if not df_final.empty:
-                            st.dataframe(df_final[["data_reserva", "sala_nome", "hora_inicio", "valor_cobrado"]])
+                        df_fat = pd.DataFrame(r_fatura.data)
+                        
+                        if not df_fat.empty:
+                            df_fat['nome_calc'] = df_fat.apply(lambda x: resolver_nome_display(x['email_profissional'], nome_banco=x['nome_profissional']), axis=1)
+                            df_final = df_fat[df_fat['nome_calc'] == user_sel]
                             
-                            # Gera PDF
-                            pdf_bytes = gerar_pdf_fatura(df_final, user_sel, mes_sel)
-                            b64 = base64.b64encode(pdf_bytes).decode()
-                            href = f'<a href="data:application/octet-stream;base64,{b64}" download="Fatura_{user_sel}_{mes_sel}.pdf"><b>📥 CLIQUE AQUI PARA BAIXAR O PDF</b></a>'
-                            st.markdown(href, unsafe_allow_html=True)
-                        else:
-                            st.warning("Nenhum agendamento encontrado para este usuário neste mês.")
-                    else:
-                        st.warning("Sem dados no período.")
+                            if not df_final.empty:
+                                st.dataframe(df_final[["data_reserva", "sala_nome", "hora_inicio", "valor_cobrado"]])
+                                pdf_bytes = gerar_pdf_fatura(df_final, user_sel, mes_sel)
+                                b64 = base64.b64encode(pdf_bytes).decode()
+                                href = f'<a href="data:application/octet-stream;base64,{b64}" download="Fatura_{user_sel}_{mes_sel}.pdf"><b>📥 BAIXAR PDF</b></a>'
+                                st.markdown(href, unsafe_allow_html=True)
+                            else: st.warning("Sem dados para este usuário neste mês.")
+                        else: st.warning("Sem dados no mês.")
+                    except Exception as e: st.error(f"Erro ao gerar: {e}")
             
         with tab_canc:
-            st.write("Lista Global de Reservas (Admin cancela sem restrição)")
+            st.write("Lista Global (Admin)")
             try:
-                # Mostra tudo, inclusive canceladas (para auditoria) ou só confirmadas? Vamos mostrar confirmadas para cancelar
                 res_all = supabase.table("reservas").select("*").eq("status", "confirmada").order("data_reserva", desc=True).limit(50).execute()
                 df_all = pd.DataFrame(res_all.data)
                 if not df_all.empty:
@@ -417,3 +412,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
