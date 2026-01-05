@@ -1,16 +1,37 @@
 import streamlit as st
 import google.generativeai as genai
 
-st.title("Teste de Diagnóstico")
+# Título do App
+st.title("LocaPsi - Assistente IA")
 
-# Vamos ver qual versão o servidor instalou
-st.write(f"Versão da biblioteca instalada: {genai.__version__}")
+# 1. Configuração da Chave de Segurança
+# Ele busca a senha que você salvou nos "Secrets" do Streamlit
+try:
+    api_key = st.secrets["GOOGLE_API_KEY"]
+    genai.configure(api_key=api_key)
+except Exception as e:
+    st.error("Erro na chave de API. Verifique os 'Secrets' nas configurações do Streamlit.")
 
-# Se a versão for menor que 0.7.0, o arquivo requirements.txt está sendo ignorado
-if genai.__version__ < "0.7.0":
-    st.error("ERRO CRÍTICO: O servidor está usando uma versão antiga. Verifique o nome do arquivo requirements.txt")
-else:
-    st.success("SUCESSO: A versão está correta! Agora podemos colocar o código da IA.")
+# 2. Configuração do Modelo
+# Se der erro no Flash, troque 'gemini-1.5-flash' por 'gemini-pro'
+model = genai.GenerativeModel('gemini-1.5-flash')
+
+# 3. Interface do Usuário
+user_input = st.text_input("Digite sua pergunta ou caso:", placeholder="Ex: Como lidar com ansiedade?")
+
+# 4. Ação do Botão
+if st.button("Enviar"):
+    if not user_input:
+        st.warning("Por favor, digite algo antes de enviar.")
+    else:
+        try:
+            with st.spinner('O LocaPsi está pensando...'):
+                # Envia para o Google
+                response = model.generate_content(user_input)
+                # Mostra a resposta
+                st.write(response.text)
+        except Exception as e:
+            st.error(f"Ocorreu um erro: {e}")
 
 
 
