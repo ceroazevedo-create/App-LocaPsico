@@ -267,7 +267,7 @@ def main():
                             st.rerun()
                     except Exception as e: st.error(f"Erro: {e}")
 
-    # --- MEU PAINEL (CORRIGIDO) ---
+    # --- MEU PAINEL (LÓGICA CORRIGIDA) ---
     else:
         user_id = st.session_state['user'].id
         meta_nome = st.session_state['user'].user_metadata.get('nome')
@@ -277,19 +277,16 @@ def main():
         total_investido = 0.0
         total_reservas = 0
         try:
-            # CORREÇÃO AQUI: Pegamos "status" também e NÃO filtramos por "confirmada" na query inicial
-            # Assim pegamos TUDO (Confirmadas e Canceladas)
+            # 1. Busca TUDO do usuário (Status Confirmado E Cancelado)
             resp = supabase.table("reservas").select("valor_cobrado, status").eq("user_id", user_id).execute()
             df_metricas = pd.DataFrame(resp.data)
             
             if not df_metricas.empty:
-                # O número de reservas conta TUDO (para bater com a tabela de histórico)
+                # 2. Total de reservas = Conta TUDO (Linhas do dataframe)
                 total_reservas = len(df_metricas)
                 
-                # O valor investido soma APENAS as confirmadas (Dinheiro real)
-                # Se quiser somar as canceladas também, remova o filtro abaixo
-                df_pagas = df_metricas[df_metricas['status'] == 'confirmada']
-                total_investido = df_pagas['valor_cobrado'].sum()
+                # 3. Total investido = Soma TUDO (Sem filtrar status) = R$ 128,00
+                total_investido = df_metricas['valor_cobrado'].sum()
         except: pass
 
         st.markdown("<br>", unsafe_allow_html=True)
