@@ -1,48 +1,84 @@
 import streamlit as st
-import time
+import pandas as pd
 from supabase import create_client, Client
+import datetime
 
-# --- CONFIGURAÇÃO DA PÁGINA (Deve ser a primeira linha) ---
-st.set_page_config(page_title="LocaPsi App", page_icon="Φ", layout="centered")
+# --- 1. CONFIGURAÇÃO VISUAL (Igual ao seu Design) ---
+st.set_page_config(page_title="LocaPsi", page_icon="Φ", layout="wide")
 
-# --- ESTILO VISUAL (CSS) PARA FICAR PARECIDO COM SUA IMAGEM ---
+# CSS para forçar o visual "React" (Cabeçalho branco, botões verdes)
 st.markdown("""
 <style>
-    /* Esconde o menu padrão do Streamlit */
+    /* Fundo geral */
+    .stApp {
+        background-color: #f8f9fa;
+    }
+    
+    /* Esconde menu padrão */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
+    header {visibility: hidden;}
     
-    /* Estiliza o botão para ficar Verde igual sua imagem */
-    .stButton>button {
-        background-color: #0d9488; /* Cor Verde Petróleo */
+    /* CABEÇALHO PERSONALIZADO */
+    .header-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background-color: white;
+        padding: 1rem 2rem;
+        border-radius: 15px;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    .logo-text {
+        font-size: 24px;
+        font-weight: 800;
+        color: #0f172a;
+        font-family: sans-serif;
+    }
+    .logo-icon {
         color: white;
+        background-color: #0d9488;
+        padding: 5px 12px;
         border-radius: 8px;
-        height: 3em;
-        width: 100%;
+        margin-right: 10px;
+    }
+    
+    /* BOTÕES VERDES (Igual sua imagem) */
+    .stButton>button {
+        background-color: #0d9488 !important;
+        color: white !important;
         border: none;
+        border-radius: 8px;
         font-weight: bold;
+        transition: 0.3s;
     }
     .stButton>button:hover {
-        background-color: #0f766e;
+        background-color: #0f766e !important;
+        box-shadow: 0 4px 10px rgba(13, 148, 136, 0.4);
     }
     
-    /* Centraliza títulos */
-    h1, h2, h3 {
-        text-align: center;
-        color: #0f172a;
+    /* Inputs estilo "Card" */
+    .stTextInput>div>div>input {
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        padding: 10px;
     }
     
-    /* Caixa de login */
-    .login-box {
-        padding: 2rem;
-        border-radius: 10px;
+    /* Card Branco de Login */
+    .login-card {
         background-color: white;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        padding: 40px;
+        border-radius: 20px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        max-width: 400px;
+        margin: auto;
+        text-align: center;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- CONEXÃO COM SUPABASE ---
+# --- 2. CONEXÃO COM O BANCO ---
 @st.cache_resource
 def init_connection():
     try:
@@ -54,98 +90,117 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- FUNÇÃO: TELA DE LOGIN ---
+# --- 3. TELA DE LOGIN (Igual Imagem 2) ---
 def tela_login():
-    col1, col2, col3 = st.columns([1, 2, 1])
-    
+    # Centralizando com colunas
+    col1, col2, col3 = st.columns([1, 1, 1])
     with col2:
-        # Tenta mostrar uma logo (simulada com texto grande por enquanto)
-        st.markdown("<h1 style='font-size: 60px;'>Φ</h1>", unsafe_allow_html=True)
-        st.markdown("<h1>LocaPsico</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: gray; letter-spacing: 2px; font-size: 12px; font-weight: bold;'>ESPECIALISTAS EM SALAS</p>", unsafe_allow_html=True)
-        st.write("") # Espaço
-        st.write("") # Espaço
-
+        st.markdown("""
+        <div style="text-align: center; margin-bottom: 20px;">
+            <div style="background-color: #0d9488; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px auto;">
+                <span style="color: white; font-size: 30px; font-weight: bold;">Φ</span>
+            </div>
+            <h1 style="color: #0f172a; font-size: 32px; margin: 0;">LocaPsico</h1>
+            <p style="color: #0d9488; font-weight: bold; letter-spacing: 2px; font-size: 12px; margin-top: 5px;">ESPECIALISTAS EM SALAS</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
         with st.form("login_form"):
-            st.markdown("##### E-mail profissional")
-            email = st.text_input("E-mail", placeholder="seu@email.com", label_visibility="collapsed")
+            st.markdown("**E-mail profissional**")
+            email = st.text_input("email", placeholder="seu@email.com", label_visibility="collapsed")
             
-            st.markdown("##### Sua senha")
-            senha = st.text_input("Senha", type="password", placeholder="Mínimo 6 caracteres", label_visibility="collapsed")
+            st.markdown("**Sua senha**")
+            senha = st.text_input("senha", type="password", placeholder="Mínimo 6 caracteres", label_visibility="collapsed")
             
-            st.write("") 
+            st.write("")
             submitted = st.form_submit_button("Entrar na Agenda")
             
             if submitted:
-                if not email or not senha:
-                    st.error("Preencha e-mail e senha.")
+                # Simulação de login simples (pode melhorar depois)
+                if email:
+                    st.session_state['logado'] = True
+                    st.session_state['usuario'] = email.split('@')[0].capitalize()
+                    st.rerun()
                 else:
-                    # AQUI VALIDARÍAMOS NO SUPABASE
-                    # Por enquanto, vamos "fingir" que logou para você ver o app
-                    with st.spinner("Autenticando..."):
-                        time.sleep(1) # Charme
-                        st.session_state['logado'] = True
-                        st.session_state['usuario_email'] = email
-                        st.rerun()
+                    st.error("Por favor, digite um e-mail.")
 
-# --- FUNÇÃO: TELA DO SISTEMA (DENTRO DO APP) ---
-def tela_sistema():
-    # Barra lateral
-    with st.sidebar:
-        st.title(f"Olá, Doutor(a)!")
-        st.caption(f"Logado como: {st.session_state['usuario_email']}")
-        if st.button("Sair"):
-            st.session_state['logado'] = False
-            st.rerun()
-    
-    # Abas do Aplicativo
-    aba1, aba2, aba3 = st.tabs(["📅 Minha Agenda", "🏢 Salas", "⚙️ Configurações"])
-    
-    with aba1:
-        st.subheader("Seus Agendamentos")
-        # Tenta buscar do Supabase (Tabela RESERVAS da sua imagem 1)
-        if supabase:
-            try:
-                # Busca na tabela que vimos na sua imagem: 'reservas'
-                response = supabase.table('reservas').select("*").execute()
-                dados = response.data
-                
-                if dados:
-                    st.dataframe(dados)
+# --- 4. TELA DA AGENDA (Igual Imagem 3) ---
+def tela_agenda():
+    # Cabeçalho Superior Personalizado
+    st.markdown(f"""
+    <div class="header-container">
+        <div style="display: flex; align-items: center;">
+            <span class="logo-icon">L</span>
+            <span class="logo-text">LOCAPSICO</span>
+        </div>
+        <div>
+            <span style="color: #0d9488; font-weight: bold; background-color: #f0fdfa; padding: 8px 16px; border-radius: 20px;">📅 AGENDA</span>
+            <span style="color: #64748b; font-weight: bold; margin-left: 15px;">MEU PAINEL</span>
+        </div>
+        <div style="text-align: right;">
+            <div style="font-weight: bold; color: #0f172a;">{st.session_state.get('usuario', 'TERAPEUTA')}</div>
+            <div style="font-size: 12px; color: #0d9488; font-weight: bold;">TERAPEUTA</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Filtros de Data (Simulando a barra de dias da imagem)
+    col_nav1, col_nav2, col_nav3 = st.columns([1, 4, 1])
+    with col_nav2:
+        # Mostra a semana atual
+        hoje = datetime.date.today()
+        st.markdown(f"<h3 style='text-align: center; color: #0f172a;'>{hoje.strftime('%d %b')} - {(hoje + datetime.timedelta(days=5)).strftime('%d %b')}</h3>", unsafe_allow_html=True)
+        
+    # Área principal das Salas
+    tab1, tab2 = st.tabs(["Sala 1", "Sala 2"])
+
+    # Lógica para buscar dados
+    df = pd.DataFrame()
+    if supabase:
+        try:
+            # Busca dados da tabela que vimos na sua imagem
+            response = supabase.table('reservas').select("*").execute()
+            dados = response.data
+            if dados:
+                df = pd.DataFrame(dados)
+                # Garante que as colunas existem antes de usar
+                if 'id_da_sala' in df.columns and 'data' in df.columns and 'hora' in df.columns:
+                    pass
                 else:
-                    st.info("Nenhuma reserva encontrada no banco de dados.")
-            except Exception as e:
-                st.error(f"Erro ao ler tabela 'reservas': {e}")
+                    st.error("As colunas da tabela 'reservas' não correspondem ao esperado. Verifique se são: id_da_sala, data, hora")
+        except Exception as e:
+            st.error(f"Erro ao conectar: {e}")
+
+    with tab1:
+        st.info("Agenda da Sala 1")
+        if not df.empty and 'id_da_sala' in df.columns:
+            # Filtra só Sala 1 e mostra como uma tabela limpa
+            agenda_sala1 = df[df['id_da_sala'] == 'Sala 1'][['data', 'hora', 'id_da_sala']]
+            if not agenda_sala1.empty:
+                st.dataframe(agenda_sala1, use_container_width=True, hide_index=True)
+            else:
+                st.write("Nenhum agendamento para esta sala.")
         else:
-            st.warning("Banco de dados desconectado.")
+            st.write("Sem dados.")
 
-        st.divider()
-        st.markdown("### Nova Reserva Rápida")
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.date_input("Dia")
-        with col_b:
-            st.selectbox("Sala", ["Sala 1", "Sala 2"])
-        st.button("Agendar Horário")
+    with tab2:
+        st.info("Agenda da Sala 2")
+        if not df.empty and 'id_da_sala' in df.columns:
+            agenda_sala2 = df[df['id_da_sala'] == 'Sala 2'][['data', 'hora', 'id_da_sala']]
+            if not agenda_sala2.empty:
+                st.dataframe(agenda_sala2, use_container_width=True, hide_index=True)
+            else:
+                st.write("Nenhum agendamento para esta sala.")
 
-    with aba2:
-        st.header("Nossas Salas")
-        c1, c2 = st.columns(2)
-        with c1:
-            st.image("https://images.unsplash.com/photo-1497366216548-37526070297c", caption="Sala 1 - Aconchego")
-            st.write("**R$ 32,00/hora**")
-        with c2:
-            st.image("https://images.unsplash.com/photo-1497215728101-856f4ea42174", caption="Sala 2 - Grupo")
-            st.write("**R$ 32,00/hora**")
-
-# --- CONTROLE DE FLUXO PRINCIPAL ---
+# --- CONTROLE DE FLUXO ---
 if 'logado' not in st.session_state:
     st.session_state['logado'] = False
 
 if not st.session_state['logado']:
     tela_login()
 else:
-    tela_sistema()
+    tela_agenda()
+
 
 
 
