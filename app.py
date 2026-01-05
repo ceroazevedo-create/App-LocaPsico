@@ -29,7 +29,7 @@ st.markdown("""
     .logo { font-size: 24px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 10px; }
     .logo-icon { background-color: #0d9488; color: white; padding: 5px 10px; border-radius: 8px; }
     
-    /* CARDS DO PAINEL (MÉTRICAS) */
+    /* CARDS DO PAINEL */
     .stat-card {
         background-color: white; border-radius: 12px; padding: 20px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.02); border: 1px solid #e2e8f0;
@@ -92,7 +92,6 @@ def renderizar_grade(sala_selecionada, is_admin=False):
     fim_semana = inicio_semana + timedelta(days=6)
     agora = datetime.datetime.now()
 
-    # Busca reservas no banco
     try:
         resp = supabase.table("reservas").select("*")\
             .eq("sala_nome", sala_selecionada)\
@@ -110,7 +109,6 @@ def renderizar_grade(sala_selecionada, is_admin=False):
         if d not in mapa_reservas: mapa_reservas[d] = {}
         mapa_reservas[d][h] = r
 
-    # Renderiza Cabeçalho
     cols_header = st.columns([0.5] + [1]*7)
     dias_semana = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
     datas_semana = []
@@ -124,7 +122,6 @@ def renderizar_grade(sala_selecionada, is_admin=False):
 
     st.markdown("---")
 
-    # Renderiza Linhas de Hora
     horarios = [f"{h:02d}:00:00" for h in range(7, 23)] 
     for hora in horarios:
         hora_display = hora[:5]
@@ -140,7 +137,6 @@ def renderizar_grade(sala_selecionada, is_admin=False):
             cell = cols[i+1].empty()
             
             if reserva:
-                # LÓGICA DO NOME: Tenta pegar o nome gravado, se não tiver, usa o e-mail
                 nome_mostrar = reserva.get('nome_profissional')
                 if not nome_mostrar:
                     nome_mostrar = reserva.get('email_profissional', 'Psi').split('@')[0].title()
@@ -151,20 +147,58 @@ def renderizar_grade(sala_selecionada, is_admin=False):
             else:
                 cell.markdown("<div style='height: 30px; border-left: 1px solid #f1f5f9;'></div>", unsafe_allow_html=True)
 
-# --- 4. TELA LOGIN ---
+# --- 4. TELA LOGIN (COM CADASTRO NOVO) ---
 def login_screen():
     c1, c2, c3 = st.columns([1,1,1])
     with c2:
         st.markdown("<br><br><h1 style='text-align: center; color: #0d9488;'>Ψ LocaPsico</h1><p style='text-align: center;'>Gestão de Espaços Terapêuticos</p>", unsafe_allow_html=True)
-        email = st.text_input("Email")
-        senha = st.text_input("Senha", type="password")
-        if st.button("Entrar"):
-            try:
-                user = supabase.auth.sign_in_with_password({"email": email, "password": senha})
-                st.session_state['user'] = user.user
-                st.session_state['is_admin'] = (email == "admin@admin.com.br")
-                st.rerun()
-            except: st.error("Login falhou.")
+        
+        # Cria as abas para separar Entrar de Cadastrar
+        tab1, tab2 = st.tabs(["JÁ TENHO CONTA", "CRIAR NOVA CONTA"])
+        
+        # ABA 1: LOGIN
+        with tab1:
+            with st.form("form_login"):
+                email = st.text_input("Email", key="login_email")
+                senha = st.text_input("Senha", type="password", key="login_pass")
+                if st.form_submit_button("Entrar no Sistema"):
+                    try:
+                        user = supabase.auth.sign_in_with_password({"email": email, "password": senha})
+                        st.session_state['user'] = user.user
+                        st.session_state['is_admin'] = (email == "admin@admin.com.br")
+                        st.rerun()
+                    except: st.error("Email ou senha incorretos.")
+        
+        # ABA 2: CADASTRO
+        with tab2:
+            st.markdown("<div style='background:#f0fdfa; padding:10px; border-radius:5px; font-size:12px; color:#0d9488;'>Preencha seus dados para começar a agendar salas.</div><br>", unsafe_allow_html=True)
+            with st.form("form_cadastro"):
+                new_nome = st.text_input("Seu Nome Completo (Como aparecerá na agenda)")
+                new_email = st.text_input("Seu Email")
+                new_senha = st.text_input("Crie uma Senha", type="password")
+                
+                if st.form_submit_button("Criar Conta"):
+                    if len(new_senha) < 6:
+                        st.warning("A senha deve ter pelo menos 6 caracteres.")
+                    else:
+                        try:
+                            # Cria usuário no Supabase enviando o NOME nos metadados
+                            response = supabase.auth.sign_up({
+                                "email": new_email, 
+                                "password": new_senha,
+                                "options": {
+                                    "data": { "nome": new_nome }
+                                }
+                            })
+                            
+                            # Verifica se o cadastro foi imediato (se o supabase não pedir confirmação de email)
+                            if response.user:
+                                st.success("Conta criada com sucesso! Faça login na aba ao lado.")
+                            else:
+                                st.info("Verifique seu e-mail para confirmar o cadastro.")
+                                
+                        except Exception as e:
+                            st.error(f"Erro ao criar conta: {e}")
 
 # --- 5. APP PRINCIPAL ---
 def main():
@@ -175,7 +209,6 @@ def main():
         nav = st.radio("menu", ["AGENDA", "MEU PAINEL"], horizontal=True, label_visibility="collapsed")
     with c3:
         if 'user' in st.session_state:
-            # Tenta pegar o nome do metadado do usuário
             meta_nome = st.session_state['user'].user_metadata.get('nome')
             email_nome = st.session_state['user'].email.split('@')[0]
             nome_user = meta_nome if meta_nome else email_nome
@@ -196,7 +229,7 @@ def main():
         login_screen()
         return
 
-    # --- TELA 1: AGENDA ---
+    # --- AGENDA ---
     if nav == "AGENDA":
         st.markdown("<br>", unsafe_allow_html=True)
         sala = st.radio("Sala", ["Sala 1", "Sala 2"], horizontal=True, label_visibility="collapsed")
@@ -221,54 +254,38 @@ def main():
                 hr = col_b.selectbox("Horário", [f"{h:02d}:00" for h in range(7, 23)])
                 if st.form_submit_button("Confirmar"):
                     try:
-                        # Validações
                         agora = datetime.datetime.now()
                         hr_int = int(hr[:2])
                         dt_check = datetime.datetime.combine(dt, datetime.time(hr_int, 0))
                         
-                        if dt.weekday() == 6:
-                            st.error("Domingo não abrimos.")
-                        elif dt_check < agora:
-                            st.error("Não é possível agendar no passado.")
+                        if dt.weekday() == 6: st.error("Domingo não abrimos.")
+                        elif dt_check < agora: st.error("Não é possível agendar no passado.")
                         else:
-                            # Prepara dados (INCLUINDO O NOME AGORA)
                             h_fim = f"{hr_int+1:02d}:00"
-                            
-                            # Pega o nome do usuário atual para salvar no banco
                             meta = st.session_state['user'].user_metadata.get('nome')
                             mail = st.session_state['user'].email.split('@')[0].title()
                             nome_final = meta if meta else mail
 
                             dados = {
-                                "sala_nome": sala, 
-                                "data_reserva": str(dt), 
-                                "hora_inicio": hr, 
-                                "hora_fim": h_fim,
-                                "user_id": st.session_state['user'].id, 
-                                "email_profissional": st.session_state['user'].email,
-                                "nome_profissional": nome_final, # SALVA O NOME
-                                "valor_cobrado": 32.00, 
-                                "status": "confirmada"
+                                "sala_nome": sala, "data_reserva": str(dt), "hora_inicio": hr, "hora_fim": h_fim,
+                                "user_id": st.session_state['user'].id, "email_profissional": st.session_state['user'].email,
+                                "nome_profissional": nome_final, "valor_cobrado": 32.00, "status": "confirmada"
                             }
                             supabase.table("reservas").insert(dados).execute()
                             st.success(f"Reservado para {nome_final}!")
                             st.rerun()
-                    except Exception as e: st.error(f"Erro ao reservar: {e}")
+                    except Exception as e: st.error(f"Erro: {e}")
 
-    # --- TELA 2: MEU PAINEL ---
+    # --- MEU PAINEL ---
     else:
         user_id = st.session_state['user'].id
-        
-        # Pega nome para exibição
         meta_nome = st.session_state['user'].user_metadata.get('nome')
         email_nome = st.session_state['user'].email.split('@')[0]
         nome_display = meta_nome if meta_nome else email_nome
         
-        # 1. CÁLCULO DAS MÉTRICAS (SOMA TUDO, SALA 1 E 2)
         total_investido = 0.0
         total_reservas = 0
         try:
-            # Esta busca PEGA TUDO do usuário, independente da sala
             resp = supabase.table("reservas").select("valor_cobrado").eq("user_id", user_id).eq("status", "confirmada").execute()
             df_metricas = pd.DataFrame(resp.data)
             if not df_metricas.empty:
@@ -278,48 +295,16 @@ def main():
 
         st.markdown("<br>", unsafe_allow_html=True)
         col_text, col_card1, col_card2 = st.columns([1.5, 1, 1])
-        
         with col_text:
-            st.markdown(f"""
-            <h1 style='color:#0f172a; margin-bottom:0;'>Olá, {nome_display.title()}! 👋</h1>
-            <p style='color:#64748b;'>Gerencie sua conta e histórico profissional.</p>
-            """, unsafe_allow_html=True)
-            
+            st.markdown(f"<h1 style='color:#0f172a; margin-bottom:0;'>Olá, {nome_display.title()}! 👋</h1><p style='color:#64748b;'>Gerencie sua conta e histórico profissional.</p>", unsafe_allow_html=True)
         with col_card1:
-            st.markdown(f"""
-            <div class="stat-card">
-                <div class="icon-box icon-green">↗</div>
-                <div>
-                    <div class="stat-label">Total Investido</div>
-                    <div class="stat-value">R$ {total_investido:.0f}</div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-            
+            st.markdown(f"<div class='stat-card'><div class='icon-box icon-green'>↗</div><div><div class='stat-label'>Total Investido</div><div class='stat-value'>R$ {total_investido:.0f}</div></div></div>", unsafe_allow_html=True)
         with col_card2:
-            st.markdown(f"""
-            <div class="stat-card">
-                <div class="icon-box icon-blue">🕒</div>
-                <div>
-                    <div class="stat-label">Reservas</div>
-                    <div class="stat-value">{total_reservas}</div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f"<div class='stat-card'><div class='icon-box icon-blue'>🕒</div><div><div class='stat-label'>Reservas</div><div class='stat-value'>{total_reservas}</div></div></div>", unsafe_allow_html=True)
 
-        st.markdown("""
-        <div class="security-bar">
-            <div style="display:flex; gap:15px; align-items:center;">
-                <div style="background:#f1f5f9; padding:10px; border-radius:50%; color:#64748b;">🔑</div>
-                <div>
-                    <div style="font-weight:800; color:#0f172a;">SEGURANÇA</div>
-                    <div style="font-size:12px; color:#64748b; font-weight:600;">TROCA DE SENHA DE ACESSO</div>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown("<div class='security-bar'><div style='display:flex; gap:15px; align-items:center;'><div style='background:#f1f5f9; padding:10px; border-radius:50%; color:#64748b;'>🔑</div><div><div style='font-weight:800; color:#0f172a;'>SEGURANÇA</div><div style='font-size:12px; color:#64748b; font-weight:600;'>TROCA DE SENHA DE ACESSO</div></div></div></div>", unsafe_allow_html=True)
         
-        with st.expander("Alterar Senha (Clique aqui)", expanded=False):
+        with st.expander("Alterar Senha", expanded=False):
             with st.form("change_pass"):
                 n1 = st.text_input("Nova Senha", type="password")
                 n2 = st.text_input("Confirmar", type="password")
@@ -331,33 +316,14 @@ def main():
                         except: st.error("Erro ao alterar.")
                     else: st.error("Senhas inválidas.")
 
-        st.markdown("<br><h4 style='color:#94a3b8; font-weight:700; text-transform:uppercase; font-size:14px;'>Histórico Completo (Todas Salas)</h4>", unsafe_allow_html=True)
-        
+        st.markdown("<br><h4 style='color:#94a3b8; font-weight:700; text-transform:uppercase; font-size:14px;'>Histórico Completo</h4>", unsafe_allow_html=True)
         try:
             resp_hist = supabase.table("reservas").select("*").eq("user_id", user_id).order("data_reserva", desc=True).limit(20).execute()
             df_hist = pd.DataFrame(resp_hist.data)
-            
             if not df_hist.empty:
-                st.dataframe(
-                    df_hist,
-                    column_config={
-                        "sala_nome": "Sala",
-                        "data_reserva": st.column_config.DateColumn("Data", format="DD/MM/YYYY"),
-                        "hora_inicio": "Início",
-                        "hora_fim": "Fim",
-                        "valor_cobrado": st.column_config.NumberColumn("Valor", format="R$ %.2f"),
-                        "status": "Status"
-                    },
-                    use_container_width=True,
-                    hide_index=True
-                )
-            else:
-                st.info("Nenhuma reserva encontrada.")
+                st.dataframe(df_hist, column_config={"sala_nome": "Sala", "data_reserva": st.column_config.DateColumn("Data", format="DD/MM/YYYY"), "hora_inicio": "Início", "hora_fim": "Fim", "valor_cobrado": st.column_config.NumberColumn("Valor", format="R$ %.2f"), "status": "Status"}, use_container_width=True, hide_index=True)
+            else: st.info("Nenhuma reserva encontrada.")
         except: st.error("Erro ao carregar histórico.")
 
 if __name__ == "__main__":
     main()
-
-
-
-
