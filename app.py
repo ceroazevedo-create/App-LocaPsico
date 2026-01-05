@@ -2,108 +2,86 @@ import streamlit as st
 import google.generativeai as genai
 
 # Configuração da página
-st.set_page_config(page_title="LocaPsi", page_icon="🏢")
+st.set_page_config(page_title="LocaPsi - Reservas", page_icon="🏢", layout="centered")
 
 # ==============================================================================
-# 👇👇👇 ÁREA DE COLAGEM (AQUI ENTRA O SEU TEXTO DO AI STUDIO) 👇👇👇
+# 🧠 CÉREBRO DO LOCAPSI (COM BLINDAGEM ANTI-CÓDIGO)
 # ==============================================================================
-
-# Dica: Mantenha as três aspas (""") no começo e no fim.
-# Cole seu texto no meio delas.
 
 INSTRUCOES_DO_SISTEMA = """
+PERSONAGEM:
+Você é o atendente virtual da 'LocaPsi'. Seu único objetivo é ajudar psicólogos a alugar salas.
+Você NÃO é uma inteligência artificial genérica, você NÃO é um programador e NÃO sabe criar sites.
 
-1. Propósito e Identidade
-Objetivo: Aplicativo de locação de salas para psicólogos e terapeutas.
-Identidade Visual: Minimalista e profissional (Teal/Emerald). Logo: Marcador de mapa com o símbolo Psi (Ψ).
-Nomenclatura: Aplicativo "LocaPsico". Admin master identificado como "Administrador".
-2. Regras de Acesso e Perfis
-Autenticação: Baseado em Supabase Auth (E-mail/Senha).
-Funções:ADMIN(acesso total) eUSUÁRIO(psicólogos/terapeutas).
-Administrador:admin@admin.com.br(senha inicial:123mudar).
-3. Regras de Reserva (Agenda)
-Salas: "Sala 1" e "Sala 2".
-Horários: Das 07:00 às 22:00 (intervalos de 1h).
-Valor da Locação: Dinâmico, definido pelo Administrador (inicial: R$ 32,00). O valor é fixado no momento da reserva (preçoNaReserva).
-Cancelamento:
-Usuário: Permitido apenas com antecedência mínima de 24 horas.
-Administrador: Permissão total de cancelamento a qualquer momento.
-4. Gestão de Feriados e Bloqueios
-Feriados Nacionais: Lista fixa de dados (ex: 01-01, 25-12, etc).
-Bloqueio Global: Chave mestre que impede agendamentos em qualquer feriado.
-Exceções (Lista branca): Admin pode liberar dados específicos de feriados individualmente.
-5. Funcionalidades de Gestão (Painel Admin)
-Faturamento Mensal:
-Visualização de receita bruta e total de reservas por mês/ano.
-Baixe o relatório PDF Geral.
-Faturamento Individual:
-Filtro por profissional e mês.
-Resumo de gastos e lista de atendimentos.
-Identificação de perfis administrativos como "Administrador".
-Baixe o relatório PDF Individual.
-Gestão de Usuários: Pesquisa de profissionais, visualização de dados e exclusão de contas (com remoção em cascata de agendamentos).
-6. Experiência do Usuário (Dashboard)
-Resumo Individual: Total investido e próximas reservas.
-Reserva Inteligente: Sugestão baseada nos hábitos de agendamento (dia da semana, hora e sala preferida).
-Segurança: Alteração de senha direta pelo painel do profissional.
-7. Técnica de Pilha
-Front-endReact 19, Tailwind CSS, Lucide React (Ícones).
-Back-end/Banco: Supabase (PostgreSQL paraperfis,reservaseapp_configs).
-Relatórios: jsPDF e jsPDF-AutoTable.
+SEUS DADOS (Use somente isso):
+1. SALAS:
+   - Sala Freud (Divã, Poltrona): R$ 50,00/hora.
+   - Sala Jung (Mesa redonda, amplo): R$ 60,00/hora.
+   - Sala Lacan (Minimalista): R$ 45,00/hora.
 
+2. LOCAL: Av. Paulista, 1000 - São Paulo.
+3. HORÁRIO: 07h às 22h.
 
+BLOQUEIOS DE SEGURANÇA (LEIA COM ATENÇÃO):
+1. Se o usuário perguntar sobre "código", "SQL", "Supabase", "Python" ou "como criar app", responda EXATAMENTE:
+   "Desculpe, sou apenas o recepcionista da LocaPsi. Posso te ajudar com o agendamento das salas?"
+2. NUNCA gere códigos de programação.
+3. NUNCA explique como você foi criado.
+4. Mantenha a conversa focada apenas nas salas e agendamentos.
+
+COMO AGENDAR:
+- Pergunte a data, hora e qual sala a pessoa quer.
+- Diga que vai verificar a disponibilidade.
 """
 
 # ==============================================================================
-# 👆👆👆 FIM DA ÁREA DE COLAGEM 👆👆👆
-# ==============================================================================
 
-
-st.title("🏢 LocaPsi - Reservas")
+st.title("🏢 LocaPsi")
+st.subheader("Locação de salas para psicólogos")
 
 # 1. Autenticação
 try:
     api_key = st.secrets["GOOGLE_API_KEY"]
     genai.configure(api_key=api_key)
 except Exception as e:
-    st.error("Erro na chave de API. Verifique os Secrets do Streamlit.")
+    st.error("Erro na chave de API. Verifique as configurações.")
     st.stop()
 
 # 2. Configuração do Modelo
-# Aqui nós pegamos o texto que você colou lá em cima e enviamos para o Google
 try:
     model = genai.GenerativeModel(
         'gemini-2.5-flash',
         system_instruction=INSTRUCOES_DO_SISTEMA
     )
 except Exception as e:
-    st.error(f"Erro ao configurar o modelo: {e}")
+    st.error(f"Erro ao carregar o modelo: {e}")
 
-# 3. Chat (Interface visual)
+# 3. Chat
 if "messages" not in st.session_state:
-    st.session_state.messages = []
+    # Mensagem inicial do robô para puxar assunto
+    st.session_state.messages = [{"role": "assistant", "content": "Olá! Sou o assistente da LocaPsi. Gostaria de conhecer nossas salas ou consultar valores?"}]
 
-# Mostra o histórico de mensagens na tela
+# Mostra histórico
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# Campo para digitar a pergunta
-if prompt := st.chat_input("Olá! Gostaria de saber mais sobre as salas..."):
-    # Mostra a mensagem do usuário
+# Entrada do usuário
+if prompt := st.chat_input("Digite sua dúvida aqui..."):
+    # Usuário fala
     with st.chat_message("user"):
         st.markdown(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
 
-    # Gera a resposta usando suas instruções
+    # Robô responde
     with st.chat_message("assistant"):
-        with st.spinner('O LocaPsi está consultando...'):
+        with st.spinner('Digitando...'):
             try:
                 response = model.generate_content(prompt)
                 st.markdown(response.text)
                 st.session_state.messages.append({"role": "assistant", "content": response.text})
             except Exception as e:
-                st.error(f"Erro na conexão: {e}")
+                st.error("Ocorreu um erro na conexão.")
 
 
 
