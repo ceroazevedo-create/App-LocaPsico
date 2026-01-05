@@ -2,54 +2,64 @@ import streamlit as st
 import google.generativeai as genai
 
 # Configuração da página
-st.set_page_config(page_title="LocaPsi", page_icon="🧠")
+st.set_page_config(page_title="LocaPsi", page_icon="🧠", layout="centered")
 
-st.title("LocaPsi - Assistente IA")
+# --- PERSONALIDADE DO LOCAPSI ---
+# Aqui definimos como ele deve se comportar
+SYSTEM_INSTRUCTION = """
+Você é o LocaPsi, um assistente virtual acolhedor e empático focado em saúde mental e psicologia.
+Suas respostas devem ser calmas, objetivas, mas muito humanas.
+IMPORTANTE: Você não substitui um psicólogo real. Se o usuário relatar crise grave ou risco de vida, oriente a buscar ajuda profissional ou ligar para o CVV (188).
+Nunca dê diagnósticos médicos definitivos, ofereça acolhimento e orientações gerais.
+"""
 
-# 1. Autenticação Segura
+# Título e Subtítulo
+st.title("🧠 LocaPsi")
+st.subheader("Seu espaço de escuta e acolhimento")
+
+# 1. Autenticação
 try:
     api_key = st.secrets["GOOGLE_API_KEY"]
     genai.configure(api_key=api_key)
 except Exception as e:
-    st.error("⚠️ Erro de Configuração: Não encontrei a chave 'GOOGLE_API_KEY' nos Secrets do Streamlit.")
+    st.error("Erro na chave de API.")
     st.stop()
 
-# 2. Configuração do Modelo (Usando o mais moderno para versão 0.8.6)
-# Estamos usando o Flash, que é rápido e compatível com a biblioteca nova
-# Atualizado para o modelo que sua conta permite
-MODEL_NAME = 'gemini-2.5-flash'
-
+# 2. Configuração do Modelo com a Instrução de Sistema
+# Usando o modelo que funcionou para você: gemini-2.5-flash
 try:
-    model = genai.GenerativeModel(MODEL_NAME)
+    model = genai.GenerativeModel(
+        'gemini-2.5-flash',
+        system_instruction=SYSTEM_INSTRUCTION
+    )
 except Exception as e:
-    st.error(f"Erro ao configurar o modelo: {e}")
+    st.error(f"Erro no modelo: {e}")
 
-# 3. Interface de Chat
-user_input = st.text_input("Como posso ajudar você hoje?", placeholder="Digite aqui...")
+# 3. Chat (Histórico Simples)
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-if st.button("Enviar"):
-    if not user_input:
-        st.warning("Por favor, digite algo.")
-    else:
-        with st.spinner('Analisando...'):
+# Mostra as mensagens antigas
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# Campo de entrada do usuário
+if prompt := st.chat_input("Como você está se sentindo hoje?"):
+    # Mostra a mensagem do usuário
+    with st.chat_message("user"):
+        st.markdown(prompt)
+    st.session_state.messages.append({"role": "user", "content": prompt})
+
+    # Gera a resposta do LocaPsi
+    with st.chat_message("assistant"):
+        with st.spinner('O LocaPsi está analisando...'):
             try:
-                # Tentativa de gerar resposta
-                response = model.generate_content(user_input)
+                response = model.generate_content(prompt)
                 st.markdown(response.text)
-                
+                st.session_state.messages.append({"role": "assistant", "content": response.text})
             except Exception as e:
-                # SE DER ERRO, VAMOS DESCOBRIR O PORQUÊ
-                st.error(f"Ocorreu um erro ao conectar com o Google: {e}")
-                
-                # Diagnóstico de emergência: Lista os modelos disponíveis para sua chave
-                st.warning("Tentando listar modelos disponíveis para sua conta...")
-                try:
-                    st.write("Sua chave tem acesso a estes modelos:")
-                    for m in genai.list_models():
-                        if 'generateContent' in m.supported_generation_methods:
-                            st.code(m.name)
-                except:
-                    st.error("Não consegui nem listar os modelos. Verifique se sua API Key é válida.")
+                st.error(f"Erro ao gerar resposta: {e}")
 
 
 
