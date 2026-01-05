@@ -72,23 +72,22 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. FUNÇÃO CENTRAL DE NOMES ---
+# --- 3. FUNÇÕES AUXILIARES ---
 def resolver_nome_display(email, nome_meta=None, nome_banco=None):
-    """Regra central para exibir nomes corretamente em todo o app"""
-    # 1. Regras Específicas (Hardcoded)
     if email == "cesar_unib@msn.com": return "Cesar"
     if email == "thascaranalle@gmail.com": return "Thays"
-    
-    # 2. Regra do Banco (Se salvou na reserva)
     if nome_banco: return nome_banco
-    
-    # 3. Regra do Metadata (Cadastro)
     if nome_meta: return nome_meta
-    
-    # 4. Fallback (Parte do email)
     return email.split('@')[0].title()
 
-# --- 4. FUNÇÕES DO SISTEMA ---
+def pegar_preco_atual():
+    # Tenta pegar do banco, se falhar usa 32.00
+    try:
+        resp = supabase.table("configuracoes").select("preco_hora").limit(1).execute()
+        if resp.data: return float(resp.data[0]['preco_hora'])
+    except: pass
+    return 32.00
+
 if 'data_referencia' not in st.session_state:
     st.session_state['data_referencia'] = datetime.date.today()
 
@@ -102,7 +101,6 @@ def renderizar_grade(sala_selecionada, is_admin=False):
     agora = datetime.datetime.now()
 
     try:
-        # Busca APENAS confirmadas (Ignora canceladas)
         resp = supabase.table("reservas").select("*")\
             .eq("sala_nome", sala_selecionada)\
             .eq("status", "confirmada")\
@@ -147,18 +145,16 @@ def renderizar_grade(sala_selecionada, is_admin=False):
             cell = cols[i+1].empty()
             
             if reserva:
-                # Usa a função central de nomes
                 email_prof = reserva.get('email_profissional', '')
                 nome_db = reserva.get('nome_profissional')
                 nome_mostrar = resolver_nome_display(email_prof, nome_banco=nome_db)
-                
                 cell.markdown(f"<div class='event-card' title='{nome_mostrar}'>👤 {nome_mostrar}</div>", unsafe_allow_html=True)
             elif data_atual.weekday() == 6 or dt_slot < agora:
                 cell.markdown("<div class='blocked-cell'></div>", unsafe_allow_html=True)
             else:
                 cell.markdown("<div style='height: 30px; border-left: 1px solid #f1f5f9;'></div>", unsafe_allow_html=True)
 
-# --- 5. TELA LOGIN ---
+# --- 4. TELA LOGIN ---
 def login_screen():
     c1, c2, c3 = st.columns([1,1,1])
     with c2:
@@ -183,7 +179,6 @@ def login_screen():
                 new_nome = st.text_input("Seu Nome Completo")
                 new_email = st.text_input("Seu Email")
                 new_senha = st.text_input("Crie uma Senha", type="password")
-                
                 if st.form_submit_button("Criar Conta"):
                     if len(new_senha) < 6: st.warning("A senha deve ter pelo menos 6 caracteres.")
                     else:
@@ -196,25 +191,33 @@ def login_screen():
                             else: st.info("Verifique seu e-mail.")
                         except Exception as e: st.error(f"Erro: {e}")
 
-# --- 6. APP PRINCIPAL ---
+# --- 5. APP PRINCIPAL ---
 def main():
     c1, c2, c3 = st.columns([2, 4, 2])
     with c1:
         st.markdown("<div class='logo'><span class='logo-icon'>L</span> LOCAPSICO</div>", unsafe_allow_html=True)
     with c2:
-        nav = st.radio("menu", ["AGENDA", "MEU PAINEL"], horizontal=True, label_visibility="collapsed")
+        # MENU DINÂMICO: Se for Admin, aparece "GESTÃO"
+        if st.session_state.get('is_admin', False):
+            opcoes_menu = ["AGENDA", "MEU PAINEL", "⚙️ GESTÃO"]
+        else:
+            opcoes_menu = ["AGENDA", "MEU PAINEL"]
+            
+        nav = st.radio("menu", opcoes_menu, horizontal=True, label_visibility="collapsed")
+        
     with c3:
         if 'user' in st.session_state:
             email_atual = st.session_state['user'].email
             meta_nome = st.session_state['user'].user_metadata.get('nome')
-            
-            # Resolve nome do topo
             nome_topo = resolver_nome_display(email_atual, nome_meta=meta_nome)
+            
+            role_display = "ADMINISTRADOR" if st.session_state.get('is_admin') else "TERAPEUTA"
+            color_role = "#ef4444" if st.session_state.get('is_admin') else "#0d9488"
             
             st.markdown(f"""
             <div style='text-align:right; line-height:1.2;'>
                 <span style='font-weight:800; color:#0f172a;'>{nome_topo.upper()}</span><br>
-                <span style='color:#0d9488; font-size:11px; font-weight:bold;'>TERAPEUTA</span>
+                <span style='color:{color_role}; font-size:11px; font-weight:bold;'>{role_display}</span>
             </div>
             """, unsafe_allow_html=True)
             
@@ -227,7 +230,7 @@ def main():
         login_screen()
         return
 
-    # --- AGENDA ---
+    # --- TELA: AGENDA ---
     if nav == "AGENDA":
         st.markdown("<br>", unsafe_allow_html=True)
         sala = st.radio("Sala", ["Sala 1", "Sala 2"], horizontal=True, label_visibility="collapsed")
@@ -256,57 +259,58 @@ def main():
                         hr_int = int(hr[:2])
                         dt_check = datetime.datetime.combine(dt, datetime.time(hr_int, 0))
                         
-                        if dt.weekday() == 6: st.error("Domingo não abrimos.")
-                        elif dt_check < agora: st.error("Não é possível agendar no passado.")
-                        else:
-                            h_fim = f"{hr_int+1:02d}:00"
-                            email_atual = st.session_state['user'].email
-                            meta = st.session_state['user'].user_metadata.get('nome')
-                            
-                            # Resolve nome para salvar no banco
-                            nome_final = resolver_nome_display(email_atual, nome_meta=meta)
+                        # Admin ignora travas de tempo (Pode agendar no passado se quiser para corrigir)
+                        if not st.session_state.get('is_admin'):
+                            if dt.weekday() == 6: 
+                                st.error("Domingo não abrimos.")
+                                st.stop()
+                            if dt_check < agora: 
+                                st.error("Não é possível agendar no passado.")
+                                st.stop()
 
-                            dados = {
-                                "sala_nome": sala, "data_reserva": str(dt), "hora_inicio": hr, "hora_fim": h_fim,
-                                "user_id": st.session_state['user'].id, "email_profissional": email_atual,
-                                "nome_profissional": nome_final, "valor_cobrado": 32.00, "status": "confirmada"
-                            }
-                            supabase.table("reservas").insert(dados).execute()
-                            st.success(f"Reservado para {nome_final}!")
-                            st.rerun()
+                        h_fim = f"{hr_int+1:02d}:00"
+                        email_atual = st.session_state['user'].email
+                        meta = st.session_state['user'].user_metadata.get('nome')
+                        nome_final = resolver_nome_display(email_atual, nome_meta=meta)
+                        preco = pegar_preco_atual()
+
+                        dados = {
+                            "sala_nome": sala, "data_reserva": str(dt), "hora_inicio": hr, "hora_fim": h_fim,
+                            "user_id": st.session_state['user'].id, "email_profissional": email_atual,
+                            "nome_profissional": nome_final, "valor_cobrado": preco, "status": "confirmada"
+                        }
+                        supabase.table("reservas").insert(dados).execute()
+                        st.success(f"Reservado para {nome_final}!")
+                        st.rerun()
                     except Exception as e: st.error(f"Erro: {e}")
 
-    # --- MEU PAINEL ---
-    else:
+    # --- TELA: MEU PAINEL (Usuário Comum) ---
+    elif nav == "MEU PAINEL":
         user_id = st.session_state['user'].id
         email_atual = st.session_state['user'].email
         meta_nome = st.session_state['user'].user_metadata.get('nome')
-        
         nome_display = resolver_nome_display(email_atual, nome_meta=meta_nome)
         
         total_investido = 0.0
         total_reservas = 0
         try:
-            # FILTRO RÍGIDO: Somente status = confirmada. Canceladas são ignoradas (deletadas da visão)
             resp = supabase.table("reservas").select("valor_cobrado").eq("user_id", user_id).eq("status", "confirmada").execute()
             df_metricas = pd.DataFrame(resp.data)
-            
             if not df_metricas.empty:
-                total_reservas = len(df_metricas) # Conta só as confirmadas
-                total_investido = df_metricas['valor_cobrado'].sum() # Soma só as confirmadas
+                total_reservas = len(df_metricas)
+                total_investido = df_metricas['valor_cobrado'].sum()
         except: pass
 
         st.markdown("<br>", unsafe_allow_html=True)
         col_text, col_card1, col_card2 = st.columns([1.5, 1, 1])
         with col_text:
-            st.markdown(f"<h1 style='color:#0f172a; margin-bottom:0;'>Olá, {nome_display}! 👋</h1><p style='color:#64748b;'>Gerencie sua conta e histórico profissional.</p>", unsafe_allow_html=True)
+            st.markdown(f"<h1 style='color:#0f172a; margin-bottom:0;'>Olá, {nome_display}! 👋</h1><p style='color:#64748b;'>Gerencie sua conta.</p>", unsafe_allow_html=True)
         with col_card1:
             st.markdown(f"<div class='stat-card'><div class='icon-box icon-green'>↗</div><div><div class='stat-label'>Total Investido</div><div class='stat-value'>R$ {total_investido:.0f}</div></div></div>", unsafe_allow_html=True)
         with col_card2:
-            st.markdown(f"<div class='stat-card'><div class='icon-box icon-blue'>🕒</div><div><div class='stat-label'>Reservas</div><div class='stat-value'>{total_reservas}</div></div></div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='stat-card'><div class='icon-box icon-blue'>🕒</div><div><div class='stat-label'>Reservas Ativas</div><div class='stat-value'>{total_reservas}</div></div></div>", unsafe_allow_html=True)
 
         st.markdown("<div class='security-bar'><div style='display:flex; gap:15px; align-items:center;'><div style='background:#f1f5f9; padding:10px; border-radius:50%; color:#64748b;'>🔑</div><div><div style='font-weight:800; color:#0f172a;'>SEGURANÇA</div><div style='font-size:12px; color:#64748b; font-weight:600;'>TROCA DE SENHA DE ACESSO</div></div></div></div>", unsafe_allow_html=True)
-        
         with st.expander("Alterar Senha", expanded=False):
             with st.form("change_pass"):
                 n1 = st.text_input("Nova Senha", type="password")
@@ -316,45 +320,79 @@ def main():
                         try:
                             supabase.auth.update_user({"password": n1})
                             st.success("Senha alterada!")
-                        except: st.error("Erro ao alterar.")
-                    else: st.error("Senhas inválidas.")
+                        except: st.error("Erro.")
+                    else: st.error("Inválido.")
 
-        st.markdown("<br><h4 style='color:#94a3b8; font-weight:700; text-transform:uppercase; font-size:14px;'>Histórico de Agendamentos (Confirmados)</h4>", unsafe_allow_html=True)
+        st.markdown("<br><h4 style='color:#94a3b8; font-weight:700; text-transform:uppercase; font-size:14px;'>Histórico (Confirmados)</h4>", unsafe_allow_html=True)
         try:
-            # HISTÓRICO: Filtra apenas confirmadas. Canceladas não aparecem.
-            resp_hist = supabase.table("reservas").select("*")\
-                .eq("user_id", user_id)\
-                .eq("status", "confirmada")\
-                .order("data_reserva", desc=True)\
-                .limit(20)\
-                .execute()
+            resp_hist = supabase.table("reservas").select("*").eq("user_id", user_id).eq("status", "confirmada").order("data_reserva", desc=True).limit(20).execute()
             df_hist = pd.DataFrame(resp_hist.data)
-            
             if not df_hist.empty:
-                # Aplica a regra de nome na coluna da tabela também
-                df_hist['Profissional'] = df_hist.apply(
-                    lambda row: resolver_nome_display(row['email_profissional'], nome_banco=row.get('nome_profissional')), 
-                    axis=1
-                )
+                df_hist['Profissional'] = df_hist.apply(lambda row: resolver_nome_display(row['email_profissional'], nome_banco=row.get('nome_profissional')), axis=1)
+                st.dataframe(df_hist[["sala_nome", "data_reserva", "hora_inicio", "hora_fim", "valor_cobrado", "status", "Profissional"]], use_container_width=True, hide_index=True)
+            else: st.info("Nenhuma reserva encontrada.")
+        except: pass
 
-                df_final = df_hist[["sala_nome", "data_reserva", "hora_inicio", "hora_fim", "valor_cobrado", "status", "Profissional"]]
+    # --- TELA: GESTÃO (EXCLUSIVA ADMIN) ---
+    elif nav == "⚙️ GESTÃO":
+        st.markdown("<br><h2 style='color:#0f172a;'>Painel do Administrador</h2>", unsafe_allow_html=True)
+        
+        # 1. Configurar Preço
+        st.markdown("### 1. Configuração de Preço")
+        preco_atual = pegar_preco_atual()
+        c1, c2 = st.columns([1, 4])
+        with c1:
+            novo_preco = st.number_input("Valor Hora (R$)", value=preco_atual)
+        with c2:
+            st.write("<br>", unsafe_allow_html=True)
+            if st.button("Salvar Novo Preço"):
+                # Atualiza ou cria se não existir (id=1)
+                try:
+                    # Tenta update primeiro
+                    res = supabase.table("configuracoes").update({"preco_hora": novo_preco}).gt("id", 0).execute()
+                    if not res.data: # Se não atualizou nada, insere
+                        supabase.table("configuracoes").insert({"preco_hora": novo_preco}).execute()
+                    st.success(f"Preço atualizado para R$ {novo_preco}!")
+                except Exception as e: st.error(f"Erro: {e}")
 
-                st.dataframe(
-                    df_final, 
-                    column_config={
-                        "sala_nome": "Sala", 
-                        "data_reserva": st.column_config.DateColumn("Data", format="DD/MM/YYYY"), 
-                        "hora_inicio": "Início", 
-                        "hora_fim": "Fim", 
-                        "valor_cobrado": st.column_config.NumberColumn("Valor", format="R$ %.2f"), 
-                        "status": "Status",
-                        "Profissional": "Profissional"
-                    }, 
-                    use_container_width=True, 
-                    hide_index=True
-                )
-            else: st.info("Nenhuma reserva confirmada encontrada.")
-        except Exception as e: st.error(f"Erro ao carregar histórico: {e}")
+        st.divider()
+
+        # 2. Visão Global Financeira
+        st.markdown("### 2. Faturamento Global")
+        try:
+            # Pega TUDO de TODO MUNDO
+            resp_all = supabase.table("reservas").select("valor_cobrado").eq("status", "confirmada").execute()
+            df_all = pd.DataFrame(resp_all.data)
+            total_global = 0
+            if not df_all.empty:
+                total_global = df_all['valor_cobrado'].sum()
+            st.metric("Total Arrecadado (Confirmados)", f"R$ {total_global:.2f}")
+        except: pass
+
+        st.divider()
+
+        # 3. Gerenciar Todas as Reservas
+        st.markdown("### 3. Todas as Reservas (Cancelar qualquer uma)")
+        try:
+            # Traz tudo ordenado
+            resp_list = supabase.table("reservas").select("*").eq("status", "confirmada").order("data_reserva", desc=True).execute()
+            df_list = pd.DataFrame(resp_list.data)
+            
+            if not df_list.empty:
+                for index, row in df_list.iterrows():
+                    nome_p = resolver_nome_display(row['email_profissional'], nome_banco=row.get('nome_profissional'))
+                    
+                    c_info, c_btn = st.columns([4, 1])
+                    with c_info:
+                        st.markdown(f"**{row['data_reserva']}** | {row['hora_inicio']} - {row['sala_nome']} | 👤 {nome_p} | R$ {row['valor_cobrado']}")
+                    with c_btn:
+                        if st.button("❌ Cancelar", key=f"del_{row['id']}"):
+                            supabase.table("reservas").update({"status": "cancelada"}).eq("id", row['id']).execute()
+                            st.rerun()
+                    st.markdown("<hr style='margin:5px 0'>", unsafe_allow_html=True)
+            else:
+                st.info("Nenhuma reserva ativa no sistema.")
+        except Exception as e: st.error(f"Erro ao carregar lista: {e}")
 
 if __name__ == "__main__":
     main()
