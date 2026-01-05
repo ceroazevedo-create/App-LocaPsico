@@ -4,12 +4,15 @@ import google.generativeai as genai
 # Configuração da página
 st.set_page_config(page_title="LocaPsi", page_icon="🏢")
 
-# ==========================================================
-# AQUI ENTRA O TEXTO QUE O GEMINI RESUMIU PARA VOCÊ
-# ==========================================================
+# ==============================================================================
+# 👇👇👇 ÁREA DE COLAGEM (AQUI ENTRA O SEU TEXTO DO AI STUDIO) 👇👇👇
+# ==============================================================================
+
+# Dica: Mantenha as três aspas (""") no começo e no fim.
+# Cole seu texto no meio delas.
 
 INSTRUCOES_DO_SISTEMA = """
-Instrução do Sistema: LocaPsico - Gestão de Locação de Salas
+
 1. Propósito e Identidade
 Objetivo: Aplicativo de locação de salas para psicólogos e terapeutas.
 Identidade Visual: Minimalista e profissional (Teal/Emerald). Logo: Marcador de mapa com o símbolo Psi (Ψ).
@@ -48,11 +51,13 @@ Front-endReact 19, Tailwind CSS, Lucide React (Ícones).
 Back-end/Banco: Supabase (PostgreSQL paraperfis,reservaseapp_configs).
 Relatórios: jsPDF e jsPDF-AutoTable.
 
+
 """
 
-# ==========================================================
-# FIM DA ÁREA DE COLAGEM
-# ==========================================================
+# ==============================================================================
+# 👆👆👆 FIM DA ÁREA DE COLAGEM 👆👆👆
+# ==============================================================================
+
 
 st.title("🏢 LocaPsi - Reservas")
 
@@ -60,41 +65,45 @@ st.title("🏢 LocaPsi - Reservas")
 try:
     api_key = st.secrets["GOOGLE_API_KEY"]
     genai.configure(api_key=api_key)
-except:
-    st.error("Chave não configurada.")
+except Exception as e:
+    st.error("Erro na chave de API. Verifique os Secrets do Streamlit.")
     st.stop()
 
-# 2. Modelo
+# 2. Configuração do Modelo
+# Aqui nós pegamos o texto que você colou lá em cima e enviamos para o Google
 try:
     model = genai.GenerativeModel(
         'gemini-2.5-flash',
         system_instruction=INSTRUCOES_DO_SISTEMA
     )
 except Exception as e:
-    st.error(f"Erro: {e}")
+    st.error(f"Erro ao configurar o modelo: {e}")
 
-# 3. Chat
+# 3. Chat (Interface visual)
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+# Mostra o histórico de mensagens na tela
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-if prompt := st.chat_input("Dúvidas?"):
+# Campo para digitar a pergunta
+if prompt := st.chat_input("Olá! Gostaria de saber mais sobre as salas..."):
+    # Mostra a mensagem do usuário
     with st.chat_message("user"):
         st.markdown(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
 
+    # Gera a resposta usando suas instruções
     with st.chat_message("assistant"):
-        try:
-            response = model.generate_content(prompt)
-            st.markdown(response.text)
-            st.session_state.messages.append({"role": "assistant", "content": response.text})
-        except:
-            st.error("Erro na resposta.")
-
-
+        with st.spinner('O LocaPsi está consultando...'):
+            try:
+                response = model.generate_content(prompt)
+                st.markdown(response.text)
+                st.session_state.messages.append({"role": "assistant", "content": response.text})
+            except Exception as e:
+                st.error(f"Erro na conexão: {e}")
 
 
 
