@@ -21,12 +21,6 @@ st.markdown("""
     }
     .stButton>button:hover { background-color: #0f766e !important; }
     
-    /* Botão Outline (Alterar Senha) */
-    .btn-outline {
-        border: 1px solid #0d9488; color: #0d9488; background: white;
-        padding: 5px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; text-decoration: none;
-    }
-
     /* Header Personalizado */
     .header-container {
         display: flex; justify-content: space-between; align-items: center;
@@ -214,9 +208,125 @@ def main():
                 dt = col_a.date_input("Data", min_value=datetime.date.today())
                 hr = col_b.selectbox("Horário", [f"{h:02d}:00" for h in range(7, 23)])
                 if st.form_submit_button("Confirmar"):
-                    # Lógica de inserção (simplificada para o exemplo)
+                    # AQUI ESTAVA O ERRO, AGORA ESTÁ CORRIGIDO:
                     try:
-                        h_fim = f"{int(hr[:2])+1:02d}:0
+                        h_fim = f"{int(hr[:2])+1:02d}:00"
+                        dados = {
+                            "sala_nome": sala, "data_reserva": str(dt), "hora_inicio": hr, "hora_fim": h_fim,
+                            "user_id": st.session_state['user'].id, "email_profissional": st.session_state['user'].email,
+                            "valor_cobrado": 32.00, "status": "confirmada"
+                        }
+                        supabase.table("reservas").insert(dados).execute()
+                        st.success("Reservado!")
+                        st.rerun()
+                    except Exception as e: st.error(f"Erro: {e}")
+
+    # --- TELA 2: MEU PAINEL (IGUAL AO PRINT) ---
+    else:
+        # Dados do Usuário
+        user_id = st.session_state['user'].id
+        nome_display = st.session_state['user'].email.split('@')[0].title()
+        
+        # 1. CÁLCULO DAS MÉTRICAS REAIS
+        total_investido = 0.0
+        total_reservas = 0
+        try:
+            resp = supabase.table("reservas").select("valor_cobrado").eq("user_id", user_id).eq("status", "confirmada").execute()
+            df_metricas = pd.DataFrame(resp.data)
+            if not df_metricas.empty:
+                total_investido = df_metricas['valor_cobrado'].sum()
+                total_reservas = len(df_metricas)
+        except: pass
+
+        # 2. LAYOUT SUPERIOR (Boas vindas + Cards)
+        st.markdown("<br>", unsafe_allow_html=True)
+        col_text, col_card1, col_card2 = st.columns([1.5, 1, 1])
+        
+        with col_text:
+            st.markdown(f"""
+            <h1 style='color:#0f172a; margin-bottom:0;'>Olá, {nome_display}! 👋</h1>
+            <p style='color:#64748b;'>Gerencie sua conta e histórico profissional.</p>
+            """, unsafe_allow_html=True)
+            
+        with col_card1:
+            st.markdown(f"""
+            <div class="stat-card">
+                <div class="icon-box icon-green">↗</div>
+                <div>
+                    <div class="stat-label">Total Investido</div>
+                    <div class="stat-value">R$ {total_investido:.0f}</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with col_card2:
+            st.markdown(f"""
+            <div class="stat-card">
+                <div class="icon-box icon-blue">🕒</div>
+                <div>
+                    <div class="stat-label">Reservas</div>
+                    <div class="stat-value">{total_reservas}</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # 3. SEGURANÇA (Igual ao Print)
+        st.markdown("""
+        <div class="security-bar">
+            <div style="display:flex; gap:15px; align-items:center;">
+                <div style="background:#f1f5f9; padding:10px; border-radius:50%; color:#64748b;">🔑</div>
+                <div>
+                    <div style="font-weight:800; color:#0f172a;">SEGURANÇA</div>
+                    <div style="font-size:12px; color:#64748b; font-weight:600;">TROCA DE SENHA DE ACESSO</div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Botão funcional de troca de senha (Expander para não poluir o visual clean)
+        with st.expander("Alterar Senha (Clique aqui)", expanded=False):
+            with st.form("change_pass"):
+                nova_senha = st.text_input("Nova Senha", type="password")
+                confirma_senha = st.text_input("Confirmar Nova Senha", type="password")
+                if st.form_submit_button("Atualizar Senha Agora"):
+                    if nova_senha == confirma_senha and len(nova_senha) >= 6:
+                        try:
+                            supabase.auth.update_user({"password": nova_senha})
+                            st.success("Senha alterada com sucesso!")
+                        except Exception as e: st.error(f"Erro: {e}")
+                    else:
+                        st.error("Senhas não conferem ou muito curtas.")
+
+        # 4. HISTÓRICO DE RESERVAS
+        st.markdown("<br><h4 style='color:#94a3b8; font-weight:700; text-transform:uppercase; font-size:14px;'>Histórico de Reservas</h4>", unsafe_allow_html=True)
+        
+        try:
+            # Busca histórico completo
+            resp_hist = supabase.table("reservas").select("*").eq("user_id", user_id).order("data_reserva", desc=True).limit(20).execute()
+            df_hist = pd.DataFrame(resp_hist.data)
+            
+            if not df_hist.empty:
+                # Tabela estilizada nativa do Streamlit
+                st.dataframe(
+                    df_hist,
+                    column_config={
+                        "sala_nome": "Sala",
+                        "data_reserva": st.column_config.DateColumn("Data", format="DD/MM/YYYY"),
+                        "hora_inicio": "Início",
+                        "hora_fim": "Fim",
+                        "valor_cobrado": st.column_config.NumberColumn("Valor", format="R$ %.2f"),
+                        "status": "Status"
+                    },
+                    use_container_width=True,
+                    hide_index=True
+                )
+            else:
+                st.info("Nenhuma reserva encontrada no histórico.")
+        except:
+            st.error("Erro ao carregar histórico.")
+
+if __name__ == "__main__":
+    main()
 
 
 
