@@ -71,49 +71,60 @@ def gerar_pdf_relatorio(df):
     return pdf.output(dest='S').encode('latin-1')
 
 # --- 4. COMPONENTE DE CALENDÁRIO ---
+# --- SUBTITUA A FUNÇÃO ANTIGA POR ESTA ---
 def mostrar_calendario_visual(is_admin=False):
-    # Busca todas as reservas confirmadas
-    resp = supabase.table("reservas").select("*").eq("status", "confirmada").execute()
-    reservas = resp.data
-    
-    events = []
-    for r in reservas:
-        # Formata data ISO para o calendário (YYYY-MM-DDTHH:MM:SS)
-        start = f"{r['data_reserva']}T{r['hora_inicio']}"
-        end = f"{r['data_reserva']}T{r['hora_fim']}"
-        
-        # Define cor por sala
-        cor = "#0d9488" if r['sala_nome'] == 'Sala 1' else "#0ea5e9" # Verde ou Azul
-        
-        # Texto do evento (Admin vê nome, Usuário vê apenas 'Ocupado')
-        titulo = f"{r['sala_nome']} - {r['email_profissional']}" if is_admin else f"Reservado ({r['sala_nome']})"
-        
-        events.append({
-            "title": titulo,
-            "start": start,
-            "end": end,
-            "backgroundColor": cor,
-            "borderColor": cor
-        })
-
-    # Configurações do Calendário (FullCalendar)
-    calendar_options = {
-        "headerToolbar": {
-            "left": "today prev,next",
-            "center": "title",
-            "right": "dayGridMonth,timeGridWeek,timeGridDay"
-        },
-        "initialView": "timeGridWeek", # Começa na visão semanal
-        "slotMinTime": "06:00:00",     # Começa as 6h
-        "slotMaxTime": "23:00:00",     # Termina as 23h
-        "locale": "pt-br",             # Em Português
-        "allDaySlot": False,
-    }
-    
     st.markdown("### 📅 Visualização da Agenda")
-    calendar(events=events, options=calendar_options, custom_css="""
-        .fc-event-title { font-weight: bold; }
-    """)
+    
+    # 1. Busca dados
+    resp = supabase.table("reservas").select("*").eq("status", "confirmada").execute()
+    df = pd.DataFrame(resp.data)
+    
+    if df.empty:
+        st.info("A agenda está livre esta semana.")
+        return
+
+    # 2. Prepara dados para o gráfico
+    # Cria colunas de data/hora completas para o gráfico entender
+    df['Inicio'] = pd.to_datetime(df['data_reserva'].astype(str) + ' ' + df['hora_inicio'].astype(str))
+    df['Fim'] = pd.to_datetime(df['data_reserva'].astype(str) + ' ' + df['hora_fim'].astype(str))
+    
+    # Define o que aparece escrito na barra
+    if is_admin:
+        df['Legenda'] = df['email_profissional'] # Admin vê quem é
+    else:
+        df['Legenda'] = "Ocupado" # Usuário vê só "Ocupado"
+
+    # 3. Cria o Gráfico de Cronograma (Gantt)
+    # Eixo Y = Salas, Eixo X = Horário
+    fig = px.timeline(
+        df, 
+        x_start="Inicio", 
+        x_end="Fim", 
+        y="sala_nome", 
+        color="sala_nome", # Cada sala uma cor
+        text="Legenda",
+        title="Ocupação das Salas (Arraste para ver mais dias)",
+        color_discrete_map={"Sala 1": "#0d9488", "Sala 2": "#0ea5e9"} # Verde e Azul
+    )
+    
+    # 4. Ajustes Visuais (Para parecer um calendário)
+    fig.update_yaxes(title="", autorange="reversed") # Sala 1 em cima
+    fig.update_layout(
+        xaxis_title="Horário",
+        showlegend=False,
+        height=400,
+        margin=dict(l=10, r=10, t=40, b=10),
+        plot_bgcolor="#f8f9fa"
+    )
+    
+    # Mostra linhas de grade para facilitar leitura das horas
+    fig.update_xaxes(
+        tickformat="%H:%M\n%d/%m", # Formato Hora e Dia
+        dtick=3600000 * 4, # Mostra marcação a cada 4 horas
+        gridcolor="#e2e8f0"
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
 
 # --- 5. TELAS ---
 
@@ -273,6 +284,7 @@ else:
         dashboard_admin()
     else:
         dashboard_usuario()
+
 
 
 
