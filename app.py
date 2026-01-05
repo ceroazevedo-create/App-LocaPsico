@@ -16,7 +16,8 @@ except Exception as e:
 
 # 2. Configuração do Modelo (Usando o mais moderno para versão 0.8.6)
 # Estamos usando o Flash, que é rápido e compatível com a biblioteca nova
-MODEL_NAME = 'gemini-1.5-flash'
+# Atualizado para o modelo que sua conta permite
+MODEL_NAME = 'gemini-2.5-flash'
 
 try:
     model = genai.GenerativeModel(MODEL_NAME)
@@ -49,6 +50,7 @@ if st.button("Enviar"):
                             st.code(m.name)
                 except:
                     st.error("Não consegui nem listar os modelos. Verifique se sua API Key é válida.")
+
 
 
 
