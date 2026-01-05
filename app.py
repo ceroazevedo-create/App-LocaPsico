@@ -129,26 +129,21 @@ def gerar_pdf_fatura(df, nome_usuario, mes_referencia):
 if 'data_referencia' not in st.session_state:
     st.session_state['data_referencia'] = datetime.date.today()
 if 'view_mode' not in st.session_state:
-    st.session_state['view_mode'] = 'SEMANA' # Padrão SEMANAL
+    st.session_state['view_mode'] = 'SEMANA'
 
 def navegar_data(direcao):
-    """Avança ou retrocede baseado na visualização atual"""
     modo = st.session_state['view_mode']
     delta = 0
-    
     if modo == 'DIA': delta = 1
     elif modo == 'SEMANA': delta = 7
-    elif modo == 'MÊS':
-        # Lógica simples para pular mês (aproximada para 30 dias para simplificar navegação)
-        # O ideal seria usar relativedelta, mas vamos de timedelta simples para não depender de lib extra
-        delta = 30 
+    elif modo == 'MÊS': delta = 30 
     
     if direcao == 'anterior':
         st.session_state['data_referencia'] -= timedelta(days=delta)
     else:
         st.session_state['data_referencia'] += timedelta(days=delta)
 
-# --- 5. RENDERIZAÇÃO DA GRADE (LÓGICA CENTRAL) ---
+# --- 5. RENDERIZAÇÃO DA GRADE ---
 def buscar_reservas(sala, data_inicio, data_fim):
     try:
         resp = supabase.table("reservas").select("*")\
@@ -165,12 +160,11 @@ def renderizar_calendario_view(sala_selecionada, is_admin=False):
     data_ref = st.session_state['data_referencia']
     agora = datetime.datetime.now()
 
-    # --- LÓGICA DE DATAS ---
     if view_mode == 'DIA':
         inicio_periodo = data_ref
         fim_periodo = data_ref
         dias_para_mostrar = [data_ref]
-        col_ratios = [0.5, 4] # Coluna Hora + Coluna Dia Larga
+        col_ratios = [0.5, 4]
         
     elif view_mode == 'SEMANA':
         inicio_periodo = data_ref - timedelta(days=data_ref.weekday())
@@ -179,40 +173,31 @@ def renderizar_calendario_view(sala_selecionada, is_admin=False):
         col_ratios = [0.5] + [1]*7
 
     elif view_mode == 'MÊS':
-        # Calcula primeiro e último dia do mês para a query
         ano, mes = data_ref.year, data_ref.month
         num_dias = calendar.monthrange(ano, mes)[1]
         inicio_periodo = datetime.date(ano, mes, 1)
         fim_periodo = datetime.date(ano, mes, num_dias)
-        # Mês não usa a lista 'dias_para_mostrar' da mesma forma, usa calendar matrix
     
-    # --- BUSCA DADOS ---
     reservas = buscar_reservas(sala_selecionada, inicio_periodo, fim_periodo)
     
-    # Mapeamento rápido
     mapa = {}
     for r in reservas:
         d = r['data_reserva']
         h = r['hora_inicio']
         if d not in mapa: mapa[d] = {}
         if view_mode == 'MÊS':
-            # No mês guardamos lista de eventos no dia
             if 'lista' not in mapa[d]: mapa[d]['lista'] = []
             mapa[d]['lista'].append(r)
         else:
             mapa[d][h] = r
 
-    # --- RENDERIZAÇÃO VISUAL ---
-    
-    # >>> MODO MÊS <<<
+    # RENDERIZAÇÃO
     if view_mode == 'MÊS':
         dias_semana_nome = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"]
-        # Cabeçalho Dias
         cols = st.columns(7)
         for i, d_nome in enumerate(dias_semana_nome):
             cols[i].markdown(f"<div style='text-align:center; font-weight:bold; color:#64748b;'>{d_nome}</div>", unsafe_allow_html=True)
         
-        # Matriz do Mês
         cal_matrix = calendar.monthcalendar(data_ref.year, data_ref.month)
         
         for semana in cal_matrix:
@@ -223,46 +208,34 @@ def renderizar_calendario_view(sala_selecionada, is_admin=False):
                 else:
                     data_atual = datetime.date(data_ref.year, data_ref.month, dia_num)
                     data_str = str(data_atual)
-                    
-                    # Conteúdo do Dia
                     html_content = f"<div class='month-day-header'>{dia_num}</div>"
                     
                     if data_str in mapa and 'lista' in mapa[data_str]:
                         for evt in mapa[data_str]['lista']:
-                            # Resolve nome
                             nm = resolver_nome_display(evt['email_profissional'], nome_banco=evt.get('nome_profissional'))
                             hora_curta = evt['hora_inicio'][:5]
                             html_content += f"<div class='month-event-dot' title='{hora_curta} - {nm}'>{hora_curta} {nm}</div>"
                     
                     cols[i].markdown(f"<div class='month-day-box'>{html_content}</div>", unsafe_allow_html=True)
 
-    # >>> MODO DIA OU SEMANA <<<
     else:
-        # Cabeçalho
         cols_header = st.columns(col_ratios)
         cols_header[0].write("")
-        
         for i, data_atual in enumerate(dias_para_mostrar):
             dia_str = f"{data_atual.strftime('%a').upper()} <br> <span style='font-size:18px'>{data_atual.day:02d}</span>"
             style = "color: #ef4444;" if data_atual.weekday() == 6 else ("color: #0d9488; border-bottom-color: #0d9488;" if data_atual == datetime.date.today() else "")
             cols_header[i+1].markdown(f"<div class='day-header' style='{style}'>{dia_str}</div>", unsafe_allow_html=True)
-        
         st.markdown("---")
-
-        # Linhas de Hora
         horarios = [f"{h:02d}:00:00" for h in range(7, 23)] 
         for hora in horarios:
             cols = st.columns(col_ratios)
             cols[0].markdown(f"<div class='time-col'>{hora[:5]}</div>", unsafe_allow_html=True)
-            
             for i, data_atual in enumerate(dias_para_mostrar):
                 data_str = str(data_atual)
                 hora_int = int(hora[:2])
                 dt_slot = datetime.datetime.combine(data_atual, datetime.time(hora_int, 0))
-                
                 reserva = mapa.get(data_str, {}).get(hora)
                 cell = cols[i+1].empty()
-                
                 if reserva:
                     nm = resolver_nome_display(reserva.get('email_profissional',''), nome_banco=reserva.get('nome_profissional'))
                     cell.markdown(f"<div class='event-card' title='{nm}'>👤 {nm}</div>", unsafe_allow_html=True)
@@ -333,21 +306,14 @@ def main():
         sala = st.radio("Sala", ["Sala 1", "Sala 2"], horizontal=True, label_visibility="collapsed")
         st.markdown("---")
         
-        # BARRA DE CONTROLE (VIEW + NAVEGAÇÃO)
         c_nav1, c_nav2, c_nav3 = st.columns([1, 6, 2])
         with c_nav1: 
             if st.button("◀", key="p"): navegar_data('anterior')
         with c_nav2:
-            # Info do Período Centralizada
             dt_ref = st.session_state['data_referencia']
-            
-            # Botões de Troca de Visão
             col_b1, col_b2, col_b3, col_lbl = st.columns([1,1,1,3])
-            
-            # Seletor Manual de Botões
             def set_view(v): st.session_state['view_mode'] = v
             
-            # Estilo condicional
             style_dia = "primary" if st.session_state['view_mode'] == 'DIA' else "secondary"
             style_sem = "primary" if st.session_state['view_mode'] == 'SEMANA' else "secondary"
             style_mes = "primary" if st.session_state['view_mode'] == 'MÊS' else "secondary"
@@ -359,7 +325,6 @@ def main():
             with col_b3: 
                 if st.button("MÊS", type=style_mes, use_container_width=True): set_view('MÊS')
             
-            # Texto da Data
             with col_lbl:
                 mes_str = dt_ref.strftime('%B').capitalize()
                 if st.session_state['view_mode'] == 'SEMANA':
@@ -368,7 +333,7 @@ def main():
                     st.markdown(f"<h4 style='margin:0; text-align:right'>{ini.day} - {fim.day} {mes_str}</h4>", unsafe_allow_html=True)
                 elif st.session_state['view_mode'] == 'DIA':
                     st.markdown(f"<h4 style='margin:0; text-align:right'>{dt_ref.day} de {mes_str}</h4>", unsafe_allow_html=True)
-                else: # MÊS
+                else: 
                     st.markdown(f"<h4 style='margin:0; text-align:right'>{mes_str} {dt_ref.year}</h4>", unsafe_allow_html=True)
 
         with c_nav3: 
@@ -376,7 +341,6 @@ def main():
             
         renderizar_calendario_view(sala, is_admin=st.session_state.get('is_admin'))
         
-        # FORMULÁRIO DE AGENDAMENTO (Sempre visível ou em expander)
         with st.expander("➕ NOVO AGENDAMENTO", expanded=False):
             with st.form("new"):
                 ca, cb = st.columns(2)
@@ -405,7 +369,7 @@ def main():
                         st.success("Reservado!"); st.rerun()
                     except Exception as e: st.error(f"Erro: {e}")
 
-    # --- TELA 2: MEU PAINEL ---
+    # --- TELA 2: MEU PAINEL (CORRIGIDO PARA SUBTRAIR) ---
     elif nav == "MEU PAINEL":
         user_id = st.session_state['user'].id
         email = st.session_state['user'].email
@@ -413,11 +377,16 @@ def main():
         
         inv, total = 0.0, 0
         try:
+            # SÓ PEGA STATUS 'confirmada'. Ao cancelar, o status vira 'cancelada' e some daqui.
             resp = supabase.table("reservas").select("valor_cobrado").eq("user_id", user_id).eq("status", "confirmada").execute()
             df = pd.DataFrame(resp.data)
-            r_all = supabase.table("reservas").select("id").eq("user_id", user_id).execute()
-            total = len(r_all.data) if r_all.data else 0
-            if not df.empty: inv = df['valor_cobrado'].sum()
+            
+            if not df.empty:
+                inv = df['valor_cobrado'].sum()
+                total = len(df) # Conta apenas as confirmadas
+            else:
+                inv = 0.0
+                total = 0
         except: pass
 
         st.markdown("<br>", unsafe_allow_html=True)
