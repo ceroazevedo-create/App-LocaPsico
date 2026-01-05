@@ -14,7 +14,7 @@ except Exception as e:
 
 # 2. Configuração do Modelo
 # Se der erro no Flash, troque 'gemini-1.5-flash' por 'gemini-pro'
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-pro')
 
 # 3. Interface do Usuário
 user_input = st.text_input("Digite sua pergunta ou caso:", placeholder="Ex: Como lidar com ansiedade?")
@@ -32,6 +32,7 @@ if st.button("Enviar"):
                 st.write(response.text)
         except Exception as e:
             st.error(f"Ocorreu um erro: {e}")
+
 
 
 
