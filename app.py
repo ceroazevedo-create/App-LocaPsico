@@ -267,32 +267,34 @@ def main():
                             st.rerun()
                     except Exception as e: st.error(f"Erro: {e}")
 
-    # --- MEU PAINEL (LÓGICA CORRIGIDA) ---
+    # --- MEU PAINEL (AJUSTADO) ---
     else:
         user_id = st.session_state['user'].id
+        
+        # Lógica de Exibição do Nome no Topo
         meta_nome = st.session_state['user'].user_metadata.get('nome')
-        email_nome = st.session_state['user'].email.split('@')[0]
-        nome_display = meta_nome if meta_nome else email_nome
+        email_atual = st.session_state['user'].email
+        
+        # Se for o e-mail do Cesar, força o nome "Cesar"
+        if email_atual == "cesar_unib@msn.com":
+            nome_display = "Cesar"
+        else:
+            nome_display = meta_nome if meta_nome else email_atual.split('@')[0].title()
         
         total_investido = 0.0
         total_reservas = 0
         try:
-            # 1. Busca TUDO do usuário (Status Confirmado E Cancelado)
             resp = supabase.table("reservas").select("valor_cobrado, status").eq("user_id", user_id).execute()
             df_metricas = pd.DataFrame(resp.data)
-            
             if not df_metricas.empty:
-                # 2. Total de reservas = Conta TUDO (Linhas do dataframe)
                 total_reservas = len(df_metricas)
-                
-                # 3. Total investido = Soma TUDO (Sem filtrar status) = R$ 128,00
                 total_investido = df_metricas['valor_cobrado'].sum()
         except: pass
 
         st.markdown("<br>", unsafe_allow_html=True)
         col_text, col_card1, col_card2 = st.columns([1.5, 1, 1])
         with col_text:
-            st.markdown(f"<h1 style='color:#0f172a; margin-bottom:0;'>Olá, {nome_display.title()}! 👋</h1><p style='color:#64748b;'>Gerencie sua conta e histórico profissional.</p>", unsafe_allow_html=True)
+            st.markdown(f"<h1 style='color:#0f172a; margin-bottom:0;'>Olá, {nome_display}! 👋</h1><p style='color:#64748b;'>Gerencie sua conta e histórico profissional.</p>", unsafe_allow_html=True)
         with col_card1:
             st.markdown(f"<div class='stat-card'><div class='icon-box icon-green'>↗</div><div><div class='stat-label'>Total Investido</div><div class='stat-value'>R$ {total_investido:.0f}</div></div></div>", unsafe_allow_html=True)
         with col_card2:
@@ -316,10 +318,39 @@ def main():
         try:
             resp_hist = supabase.table("reservas").select("*").eq("user_id", user_id).order("data_reserva", desc=True).limit(20).execute()
             df_hist = pd.DataFrame(resp_hist.data)
+            
             if not df_hist.empty:
-                st.dataframe(df_hist, column_config={"sala_nome": "Sala", "data_reserva": st.column_config.DateColumn("Data", format="DD/MM/YYYY"), "hora_inicio": "Início", "hora_fim": "Fim", "valor_cobrado": st.column_config.NumberColumn("Valor", format="R$ %.2f"), "status": "Status"}, use_container_width=True, hide_index=True)
+                # 1. Regra para mudar o nome do Cesar na tabela
+                def ajusta_nome(row):
+                    if row['email_profissional'] == "cesar_unib@msn.com":
+                        return "Cesar"
+                    # Se tiver nome salvo, usa. Se não, usa email.
+                    if row.get('nome_profissional'):
+                        return row['nome_profissional']
+                    return row['email_profissional'].split('@')[0].title()
+                
+                df_hist['Profissional'] = df_hist.apply(ajusta_nome, axis=1)
+
+                # 2. Seleciona APENAS as colunas que você quer (Remove created_at e user_id)
+                df_final = df_hist[["sala_nome", "data_reserva", "hora_inicio", "hora_fim", "valor_cobrado", "status", "Profissional"]]
+
+                st.dataframe(
+                    df_final, 
+                    column_config={
+                        "sala_nome": "Sala", 
+                        "data_reserva": st.column_config.DateColumn("Data", format="DD/MM/YYYY"), 
+                        "hora_inicio": "Início", 
+                        "hora_fim": "Fim", 
+                        "valor_cobrado": st.column_config.NumberColumn("Valor", format="R$ %.2f"), 
+                        "status": "Status",
+                        "Profissional": "Profissional"
+                    }, 
+                    use_container_width=True, 
+                    hide_index=True
+                )
             else: st.info("Nenhuma reserva encontrada.")
-        except: st.error("Erro ao carregar histórico.")
+        except Exception as e: st.error(f"Erro ao carregar histórico: {e}")
 
 if __name__ == "__main__":
     main()
+
