@@ -70,7 +70,7 @@ def tela_login():
                 st.session_state['user_email'] = email
                 st.rerun()
 
-# --- TELA 2: AGENDA ---
+# --- TELA 2: AGENDA (ATUALIZADA COM FORMULÁRIO) ---
 def tela_agenda():
     # Barra Superior
     st.markdown(f"""
@@ -86,32 +86,72 @@ def tela_agenda():
 
     st.title("📅 Minha Agenda")
 
-    # Busca dados no Supabase
+    # --- 1. FORMULÁRIO DE NOVA RESERVA ---
+    with st.expander("➕ Nova Reserva (Clique para abrir)"):
+        with st.form("form_agendamento", clear_on_submit=True):
+            st.write("**Preencha os dados da reserva:**")
+            
+            # Campos
+            sala_selecionada = st.selectbox("Escolha a Sala", ["Sala Interlagos 01", "Sala Tatuapé A", "Consultório 3"])
+            col1, col2, col3 = st.columns(3)
+            data_reserva = col1.date_input("Data")
+            hora_inicio = col2.time_input("Início")
+            hora_fim = col3.time_input("Fim")
+            
+            # Botão de Salvar
+            enviar = st.form_submit_button("Confirmar Agendamento")
+
+            if enviar:
+                if supabase:
+                    try:
+                        # Prepara os dados (usando os nomes da tabela que criamos no passo anterior)
+                        nova_reserva = {
+                            "sala_nome": sala_selecionada,
+                            "data_reserva": str(data_reserva),
+                            "hora_inicio": str(hora_inicio),
+                            "hora_fim": str(hora_fim),
+                            "status": "confirmada"
+                            # "usuario_id": ... (deixamos opcional por enquanto no banco)
+                        }
+                        
+                        # Envia para o Supabase
+                        supabase.table("reservas").insert(nova_reserva).execute()
+                        st.success("Reserva realizada com sucesso!")
+                        st.rerun() # Recarrega a página para atualizar a lista abaixo
+                    except Exception as e:
+                        st.error(f"Erro ao salvar: {e}")
+                else:
+                    st.error("Erro de conexão com o banco.")
+
+    st.divider() # Linha visual separando o form da lista
+
+    # --- 2. LISTA DE AGENDAMENTOS ---
     if supabase:
         try:
-            # Tenta ler a tabela
-            response = supabase.table('reservas').select("*").execute()
+            # Busca os dados ordenados por data e hora
+            response = supabase.table('reservas').select("*").order('data_reserva', desc=False).order('hora_inicio', desc=False).execute()
             df = pd.DataFrame(response.data)
             
             if not df.empty:
-                # Mostra a tabela bonita
+                # Ajustei o column_config para bater com os nomes reais da sua tabela nova
                 st.dataframe(
                     df, 
                     column_config={
-                        "id_da_sala": "Sala",
-                        "data": "Data",
-                        "hora": "Horário",
-                        "id_do_usuário": "ID Terapeuta"
+                        "sala_nome": "Sala",
+                        "data_reserva": st.column_config.DateColumn("Data", format="DD/MM/YYYY"),
+                        "hora_inicio": st.column_config.TimeColumn("Início", format="HH:mm"),
+                        "hora_fim": st.column_config.TimeColumn("Fim", format="HH:mm"),
+                        "status": "Status"
                     },
                     use_container_width=True,
                     hide_index=True
                 )
             else:
-                st.info("Sua agenda está vazia neste momento. (Tabela 'reservas' encontrada, mas sem linhas)")
+                st.info("Sua agenda está vazia neste momento.")
                 
         except Exception as e:
-            st.error("Erro ao carregar agenda. Tente recarregar a página.")
-            st.code(str(e)) # Mostra erro técnico pequeno se houver
+            st.error("Erro ao carregar agenda.")
+            # st.write(e) # Tire o comentário se quiser ver o erro técnico
 
 # --- CONTROLE DE FLUXO ---
 if 'logado' not in st.session_state:
@@ -121,6 +161,7 @@ if not st.session_state['logado']:
     tela_login()
 else:
     tela_agenda()
+
 
 
 
