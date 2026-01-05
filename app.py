@@ -147,16 +147,14 @@ def renderizar_grade(sala_selecionada, is_admin=False):
             else:
                 cell.markdown("<div style='height: 30px; border-left: 1px solid #f1f5f9;'></div>", unsafe_allow_html=True)
 
-# --- 4. TELA LOGIN (COM CADASTRO NOVO) ---
+# --- 4. TELA LOGIN ---
 def login_screen():
     c1, c2, c3 = st.columns([1,1,1])
     with c2:
         st.markdown("<br><br><h1 style='text-align: center; color: #0d9488;'>Ψ LocaPsico</h1><p style='text-align: center;'>Gestão de Espaços Terapêuticos</p>", unsafe_allow_html=True)
         
-        # Cria as abas para separar Entrar de Cadastrar
         tab1, tab2 = st.tabs(["JÁ TENHO CONTA", "CRIAR NOVA CONTA"])
         
-        # ABA 1: LOGIN
         with tab1:
             with st.form("form_login"):
                 email = st.text_input("Email", key="login_email")
@@ -169,11 +167,10 @@ def login_screen():
                         st.rerun()
                     except: st.error("Email ou senha incorretos.")
         
-        # ABA 2: CADASTRO
         with tab2:
             st.markdown("<div style='background:#f0fdfa; padding:10px; border-radius:5px; font-size:12px; color:#0d9488;'>Preencha seus dados para começar a agendar salas.</div><br>", unsafe_allow_html=True)
             with st.form("form_cadastro"):
-                new_nome = st.text_input("Seu Nome Completo (Como aparecerá na agenda)")
+                new_nome = st.text_input("Seu Nome Completo")
                 new_email = st.text_input("Seu Email")
                 new_senha = st.text_input("Crie uma Senha", type="password")
                 
@@ -182,23 +179,17 @@ def login_screen():
                         st.warning("A senha deve ter pelo menos 6 caracteres.")
                     else:
                         try:
-                            # Cria usuário no Supabase enviando o NOME nos metadados
                             response = supabase.auth.sign_up({
                                 "email": new_email, 
                                 "password": new_senha,
-                                "options": {
-                                    "data": { "nome": new_nome }
-                                }
+                                "options": { "data": { "nome": new_nome } }
                             })
-                            
-                            # Verifica se o cadastro foi imediato (se o supabase não pedir confirmação de email)
                             if response.user:
-                                st.success("Conta criada com sucesso! Faça login na aba ao lado.")
+                                st.success("Conta criada! Faça login.")
                             else:
-                                st.info("Verifique seu e-mail para confirmar o cadastro.")
-                                
+                                st.info("Verifique seu e-mail.")
                         except Exception as e:
-                            st.error(f"Erro ao criar conta: {e}")
+                            st.error(f"Erro: {e}")
 
 # --- 5. APP PRINCIPAL ---
 def main():
@@ -276,7 +267,7 @@ def main():
                             st.rerun()
                     except Exception as e: st.error(f"Erro: {e}")
 
-    # --- MEU PAINEL ---
+    # --- MEU PAINEL (CORRIGIDO) ---
     else:
         user_id = st.session_state['user'].id
         meta_nome = st.session_state['user'].user_metadata.get('nome')
@@ -286,11 +277,19 @@ def main():
         total_investido = 0.0
         total_reservas = 0
         try:
-            resp = supabase.table("reservas").select("valor_cobrado").eq("user_id", user_id).eq("status", "confirmada").execute()
+            # CORREÇÃO AQUI: Pegamos "status" também e NÃO filtramos por "confirmada" na query inicial
+            # Assim pegamos TUDO (Confirmadas e Canceladas)
+            resp = supabase.table("reservas").select("valor_cobrado, status").eq("user_id", user_id).execute()
             df_metricas = pd.DataFrame(resp.data)
+            
             if not df_metricas.empty:
-                total_investido = df_metricas['valor_cobrado'].sum()
+                # O número de reservas conta TUDO (para bater com a tabela de histórico)
                 total_reservas = len(df_metricas)
+                
+                # O valor investido soma APENAS as confirmadas (Dinheiro real)
+                # Se quiser somar as canceladas também, remova o filtro abaixo
+                df_pagas = df_metricas[df_metricas['status'] == 'confirmada']
+                total_investido = df_pagas['valor_cobrado'].sum()
         except: pass
 
         st.markdown("<br>", unsafe_allow_html=True)
