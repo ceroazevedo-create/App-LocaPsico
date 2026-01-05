@@ -1,43 +1,52 @@
 import streamlit as st
 from supabase import create_client
 
-st.set_page_config(page_title="Diagnóstico LocaPsi")
-st.title("🕵️ Tela de Diagnóstico")
+st.set_page_config(page_title="Diagnóstico Final", page_icon="🕵️")
 
-# 1. Mostra onde o app está tentando conectar
-url_secreta = st.secrets["SUPABASE_URL"]
-# Mostra só o começo da URL para você conferir (ex: https://abcde...)
-st.write(f"🔌 **Conectando no Projeto:** `{url_secreta[:20]}...`")
+st.title("🕵️ Onde estou conectado?")
 
-# 2. Tenta conectar
+# 1. PEGAR AS CHAVES
 try:
-    supabase = create_client(url_secreta, st.secrets["SUPABASE_KEY"])
-    st.success("Conexão estabelecida!")
-except Exception as e:
-    st.error(f"Erro de conexão: {e}")
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+except:
+    st.error("❌ As chaves não foram encontradas nos Secrets!")
     st.stop()
 
-# 3. Tenta achar a tabela com nomes diferentes (para testar Maiúsculas/Minúsculas)
-nomes_teste = ['reservas', 'Reservas', 'RESERVAS', 'public.reservas']
+# 2. ANÁLISE DO PROJETO (SEM MOSTRAR A SENHA)
+# A URL do Supabase é sempre: https://[ID-DO-PROJETO].supabase.co
+# Vamos extrair esse ID para ver se bate com o seu.
+projeto_id = url.replace("https://", "").split(".")[0]
+
+st.info(f"🔑 O App está tentando conectar no Projeto de ID: **{projeto_id}**")
+
+st.markdown("""
+**TESTE VISUAL:**
+1. Olhe para a URL do seu navegador quando você está no site do Supabase.
+2. Ela deve começar com `https://supabase.com/dashboard/project/...`
+3. O código que vem depois é **IGUAL** ao que mostrei acima em azul?
+""")
+
+# 3. TENTATIVA DE CONEXÃO DIRETA
+client = create_client(url, key)
 
 st.write("---")
-st.write("### 🧪 Testando Tabela 'reservas'")
+st.write("### 🧪 Tentando ler a tabela 'reservas'...")
 
-for nome in nomes_teste:
-    st.write(f"Tentando ler tabela: **'{nome}'**...")
-    try:
-        response = supabase.table(nome).select("*").limit(1).execute()
-        st.success(f"✅ SUCESSO! A tabela correta é: '{nome}'")
-        st.write("Dados encontrados:", response.data)
-        break # Para se achar
-    except Exception as e:
-        # Se o erro for o 205, mostra aviso
-        if "PGRST205" in str(e):
-            st.warning(f"❌ Não encontrei '{nome}' (Erro 205)")
-        else:
-            st.error(f"❌ Erro diferente em '{nome}': {e}")
-
-st.info("👆 Se todos derem erro, suas chaves do Supabase no Streamlit estão erradas.")
+try:
+    # Tenta ler apenas 1 linha para testar
+    response = client.table('reservas').select("*").limit(1).execute()
+    st.success("✅ SUCESSO! Conexão funcionando.")
+    st.dataframe(response.data)
+except Exception as e:
+    st.error(f"❌ Erro: {e}")
+    
+    st.warning("""
+    **SE O ID DO PROJETO ESTIVER CERTO E AINDA DER ERRO:**
+    Significa que a tabela está bloqueada.
+    1. Vá no Supabase > SQL Editor.
+    2. Cole e rode: `ALTER TABLE public.reservas DISABLE ROW LEVEL SECURITY;`
+    """)
 
 
 
