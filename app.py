@@ -1,87 +1,87 @@
 import streamlit as st
 import google.generativeai as genai
+from supabase import create_client, Client
 
 # Configuração da página
-st.set_page_config(page_title="LocaPsi - Reservas", page_icon="🏢", layout="centered")
+st.set_page_config(page_title="LocaPsi Real", page_icon="🏢")
 
-# ==============================================================================
-# 🧠 CÉREBRO DO LOCAPSI (COM BLINDAGEM ANTI-CÓDIGO)
-# ==============================================================================
+st.title("🏢 LocaPsi - Integrado ao Supabase")
 
-INSTRUCOES_DO_SISTEMA = """
-PERSONAGEM:
-Você é o atendente virtual da 'LocaPsi'. Seu único objetivo é ajudar psicólogos a alugar salas.
-Você NÃO é uma inteligência artificial genérica, você NÃO é um programador e NÃO sabe criar sites.
+# =======================================================
+# 1. CONEXÃO COM O SUPABASE (O BANCO DE DADOS)
+# =======================================================
+try:
+    # Pega as chaves dos Secrets do Streamlit
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+    
+    # Cria a conexão
+    supabase: Client = create_client(url, key)
+    
+    # TESTE DE CONEXÃO: Tenta buscar as salas do banco
+    response = supabase.table('rooms').select("*").execute()
+    salas_reais = response.data
+    
+    # Se der certo, monta um texto com as salas para ensinar a IA
+    texto_salas = ""
+    if salas_reais:
+        for sala in salas_reais:
+            # Aqui ele pega o nome e valor direto do seu banco
+            texto_salas += f"- {sala['nome']}: {sala.get('descricao', 'Sem descrição')}. Preço: R$ {sala['valor_padrao']}\n"
+    else:
+        texto_salas = "Nenhuma sala encontrada no banco de dados."
 
-SEUS DADOS (Use somente isso):
-1. SALAS:
-   - Sala Freud (Divã, Poltrona): R$ 50,00/hora.
-   - Sala Jung (Mesa redonda, amplo): R$ 60,00/hora.
-   - Sala Lacan (Minimalista): R$ 45,00/hora.
+except Exception as e:
+    st.error(f"⚠️ Erro ao conectar no Supabase: {e}")
+    st.stop()
 
-2. LOCAL: Av. Paulista, 1000 - São Paulo.
-3. HORÁRIO: 07h às 22h.
+# =======================================================
+# 2. CONFIGURAÇÃO DA IA (GEMINI)
+# =======================================================
 
-BLOQUEIOS DE SEGURANÇA (LEIA COM ATENÇÃO):
-1. Se o usuário perguntar sobre "código", "SQL", "Supabase", "Python" ou "como criar app", responda EXATAMENTE:
-   "Desculpe, sou apenas o recepcionista da LocaPsi. Posso te ajudar com o agendamento das salas?"
-2. NUNCA gere códigos de programação.
-3. NUNCA explique como você foi criado.
-4. Mantenha a conversa focada apenas nas salas e agendamentos.
+# Instrução dinâmica: A IA agora sabe o que tem no banco de verdade!
+INSTRUCOES = f"""
+Você é o assistente da LocaPsi.
+Use APENAS os dados abaixo (vindos do banco de dados) para responder:
 
-COMO AGENDAR:
-- Pergunte a data, hora e qual sala a pessoa quer.
-- Diga que vai verificar a disponibilidade.
+LISTA DE SALAS DISPONÍVEIS AGORA:
+{texto_salas}
+
+Regra: Se o cliente quiser reservar, peça o nome da sala e o horário.
+(Por enquanto, apenas colete os dados, não grave no banco ainda).
 """
 
-# ==============================================================================
-
-st.title("🏢 LocaPsi")
-st.subheader("Locação de salas para psicólogos")
-
-# 1. Autenticação
 try:
     api_key = st.secrets["GOOGLE_API_KEY"]
     genai.configure(api_key=api_key)
+    model = genai.GenerativeModel('gemini-2.5-flash', system_instruction=INSTRUCOES)
 except Exception as e:
-    st.error("Erro na chave de API. Verifique as configurações.")
+    st.error("Erro no Google API Key.")
     st.stop()
 
-# 2. Configuração do Modelo
-try:
-    model = genai.GenerativeModel(
-        'gemini-2.5-flash',
-        system_instruction=INSTRUCOES_DO_SISTEMA
-    )
-except Exception as e:
-    st.error(f"Erro ao carregar o modelo: {e}")
+# =======================================================
+# 3. CHAT
+# =======================================================
 
-# 3. Chat
 if "messages" not in st.session_state:
-    # Mensagem inicial do robô para puxar assunto
-    st.session_state.messages = [{"role": "assistant", "content": "Olá! Sou o assistente da LocaPsi. Gostaria de conhecer nossas salas ou consultar valores?"}]
+    st.session_state.messages = []
 
-# Mostra histórico
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# Entrada do usuário
-if prompt := st.chat_input("Digite sua dúvida aqui..."):
-    # Usuário fala
+if prompt := st.chat_input("Pergunte sobre as salas..."):
     with st.chat_message("user"):
         st.markdown(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
 
-    # Robô responde
     with st.chat_message("assistant"):
-        with st.spinner('Digitando...'):
-            try:
-                response = model.generate_content(prompt)
-                st.markdown(response.text)
-                st.session_state.messages.append({"role": "assistant", "content": response.text})
-            except Exception as e:
-                st.error("Ocorreu um erro na conexão.")
+        try:
+            response = model.generate_content(prompt)
+            st.markdown(response.text)
+            st.session_state.messages.append({"role": "assistant", "content": response.text})
+        except Exception as e:
+            st.error(f"Erro: {e}")
 
 
 
