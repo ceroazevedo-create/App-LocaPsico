@@ -3,52 +3,54 @@ import google.generativeai as genai
 from supabase import create_client, Client
 
 # Configuração da página
-st.set_page_config(page_title="LocaPsi Real", page_icon="🏢")
-
-st.title("🏢 LocaPsi - Integrado ao Supabase")
+st.set_page_config(page_title="LocaPsi", page_icon="🏢")
+st.title("🏢 LocaPsi - Reservas")
 
 # =======================================================
-# 1. CONEXÃO COM O SUPABASE (O BANCO DE DADOS)
+# 1. CONEXÃO COM O SUPABASE
 # =======================================================
+texto_salas = "Carregando salas..."
+
 try:
-    # Pega as chaves dos Secrets do Streamlit
+    # Pega as chaves
     url = st.secrets["SUPABASE_URL"]
     key = st.secrets["SUPABASE_KEY"]
     
-    # Cria a conexão
+    # Conecta
     supabase: Client = create_client(url, key)
     
-    # TESTE DE CONEXÃO: Tenta buscar as salas do banco
+    # Busca as salas na tabela 'rooms' que acabamos de criar
     response = supabase.table('rooms').select("*").execute()
     salas_reais = response.data
     
-    # Se der certo, monta um texto com as salas para ensinar a IA
+    # Monta o texto para a IA ler
     texto_salas = ""
     if salas_reais:
         for sala in salas_reais:
-            # Aqui ele pega o nome e valor direto do seu banco
-            texto_salas += f"- {sala['nome']}: {sala.get('descricao', 'Sem descrição')}. Preço: R$ {sala['valor_padrao']}\n"
+            texto_salas += f"- {sala['nome']}: {sala['descricao']} (Valor: R$ {sala['valor_padrao']}/hora)\n"
     else:
-        texto_salas = "Nenhuma sala encontrada no banco de dados."
+        texto_salas = "Não encontrei nenhuma sala cadastrada no banco."
 
 except Exception as e:
-    st.error(f"⚠️ Erro ao conectar no Supabase: {e}")
-    st.stop()
+    st.error(f"⚠️ Erro de conexão com Banco de Dados: {e}")
+    # Se der erro, usamos um texto padrão para não travar o app
+    texto_salas = "- Sala Freud: R$ 50,00 (Erro ao carregar dados reais)"
 
 # =======================================================
-# 2. CONFIGURAÇÃO DA IA (GEMINI)
+# 2. CONFIGURAÇÃO DA IA
 # =======================================================
 
-# Instrução dinâmica: A IA agora sabe o que tem no banco de verdade!
 INSTRUCOES = f"""
 Você é o assistente da LocaPsi.
-Use APENAS os dados abaixo (vindos do banco de dados) para responder:
+Seu objetivo é ajudar psicólogos a alugar salas.
 
-LISTA DE SALAS DISPONÍVEIS AGORA:
+INFORMAÇÕES REAIS DO BANCO DE DADOS (Use apenas estas salas):
 {texto_salas}
 
-Regra: Se o cliente quiser reservar, peça o nome da sala e o horário.
-(Por enquanto, apenas colete os dados, não grave no banco ainda).
+REGRAS:
+1. Se perguntarem os preços, use a lista acima.
+2. Pergunte qual sala a pessoa quer e qual horário.
+3. NÃO invente salas que não estão na lista.
 """
 
 try:
@@ -56,7 +58,7 @@ try:
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel('gemini-2.5-flash', system_instruction=INSTRUCOES)
 except Exception as e:
-    st.error("Erro no Google API Key.")
+    st.error("Erro na Google API Key.")
     st.stop()
 
 # =======================================================
@@ -70,7 +72,7 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-if prompt := st.chat_input("Pergunte sobre as salas..."):
+if prompt := st.chat_input("Gostaria de saber os valores..."):
     with st.chat_message("user"):
         st.markdown(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
@@ -82,6 +84,7 @@ if prompt := st.chat_input("Pergunte sobre as salas..."):
             st.session_state.messages.append({"role": "assistant", "content": response.text})
         except Exception as e:
             st.error(f"Erro: {e}")
+
 
 
 
