@@ -1,37 +1,29 @@
 import streamlit as st
+import os
 import google.generativeai as genai
 
-# Título do App
-st.title("LocaPsi - Assistente IA")
+st.title("🕵️ Tela de Diagnóstico")
 
-# 1. Configuração da Chave de Segurança
-# Ele busca a senha que você salvou nos "Secrets" do Streamlit
+# 1. Qual versão está instalada?
+st.subheader("1. Versão da Biblioteca")
 try:
-    api_key = st.secrets["GOOGLE_API_KEY"]
-    genai.configure(api_key=api_key)
-except Exception as e:
-    st.error("Erro na chave de API. Verifique os 'Secrets' nas configurações do Streamlit.")
+    st.code(f"google-generativeai: {genai.__version__}")
+except:
+    st.error("A biblioteca nem sequer foi encontrada!")
 
-# 2. Configuração do Modelo
-# Se der erro no Flash, troque 'gemini-1.5-flash' por 'gemini-pro'
-model = genai.GenerativeModel('gemini-pro')
+# 2. Quais arquivos existem na pasta?
+st.subheader("2. Arquivos no servidor")
+files = os.listdir('.')
+st.write(files)
 
-# 3. Interface do Usuário
-user_input = st.text_input("Digite sua pergunta ou caso:", placeholder="Ex: Como lidar com ansiedade?")
-
-# 4. Ação do Botão
-if st.button("Enviar"):
-    if not user_input:
-        st.warning("Por favor, digite algo antes de enviar.")
-    else:
-        try:
-            with st.spinner('O LocaPsi está pensando...'):
-                # Envia para o Google
-                response = model.generate_content(user_input)
-                # Mostra a resposta
-                st.write(response.text)
-        except Exception as e:
-            st.error(f"Ocorreu um erro: {e}")
+# 3. O arquivo requirements existe mesmo?
+st.subheader("3. Verificação do arquivo de instalação")
+if "requirements.txt" in files:
+    st.success("O arquivo 'requirements.txt' EXISTE e o nome está CORRETO.")
+elif "requirements.txt.txt" in files:
+    st.error("ERRO ENCONTRADO: O arquivo se chama 'requirements.txt.txt' (nome duplicado).")
+else:
+    st.error(f"ERRO: Não achei 'requirements.txt'. Achei estes nomes parecidos: {[f for f in files if 'req' in f]}")
 
 
 
