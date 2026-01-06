@@ -9,112 +9,131 @@ import calendar
 import plotly.express as px
 import os
 
-# --- 1. CONFIGURAÇÃO E CSS (DESIGN PREMIUM) ---
+# --- 1. CONFIGURAÇÃO E CSS (DESIGN ULTRA CLEAN) ---
 st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide")
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     
-    /* FUNDO E FONTE */
-    .stApp { background-color: #f8fafc; font-family: 'Inter', sans-serif; }
+    /* FUNDO GERAL MAIS SUAVE */
+    .stApp { background-color: #f0f4f8; font-family: 'Inter', sans-serif; }
     
-    /* REMOVER ELEMENTOS PADRÃO DO STREAMLIT */
+    /* REMOVER ELEMENTOS PADRÃO */
     header {visibility: hidden;}
-    .block-container { padding-top: 3rem; padding-bottom: 3rem; }
+    footer {visibility: hidden;}
+    .block-container { padding-top: 2rem; padding-bottom: 2rem; }
 
-    /* --- ESTILO DO CARD DE LOGIN --- */
-    .login-container {
+    /* --- ESTILO DO CARD DE LOGIN (CLEAN) --- */
+    .login-wrap {
+        display: flex; justify-content: center; align-items: center; min-height: 80vh;
+    }
+    .login-card {
         background-color: #ffffff;
-        padding: 40px;
-        border-radius: 20px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        border: 1px solid #e2e8f0;
+        padding: 48px; /* Mais espaçamento interno */
+        border-radius: 24px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06); /* Sombra mais suave e difusa */
+        width: 100%;
+        max-width: 420px; /* Largura ideal para leitura */
+        text-align: center;
+        border: 1px solid #f1f5f9;
     }
 
-    /* --- INPUTS --- */
-    .stTextInput input {
-        background-color: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        color: #334155;
-        padding: 10px 15px;
+    /* --- LOGO PROPORCIONAL --- */
+    .logo-header {
+        margin-bottom: 32px;
+        display: flex; justify-content: center; align-items: center;
     }
-    .stTextInput input:focus {
+    /* Classe aplicada à imagem do Streamlit para controle total */
+    .logo-header img {
+        max-width: 160px !important; /* Tamanho máximo proporcional */
+        height: auto !important;
+        object-fit: contain !important;
+    }
+    .logo-text-fallback { font-size: 32px; font-weight: 800; color: #0d9488; letter-spacing: -1px; }
+
+    /* --- INPUTS MAIS LIMPOS --- */
+    /* Remove rótulos padrão para usar placeholders, se desejar um visual mais limpo */
+    /* .stTextInput label { display: none; } */
+    .stTextInput label { font-size: 13px; font-weight: 600; color: #64748b; margin-bottom: 4px;}
+    
+    /* Estilização profunda do input field */
+    .stTextInput > div > div > input {
+        background-color: #ffffff;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        color: #1e293b;
+        padding: 12px 16px;
+        font-size: 15px;
+        transition: all 0.2s;
+    }
+    /* Foco no input com a cor da marca */
+    .stTextInput > div > div > input:focus {
         border-color: #0d9488;
-        box-shadow: 0 0 0 1px #0d9488;
+        box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
     }
     
-    /* --- BOTÕES --- */
-    /* Botão Principal (Entrar) - Verde Sólido */
-    div[data-testid="stVerticalBlock"] > div > div > div > div > button[kind="primary"] {
-        background-color: #0d9488;
-        color: white;
-        border: none;
-        padding: 0.6rem 1rem;
-        font-weight: 600;
-        border-radius: 8px;
-        width: 100%;
-        transition: all 0.3s;
+    /* --- BOTÕES REFINADOS --- */
+    /* Botão Primário (Sólido) */
+    div[data-testid="stVerticalBlock"] button[kind="primary"] {
+        background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+        color: white; border: none; padding: 0.8rem; font-size: 16px;
+        font-weight: 600; border-radius: 12px; width: 100%; transition: all 0.3s;
+        box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2);
     }
-    div[data-testid="stVerticalBlock"] > div > div > div > div > button[kind="primary"]:hover {
-        background-color: #0f766e;
-        box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3);
-        transform: translateY(-1px);
+    div[data-testid="stVerticalBlock"] button[kind="primary"]:hover {
+        transform: translateY(-2px); box-shadow: 0 8px 16px rgba(13, 148, 136, 0.3);
     }
 
-    /* Botão Secundário (Criar Conta / Voltar) - Borda Verde */
-    div[data-testid="stVerticalBlock"] > div > div > div > div > button[kind="secondary"] {
-        background-color: transparent;
-        color: #0d9488;
-        border: 2px solid #0d9488;
-        padding: 0.6rem 1rem;
-        font-weight: 600;
-        border-radius: 8px;
-        width: 100%;
+    /* Botão Secundário (Outline) */
+    div[data-testid="stVerticalBlock"] button[kind="secondary"] {
+        background-color: transparent; color: #475569;
+        border: 2px solid #e2e8f0; padding: 0.7rem; font-weight: 600;
+        border-radius: 12px; width: 100%; transition: all 0.2s;
     }
-    div[data-testid="stVerticalBlock"] > div > div > div > div > button[kind="secondary"]:hover {
-        background-color: #f0fdfa;
-        color: #0f766e;
-        border-color: #0f766e;
+    div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover {
+        border-color: #0d9488; color: #0d9488; background-color: #f0fdfa;
     }
 
-    /* --- SEPARADOR "OU" --- */
+    /* --- SEPARADOR --- */
     .separator {
-        display: flex; align-items: center; text-align: center;
-        color: #94a3b8; font-size: 12px; font-weight: 700; 
-        margin: 20px 0; text-transform: uppercase;
+        display: flex; align-items: center; text-align: center; color: #94a3b8;
+        font-size: 12px; font-weight: 700; margin: 24px 0; text-transform: uppercase; letter-spacing: 1px;
     }
-    .separator::before, .separator::after {
-        content: ''; flex: 1; border-bottom: 1px solid #e2e8f0;
-    }
-    .separator:not(:empty)::before { margin-right: 1em; }
-    .separator:not(:empty)::after { margin-left: 1em; }
+    .separator::before, .separator::after { content: ''; flex: 1; border-bottom: 1px solid #e2e8f0; }
+    .separator:not(:empty)::before { margin-right: 1em; } .separator:not(:empty)::after { margin-left: 1em; }
 
-    /* --- LINK ESQUECI A SENHA --- */
-    .forgot-link {
-        text-align: center; margin-top: 15px;
+    /* --- LINK ESQUECI --- */
+    .forgot-btn { margin-top: 16px; }
+    .forgot-btn button {
+        background: none !important; border: none !important; color: #64748b !important;
+        font-size: 13px !important; font-weight: 600 !important; padding: 0 !important;
+        text-transform: none !important;
     }
-    .forgot-link button {
-        background: none; border: none; color: #94a3b8; 
-        font-size: 11px; font-weight: 700; text-transform: uppercase;
-        cursor: pointer; padding: 0; margin: 0;
-    }
-    .forgot-link button:hover {
-        color: #0d9488; text-decoration: underline;
-    }
+    .forgot-btn button:hover { color: #0d9488 !important; text-decoration: underline; }
 
-    /* --- LOGO CENTRALIZADA --- */
-    .logo-img {
-        display: block; margin-left: auto; margin-right: auto; width: 100%;
-    }
-    
-    /* Header do App Logado */
+    /* --- TÍTULOS INTERNOS --- */
+    .auth-title { font-size: 22px; font-weight: 700; color: #1e293b; margin-bottom: 8px; }
+    .auth-subtitle { font-size: 14px; color: #64748b; margin-bottom: 24px; }
+
+    /* CSS Mantido do sistema interno */
     .app-header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 30px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-    .cal-cell-wrapper { border-left: 1px solid #e2e8f0; min-height: 50px; }
-    .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; padding: 4px; font-size: 10px; font-weight: bold; border-radius: 4px; margin: 2px 0; overflow: hidden; white-space: nowrap; }
+    .admin-card { background: white; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 15px; }
+    .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; font-weight: 600; padding: 3px 5px; border-radius: 4px; margin: 1px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .blocked-slot { background: repeating-linear-gradient(45deg, #fef2f2, #fef2f2 10px, #fee2e2 10px, #fee2e2 20px); height: 40px; width: 100%; border-radius: 4px; opacity: 0.5; }
-    
+    .day-col-header { text-align: center; padding: 5px 0; border-bottom: 2px solid #e2e8f0; margin-bottom: 5px; }
+    .day-name { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; }
+    .day-num { font-size: 18px; font-weight: 800; color: #1e293b; }
+    .day-num.today { color: #0d9488; }
+    .time-label { font-size: 11px; color: #94a3b8; font-weight: 600; padding-right: 5px; text-align: right; width: 100%; }
+    .month-day { background: white; border: 1px solid #e2e8f0; min-height: 80px; padding: 2px; border-radius: 4px; display: flex; flex-direction: column; gap: 2px; }
+    .month-evt-dot { font-size: 9px; background: #0f766e; color: white; padding: 1px 3px; border-radius: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    @media (max-width: 768px) {
+        .login-card { padding: 32px 24px; box-shadow: none; border: none; background: transparent; }
+        .app-header { flex-direction: column; align-items: flex-start; }
+        .month-evt-dot { display:none; }
+        .month-day.has-event { background-color: #d1fae5 !important; }
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -126,7 +145,7 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. LÓGICA DE NEGÓCIO ---
+# --- 3. LÓGICA DE DADOS ---
 def resolver_nome(email, nome_meta=None, nome_banco=None):
     if email == "cesar_unib@msn.com": return "Cesar"
     if email == "thascaranalle@gmail.com": return "Thays"
@@ -172,7 +191,7 @@ def gerar_pdf_fatura(df, nome_usuario, mes_referencia):
     pdf.cell(0, 10, f"TOTAL: R$ {total:.2f}", ln=True, align="R")
     return pdf.output(dest='S').encode('latin-1')
 
-# --- 4. CALENDÁRIO ---
+# --- 4. FUNÇÕES USER ---
 if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
 if 'view_mode' not in st.session_state: st.session_state.view_mode = 'SEMANA'
 
@@ -296,11 +315,11 @@ def render_calendar(sala):
         d_n = ["SEG","TER","QUA","QUI","SEX","SÁB","DOM"]
         for i, d in enumerate(visiveis):
             wd = d.weekday()
-            c_h[i+1].markdown(f"<div style='text-align:center; padding-bottom:5px; border-bottom:2px solid #e2e8f0; margin-bottom:5px'><div style='font-size:10px; font-weight:bold; color:#64748b'>{d_n[wd]}</div><div style='font-size:16px; font-weight:bold; color:#1e293b'>{d.day}</div></div>", unsafe_allow_html=True)
+            c_h[i+1].markdown(f"<div class='day-col-header'><div class='day-name'>{d_n[wd]}</div><div class='day-num'>{d.day}</div></div>", unsafe_allow_html=True)
         for h in range(7, 22):
             hora = f"{h:02d}:00:00"
             row = st.columns(ratio)
-            row[0].markdown(f"<div style='font-size:11px; color:#94a3b8; text-align:right; margin-top:10px'>{h:02d}:00</div>", unsafe_allow_html=True)
+            row[0].markdown(f"<div class='time-label'>{h:02d}:00</div>", unsafe_allow_html=True)
             for i, d in enumerate(visiveis):
                 d_s = str(d)
                 res = mapa.get(d_s, {}).get(hora)
@@ -320,7 +339,7 @@ def render_calendar(sala):
     if st.button("➕ Agendar", type="primary", use_container_width=True):
         modal_agendamento(sala, st.session_state.data_ref)
 
-# --- 5. TELA ADMIN ---
+# --- 5. TELA ADMIN EXCLUSIVA ---
 def tela_admin_master():
     st.markdown("<div style='background:#0f172a; padding:20px; border-radius:12px; color:white; margin-bottom:20px'><h2 style='margin:0'>⚙️ Painel Admin</h2></div>", unsafe_allow_html=True)
     tabs = st.tabs(["💰 Config", "❌ Gerenciar", "📄 Relatórios"])
@@ -388,80 +407,87 @@ def tela_admin_master():
         except: pass
         st.markdown("</div>", unsafe_allow_html=True)
 
-# --- 6. APP PRINCIPAL ---
+# --- 6. APP PRINCIPAL (ESTRUTURA LIMPA) ---
 if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
 
 def main():
     if 'user' not in st.session_state:
-        # --- TELA LOGIN CENTRALIZADA ---
-        c1, c2, c3 = st.columns([1, 1.5, 1])
-        with c2:
-            st.write("") # Spacer vertical
-            st.markdown("<br>", unsafe_allow_html=True)
+        # Container centralizado para login
+        st.markdown('<div class="login-wrap">', unsafe_allow_html=True)
+        
+        with st.container():
+            st.markdown('<div class="login-card">', unsafe_allow_html=True)
             
-            # INICIO CONTAINER
-            with st.container():
-                st.markdown('<div class="login-container">', unsafe_allow_html=True)
+            # HEADER COM LOGO (Centralizado e Proporcional)
+            st.markdown('<div class="logo-header">', unsafe_allow_html=True)
+            if os.path.exists("logo.png"):
+                # Usa a função de imagem do Streamlit mas o CSS controla o tamanho
+                st.image("logo.png")
+            else:
+                st.markdown('<div class="logo-text-fallback">LocaPsico</div>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+            # --- TELA 1: LOGIN ---
+            if st.session_state.auth_mode == 'login':
+                st.markdown('<div class="auth-title">Bem-vindo de volta!</div>', unsafe_allow_html=True)
+                st.markdown('<div class="auth-subtitle">Acesse sua agenda profissional</div>', unsafe_allow_html=True)
                 
-                # LOGO
-                if os.path.exists("logo.png"):
-                    c_img1, c_img2, c_img3 = st.columns([1, 2, 1])
-                    with c_img2: st.image("logo.png", use_container_width=True)
-                else:
-                    st.markdown("<h1 style='color:#0d9488; text-align:center'>LocaPsico</h1>", unsafe_allow_html=True)
+                email = st.text_input("E-mail", placeholder="seu@email.com")
+                senha = st.text_input("Senha", type="password", placeholder="••••••")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                if st.button("Entrar", type="primary"):
+                    try:
+                        u = supabase.auth.sign_in_with_password({"email": email, "password": senha})
+                        st.session_state['user'] = u.user
+                        st.session_state['is_admin'] = (email == "admin@admin.com.br")
+                        st.rerun()
+                    except: st.error("Credenciais inválidas.")
+                
+                st.markdown('<div class="separator">OU</div>', unsafe_allow_html=True)
+                
+                if st.button("Criar conta", type="secondary"):
+                    st.session_state.auth_mode = 'register'; st.rerun()
+                
+                st.markdown('<div class="forgot-btn">', unsafe_allow_html=True)
+                if st.button("Esqueci minha senha"):
+                    st.session_state.auth_mode = 'forgot'; st.rerun()
+                st.markdown('</div>', unsafe_allow_html=True)
 
-                if st.session_state.auth_mode == 'login':
-                    email = st.text_input("E-mail profissional", placeholder="seu@email.com")
-                    senha = st.text_input("Sua senha", type="password")
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    if st.button("Entrar na Agenda", type="primary"):
-                        try:
-                            u = supabase.auth.sign_in_with_password({"email": email, "password": senha})
-                            st.session_state['user'] = u.user
-                            st.session_state['is_admin'] = (email == "admin@admin.com.br")
-                            st.rerun()
-                        except: st.error("Dados inválidos")
-                    
-                    st.markdown('<div class="separator">OU</div>', unsafe_allow_html=True)
-                    if st.button("Criar nova conta profissional", type="secondary"):
-                        st.session_state.auth_mode = 'register'; st.rerun()
-                    
-                    st.markdown('<div class="forgot-link">', unsafe_allow_html=True)
-                    if st.button("ESQUECI MINHA SENHA"):
-                        st.session_state.auth_mode = 'forgot'; st.rerun()
-                    st.markdown('</div>', unsafe_allow_html=True)
+            # --- TELA 2: CADASTRO ---
+            elif st.session_state.auth_mode == 'register':
+                st.markdown('<div class="auth-title">Criar Conta</div>', unsafe_allow_html=True)
+                st.markdown('<div class="auth-subtitle">Junte-se à LocaPsico</div>', unsafe_allow_html=True)
+                n = st.text_input("Nome Completo")
+                e = st.text_input("E-mail profissional")
+                p = st.text_input("Crie uma senha", type="password")
+                st.markdown("<br>", unsafe_allow_html=True)
+                if st.button("Cadastrar", type="primary"):
+                    try:
+                        supabase.auth.sign_up({"email": e, "password": p, "options": {"data": {"nome": n}}})
+                        st.success("Conta criada! Faça login.")
+                        st.session_state.auth_mode = 'login'
+                    except: st.error("Erro ao criar conta.")
+                if st.button("Voltar ao login", type="secondary"):
+                    st.session_state.auth_mode = 'login'; st.rerun()
 
-                elif st.session_state.auth_mode == 'register':
-                    st.markdown("<h3 style='text-align:center; color:#334155'>Criar Conta</h3>", unsafe_allow_html=True)
-                    n = st.text_input("Nome Completo")
-                    e = st.text_input("E-mail")
-                    p = st.text_input("Senha (min 6 digitos)", type="password")
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    if st.button("Cadastrar", type="primary"):
-                        try:
-                            supabase.auth.sign_up({"email": e, "password": p, "options": {"data": {"nome": n}}})
-                            st.success("Conta criada! Faça login.")
-                            st.session_state.auth_mode = 'login'
-                        except: st.error("Erro ao criar.")
-                    if st.button("Voltar", type="secondary"):
-                        st.session_state.auth_mode = 'login'; st.rerun()
+            # --- TELA 3: RECUPERAÇÃO ---
+            elif st.session_state.auth_mode == 'forgot':
+                st.markdown('<div class="auth-title">Recuperar Senha</div>', unsafe_allow_html=True)
+                st.markdown('<div class="auth-subtitle">Enviaremos um link para você</div>', unsafe_allow_html=True)
+                rec_e = st.text_input("E-mail cadastrado")
+                st.markdown("<br>", unsafe_allow_html=True)
+                if st.button("Enviar Link", type="primary"):
+                    try:
+                        my_url = "https://locapsico.streamlit.app"
+                        supabase.auth.reset_password_for_email(rec_e, options={"redirect_to": my_url})
+                        st.info("Verifique sua caixa de entrada.")
+                    except: st.error("Erro ao enviar.")
+                if st.button("Cancelar", type="secondary"):
+                    st.session_state.auth_mode = 'login'; st.rerun()
 
-                elif st.session_state.auth_mode == 'forgot':
-                    st.markdown("<h3 style='text-align:center; color:#334155'>Recuperar Senha</h3>", unsafe_allow_html=True)
-                    st.info("Informe seu e-mail para receber o link.")
-                    rec_e = st.text_input("E-mail cadastrado")
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    if st.button("Enviar Link", type="primary"):
-                        try:
-                            # TROQUE PELA URL DO SEU APP NO STREAMLIT CLOUD
-                            my_url = "https://locapsico.streamlit.app"
-                            supabase.auth.reset_password_for_email(rec_e, options={"redirect_to": my_url})
-                            st.success("E-mail enviado!")
-                        except: st.error("Erro.")
-                    if st.button("Cancelar", type="secondary"):
-                        st.session_state.auth_mode = 'login'; st.rerun()
-
-                st.markdown('</div>', unsafe_allow_html=True) # FIM CONTAINER
+            st.markdown('</div>', unsafe_allow_html=True) # Fim Card
+        st.markdown('</div>', unsafe_allow_html=True) # Fim Wrap
         return
 
     # LOGADO
@@ -474,7 +500,7 @@ def main():
     else:
         u = st.session_state['user']
         nm = resolver_nome(u.email, u.user_metadata.get('nome'))
-        st.markdown(f"<div class='app-header'><div style='font-weight:bold; font-size:18px; color:#0d9488'>LocaPsico</div><div>Olá, <b>{nm}</b></div></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='app-header'><div class='logo-area'>LocaPsico</div><div>Olá, <b>{nm}</b></div></div>", unsafe_allow_html=True)
         tabs = st.tabs(["📅 Agenda", "📊 Painel"])
         with tabs[0]:
             sala = st.radio("Sala", ["Sala 1", "Sala 2"], horizontal=True)
