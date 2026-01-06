@@ -11,35 +11,33 @@ import os
 import streamlit.components.v1 as components
 
 # --- 1. CONFIGURAÇÕES GERAIS ---
-# initial_sidebar_state="collapsed" ajuda a esconder a sidebar antes de carregar
 st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide", initial_sidebar_state="collapsed")
 
 # NOME DA LOGO
 NOME_DO_ARQUIVO_LOGO = "logo.png" 
 
-# --- HACK SUPREMO (CSS + JS) ---
-# Tenta limpar visualmente caso o usuário não use o link embed
+# --- HACK PARA LIMPEZA TOTAL DA INTERFACE ---
 st.markdown("""
     <style>
-        /* Esconde toda a interface padrão do Streamlit */
+        /* Esconde elementos padrão do Streamlit */
         header, footer, #MainMenu, [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"] {
             visibility: hidden !important;
             display: none !important;
             height: 0px !important;
         }
         
-        /* Força a remoção de links no rodapé */
+        /* Remove links de rodapé */
         a[href*="streamlit.app"] { display: none !important; }
         .viewerBadge_container__1QSob { display: none !important; }
         
-        /* Sobe o conteúdo para ocupar o topo */
+        /* Ajuste de layout */
         .block-container {
             padding-top: 0rem !important;
             margin-top: 1rem !important;
             max-width: 1000px;
         }
         
-        /* Fundo limpo */
+        /* Fundo */
         .stApp { 
             background-color: #f2f4f7;
             font-family: 'Inter', sans-serif;
@@ -48,7 +46,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Javascript para tentar remover elementos do DOM (Pai)
+# Javascript Cleaner (Reforço)
 js_cleaner = """
 <script>
     try {
@@ -60,15 +58,15 @@ js_cleaner = """
             .viewerBadge_container__1QSob { display: none !important; }
         `;
         doc.head.appendChild(style);
-    } catch (e) { console.log("Modo de segurança ativado - JS externo bloqueado"); }
+    } catch (e) { console.log("JS Clean blocked"); }
 </script>
 """
 components.html(js_cleaner, height=0)
 
-# --- CSS DO CARD DE LOGIN (VISUAL NOTION/STRIPE) ---
+# --- CSS DO LOGIN (Visual Notion/Stripe) ---
 st.markdown("""
 <style>
-    /* CARD DE LOGIN CENTRALIZADO */
+    /* Card de Login */
     div[data-testid="column"]:nth-of-type(2) > div {
         background-color: #ffffff;
         padding: 48px 40px;
@@ -78,7 +76,7 @@ st.markdown("""
         margin-top: 5vh;
     }
 
-    /* LOGO PROPORCIONAL E CENTRALIZADA */
+    /* Logo Proporcional */
     div[data-testid="stImage"] {
         display: flex;
         justify-content: center !important;
@@ -88,13 +86,13 @@ st.markdown("""
     }
     div[data-testid="stImage"] > img {
         object-fit: contain;
-        width: 90% !important; /* Grande e visível */
+        width: 90% !important;
         max-width: 380px;
     }
 
-    /* TIPOGRAFIA */
+    /* Tipografia */
     h1 { 
-        font-size: 32px; /* Tamanho proporcional à logo */
+        font-size: 32px;
         font-weight: 800; 
         color: #1a1f36; 
         margin-bottom: 8px; 
@@ -109,14 +107,14 @@ st.markdown("""
         line-height: 1.5;
     }
     
-    /* INPUTS */
+    /* Inputs */
     .stTextInput input {
         background-color: #ffffff;
         border: 1px solid #e3e8ee;
         color: #1a1f36;
         border-radius: 10px;
         padding: 12px 16px;
-        height: 50px; /* Input mais alto e moderno */
+        height: 50px;
         font-size: 16px;
     }
     .stTextInput input:focus {
@@ -125,7 +123,7 @@ st.markdown("""
         outline: none;
     }
 
-    /* BOTÃO VERDE */
+    /* Botão Principal */
     div[data-testid="stVerticalBlock"] button[kind="primary"] {
         background-color: #0d9488 !important;
         color: #ffffff !important;
@@ -139,7 +137,6 @@ st.markdown("""
         box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3);
         transition: transform 0.2s;
     }
-    /* Garante texto branco */
     div[data-testid="stVerticalBlock"] button[kind="primary"] * {
         color: #ffffff !important;
     }
@@ -148,7 +145,7 @@ st.markdown("""
         transform: translateY(-2px);
     }
 
-    /* LINKS/BOTÕES SECUNDÁRIOS */
+    /* Links Secundários */
     .forgot-container { text-align: center; margin-top: 24px; }
     .forgot-btn button {
         background: none !important; border: none !important; padding: 0 !important;
@@ -159,7 +156,7 @@ st.markdown("""
         color: #0d9488 !important; text-decoration: underline !important;
     }
 
-    /* RESPONSIVIDADE */
+    /* Responsividade */
     @media (max-width: 768px) {
         div[data-testid="column"]:nth-of-type(2) > div {
             box-shadow: none; border: none; background-color: transparent; padding: 0;
@@ -168,7 +165,7 @@ st.markdown("""
         .block-container { padding-top: 1rem !important; }
     }
     
-    /* INTERNO */
+    /* CSS Interno (Agenda) */
     .app-header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 30px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
     .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; }
     .blocked-slot { background: repeating-linear-gradient(45deg, #fef2f2, #fef2f2 10px, #fee2e2 10px, #fee2e2 20px); height: 40px; border-radius: 4px; opacity: 0.5; }
@@ -183,9 +180,11 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. LÓGICA DE DADOS ---
-def resolver_nome(email, nome_meta=None):
-    return nome_meta or email.split('@')[0].title()
+# --- 3. LÓGICA DE DADOS (CORRIGIDA) ---
+# CORREÇÃO: Adicionado o parâmetro 'nome_banco' para evitar o TypeError
+def resolver_nome(email, nome_meta=None, nome_banco=None):
+    # Prioridade: Nome no banco > Nome no metadado do login > Parte do email
+    return nome_banco or nome_meta or email.split('@')[0].title()
 
 def get_preco():
     try:
@@ -329,6 +328,7 @@ def render_calendar(sala):
                 res = mapa.get(d_s, {}).get(hora)
                 cont = row[i+1].container()
                 if res:
+                    # AQUI ESTAVA O ERRO: Chamada corrigida
                     nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
                     cont.markdown(f"<div class='evt-chip'>{nm}</div>", unsafe_allow_html=True)
                 else:
@@ -354,7 +354,7 @@ def main():
         with c2:
             st.write("") # Spacer
             
-            # --- LOGO (CSS centraliza) ---
+            # --- LOGO ---
             if os.path.exists(NOME_DO_ARQUIVO_LOGO):
                 st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
             else:
@@ -496,7 +496,6 @@ def tela_admin_master():
 
 if __name__ == "__main__":
     main()
-
 
 
 
