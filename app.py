@@ -7,82 +7,106 @@ from fpdf import FPDF
 import base64
 import calendar
 import plotly.express as px
+import os
 
-# --- 1. CONFIGURAÇÃO E CSS (VISUAL MODERNO) ---
+# --- 1. CONFIGURAÇÃO E CSS (VISUAL IDENTICO AO EXEMPLO) ---
 st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide")
 
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
     .stApp { background-color: #f8fafc; font-family: 'Inter', sans-serif; }
-    .block-container { padding-top: 2rem; padding-bottom: 5rem; padding-left: 1rem; padding-right: 1rem; }
+    .block-container { padding-top: 2rem; padding-bottom: 5rem; }
 
-    /* BOTÕES GERAIS */
-    .stButton>button {
-        border-radius: 8px; font-weight: 600; border: none; transition: all 0.2s;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05); width: 100%;
-    }
+    /* --- ESTILOS ESPECÍFICOS DA TELA DE LOGIN --- */
     
-    /* BOTÃO PRIMÁRIO (TEAL - ENTRAR) */
-    .btn-primary button {
-        background-color: #0d9488 !important; color: white !important;
-        padding: 0.7rem 1rem; font-size: 16px;
+    /* Container Branco Centralizado */
+    .login-container {
+        background: white;
+        padding: 40px;
+        border-radius: 24px;
+        box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
+        max-width: 400px;
+        margin: auto;
+        text-align: center;
     }
-    .btn-primary button:hover { background-color: #0f766e !important; transform: translateY(-2px); }
 
-    /* BOTÃO SECUNDÁRIO (OUTLINE - CRIAR CONTA) */
-    .btn-outline button {
-        background-color: transparent !important; 
-        border: 2px solid #0d9488 !important; 
+    /* Botão Primário (Entrar na Agenda) - VERDE SÓLIDO */
+    button[kind="primary"] {
+        background-color: #0d9488 !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 0.75rem 1rem !important;
+        font-weight: 600 !important;
+        width: 100% !important;
+        transition: all 0.2s !important;
+    }
+    button[kind="primary"]:hover {
+        background-color: #0f766e !important;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3) !important;
+    }
+
+    /* Botão Secundário (Criar Conta) - BORDA VERDE */
+    button[kind="secondary"] {
+        background-color: transparent !important;
         color: #0d9488 !important;
-        padding: 0.6rem 1rem;
+        border: 2px solid #0d9488 !important;
+        border-radius: 8px !important;
+        padding: 0.6rem 1rem !important;
+        font-weight: 600 !important;
+        width: 100% !important;
     }
-    .btn-outline button:hover { background-color: #f0fdfa !important; }
-
-    /* LINK ESQUECI SENHA */
-    .btn-link button {
-        background: none !important; border: none !important; 
-        color: #94a3b8 !important; font-size: 12px !important; 
-        box-shadow: none !important; text-decoration: underline;
+    button[kind="secondary"]:hover {
+        background-color: #f0fdfa !important;
     }
-    .btn-link button:hover { color: #0d9488 !important; }
 
-    /* CONTAINER LOGIN (CARD BRANCO) */
-    .login-card {
-        background: white; padding: 40px; border-radius: 20px;
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-        text-align: center; margin-top: 20px;
+    /* Link Esqueci Minha Senha (Estilo Texto) */
+    /* Usamos um hack CSS para transformar o terceiro botão em link */
+    div[data-testid="stVerticalBlock"] > div > div > div > div > button {
+       /* Este seletor é genérico, aplicamos classe especifica no container abaixo */
     }
     
-    /* SEPARADOR "OU" */
+    .forgot-btn button {
+        background: transparent !important;
+        border: none !important;
+        color: #94a3b8 !important;
+        font-size: 12px !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        box-shadow: none !important;
+        padding-top: 10px !important;
+    }
+    .forgot-btn button:hover {
+        color: #0d9488 !important;
+        text-decoration: underline;
+    }
+
+    /* Separador OU */
     .separator {
-        display: flex; align-items: center; text-align: center; color: #94a3b8; font-size: 12px; font-weight: bold; margin: 20px 0;
+        display: flex; align-items: center; text-align: center;
+        color: #cbd5e1; font-size: 12px; font-weight: 800; margin: 20px 0; text-transform: uppercase;
     }
     .separator::before, .separator::after {
-        content: ''; flex: 1; border-bottom: 1px solid #e2e8f0;
+        content: ''; flex: 1; border-bottom: 2px solid #f1f5f9;
     }
-    .separator:not(:empty)::before { margin-right: .5em; }
-    .separator:not(:empty)::after { margin-left: .5em; }
+    .separator:not(:empty)::before { margin-right: 1em; }
+    .separator:not(:empty)::after { margin-left: 1em; }
 
-    /* OUTROS ESTILOS (MANTIDOS) */
-    .app-header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 30px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); flex-wrap: wrap; gap: 10px; }
-    .logo-area { font-size: 20px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 10px; }
-    .psi-icon { background: #0d9488; color: white; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
-    .admin-card { background: white; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.02); margin-bottom: 15px; }
-    .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; font-weight: 600; padding: 3px 5px; border-radius: 4px; margin: 1px 0; cursor: default; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .month-day { background: white; border: 1px solid #e2e8f0; min-height: 80px; padding: 2px; border-radius: 4px; display: flex; flex-direction: column; gap: 2px; }
-    .month-evt-dot { font-size: 9px; background: #0f766e; color: white; padding: 1px 3px; border-radius: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* Inputs */
+    .stTextInput label { font-size: 14px; font-weight: 600; color: #334155; }
+    .stTextInput input { border-radius: 8px; border: 1px solid #e2e8f0; padding: 10px; }
+
+    /* --- ESTILOS DO SISTEMA INTERNO --- */
+    .app-header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 30px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .admin-card { background: white; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 15px; }
+    .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; font-weight: 600; padding: 3px 5px; border-radius: 4px; margin: 1px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .blocked-slot { background: repeating-linear-gradient(45deg, #fef2f2, #fef2f2 10px, #fee2e2 10px, #fee2e2 20px); height: 40px; width: 100%; border-radius: 4px; opacity: 0.5; }
-    .day-col-header { text-align: center; padding: 5px 0; border-bottom: 2px solid #e2e8f0; margin-bottom: 5px; }
-    .day-name { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; }
-    .day-num { font-size: 18px; font-weight: 800; color: #1e293b; }
-    .day-num.today { color: #0d9488; }
-    .time-label { font-size: 11px; color: #94a3b8; font-weight: 600; padding-right: 5px; text-align: right; width: 100%; }
-
+    
     @media (max-width: 768px) {
+        .login-container { padding: 20px; box-shadow: none; background: transparent; }
         .app-header { flex-direction: column; align-items: flex-start; }
-        .month-evt-dot { display:none; }
-        .month-day.has-event { background-color: #d1fae5 !important; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -141,7 +165,7 @@ def gerar_pdf_fatura(df, nome_usuario, mes_referencia):
     pdf.cell(0, 10, f"TOTAL: R$ {total:.2f}", ln=True, align="R")
     return pdf.output(dest='S').encode('latin-1')
 
-# --- 4. FUNÇÕES USER (CALENDÁRIO) ---
+# --- 4. FUNÇÕES USER ---
 if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
 if 'view_mode' not in st.session_state: st.session_state.view_mode = 'SEMANA'
 
@@ -155,7 +179,6 @@ def navegar(direcao):
 def modal_agendamento(sala_padrao, data_sugerida):
     st.write("Confirmar Reserva")
     dt = st.date_input("Data", value=data_sugerida, min_value=datetime.date.today())
-    
     dia_sem = dt.weekday()
     if dia_sem == 6:
         lista_horas = []; st.error("Domingo: Fechado")
@@ -164,26 +187,20 @@ def modal_agendamento(sala_padrao, data_sugerida):
         st.info("Sábado: Até 14h")
     else:
         lista_horas = [f"{h:02d}:00" for h in range(7, 22)]
-    
     hr = st.selectbox("Horário", lista_horas, disabled=(len(lista_horas)==0))
-    
-    if st.button("Confirmar Agendamento", use_container_width=True, disabled=(len(lista_horas)==0)):
+    if st.button("Confirmar Agendamento", type="primary", use_container_width=True, disabled=(len(lista_horas)==0)):
         agora = datetime.datetime.now()
         dt_check = datetime.datetime.combine(dt, datetime.time(int(hr[:2]), 0))
         if dt.weekday() == 6: st.error("Fechado."); return
         if dt_check < agora: st.error("Passado."); return
-        
         try:
             chk = supabase.table("reservas").select("id").eq("sala_nome", sala_padrao).eq("data_reserva", str(dt)).eq("hora_inicio", hr).eq("status", "confirmada").execute()
             if chk.data: st.error("Indisponível!"); return
-            
             user = st.session_state['user']
             nm = resolver_nome(user.email, user.user_metadata.get('nome'))
             supabase.table("reservas").insert({
-                "sala_nome": sala_padrao, "data_reserva": str(dt),
-                "hora_inicio": hr, "hora_fim": f"{int(hr[:2])+1:02d}:00",
-                "user_id": user.id, "email_profissional": user.email, "nome_profissional": nm,
-                "valor_cobrado": get_preco(), "status": "confirmada"
+                "sala_nome": sala_padrao, "data_reserva": str(dt), "hora_inicio": hr, "hora_fim": f"{int(hr[:2])+1:02d}:00",
+                "user_id": user.id, "email_profissional": user.email, "nome_profissional": nm, "valor_cobrado": get_preco(), "status": "confirmada"
             }).execute()
             st.toast("Sucesso!", icon="✅"); st.rerun()
         except: st.error("Erro")
@@ -194,11 +211,10 @@ def render_calendar(sala):
         if st.button("◀ Anterior", use_container_width=True): navegar('prev'); st.rerun()
     with c_R: 
         if st.button("Próximo ▶", use_container_width=True): navegar('next'); st.rerun()
-        
+    
     mode = st.session_state.view_mode
     def set_mode(m): st.session_state.view_mode = m
     bt_sty = lambda m: "primary" if mode == m else "secondary"
-    
     b1, b2, b3 = st.columns(3)
     with b1: 
         if st.button("Dia", type=bt_sty('DIA'), use_container_width=True): set_mode('DIA'); st.rerun()
@@ -214,8 +230,7 @@ def render_calendar(sala):
         i = ref - timedelta(days=ref.weekday())
         f = i + timedelta(days=6)
         lbl = f"{i.day} - {f.day} {mes_str}"
-    elif mode == 'DIA':
-        lbl = f"{ref.day} de {mes_str}"
+    elif mode == 'DIA': lbl = f"{ref.day} de {mes_str}"
     st.markdown(f"<div style='text-align:center; font-weight:800; color:#334155; margin:10px 0'>{lbl}</div>", unsafe_allow_html=True)
 
     if mode == 'MÊS':
@@ -300,40 +315,30 @@ def render_calendar(sala):
 
 # --- 5. TELA ADMIN EXCLUSIVA ---
 def tela_admin_master():
-    st.markdown("""
-    <div style='background:#0f172a; padding:20px; border-radius:12px; color:white; margin-bottom:20px'>
-        <h2 style='margin:0'>⚙️ Painel do Administrador</h2>
-        <p style='margin:0; opacity:0.8'>Controle total do sistema</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    tabs = st.tabs(["💰 Config & Preço", "❌ Gerenciar Reservas", "📄 Financeiro & Relatórios"])
+    st.markdown("<div style='background:#0f172a; padding:20px; border-radius:12px; color:white; margin-bottom:20px'><h2 style='margin:0'>⚙️ Painel Admin</h2></div>", unsafe_allow_html=True)
+    tabs = st.tabs(["💰 Config", "❌ Gerenciar", "📄 Relatórios"])
     
     with tabs[0]:
         st.markdown("<div class='admin-card'>", unsafe_allow_html=True)
-        st.subheader("Configuração de Valor")
         c1, c2 = st.columns([1, 2])
         preco_atual = get_preco()
         with c1:
             novo_preco = st.number_input("Valor da Hora (R$)", value=preco_atual, step=1.0)
         with c2:
             st.write("<br>", unsafe_allow_html=True)
-            if st.button("💾 Salvar Novo Preço"):
+            if st.button("💾 Salvar Preço", type="primary"):
                 supabase.table("configuracoes").update({"preco_hora": novo_preco}).gt("id", 0).execute()
-                st.success(f"Preço atualizado para R$ {novo_preco}!")
+                st.success("Atualizado!")
         st.markdown("</div>", unsafe_allow_html=True)
 
     with tabs[1]:
-        st.markdown("<div class='filter-box'>", unsafe_allow_html=True)
-        search = st.text_input("Buscar por Nome ou Email")
-        st.markdown("</div>", unsafe_allow_html=True)
+        search = st.text_input("Buscar Nome/Email")
         try:
-            query = supabase.table("reservas").select("*").eq("status", "confirmada").order("data_reserva", desc=True).limit(100)
+            query = supabase.table("reservas").select("*").eq("status", "confirmada").order("data_reserva", desc=True).limit(50)
             res = query.execute()
             df = pd.DataFrame(res.data)
             if not df.empty:
-                if search:
-                    df = df[df['email_profissional'].str.contains(search, case=False) | df['nome_profissional'].str.contains(search, case=False, na=False)]
+                if search: df = df[df['email_profissional'].str.contains(search, case=False) | df['nome_profissional'].str.contains(search, case=False, na=False)]
                 for idx, row in df.iterrows():
                     with st.container():
                         nm = resolver_nome(row['email_profissional'], nome_banco=row.get('nome_profissional'))
@@ -341,50 +346,41 @@ def tela_admin_master():
                         c_dt.write(f"📅 **{row['data_reserva']}**")
                         c_sl.write(f"{row['sala_nome']} ({row['hora_inicio'][:5]})")
                         c_nm.write(f"👤 {nm}")
-                        if c_bt.button("❌ Cancelar", key=f"del_adm_{row['id']}"):
+                        if c_bt.button("❌ Cancelar", key=f"da_{row['id']}"):
                             supabase.table("reservas").update({"status": "cancelada"}).eq("id", row['id']).execute()
-                            st.toast(f"Reserva de {nm} cancelada!", icon="🗑️")
                             st.rerun()
                         st.divider()
-            else: st.info("Nenhuma reserva ativa encontrada.")
-        except Exception as e: st.error(str(e))
+            else: st.info("Vazio.")
+        except: pass
 
     with tabs[2]:
         st.markdown("<div class='admin-card'>", unsafe_allow_html=True)
-        st.subheader("Faturamento Mensal Individual")
         col_m, col_u = st.columns(2)
-        mes_sel = col_m.selectbox("Selecione Mês", ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"])
+        mes_sel = col_m.selectbox("Mês", ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"])
         try:
             users_db = supabase.table("reservas").select("email_profissional, nome_profissional").execute()
             df_u = pd.DataFrame(users_db.data)
             if not df_u.empty:
                 df_u['display'] = df_u.apply(lambda x: resolver_nome(x['email_profissional'], nome_banco=x['nome_profissional']), axis=1)
-                lista = df_u['display'].unique()
-                user_sel = col_u.selectbox("Selecione Profissional", lista)
+                user_sel = col_u.selectbox("Profissional", df_u['display'].unique())
                 st.markdown("---")
-                if st.button("🔍 Gerar Extrato Financeiro", use_container_width=True):
+                if st.button("🔍 Gerar Extrato", type="primary", use_container_width=True):
                     ano, mes = map(int, mes_sel.split('-'))
                     ult_dia = calendar.monthrange(ano, mes)[1]
                     d_ini, d_fim = f"{ano}-{mes:02d}-01", f"{ano}-{mes:02d}-{ult_dia}"
-                    r_fin = supabase.table("reservas").select("*").eq("status", "confirmada")\
-                        .gte("data_reserva", d_ini).lte("data_reserva", d_fim).execute()
+                    r_fin = supabase.table("reservas").select("*").eq("status", "confirmada").gte("data_reserva", d_ini).lte("data_reserva", d_fim).execute()
                     df_fin = pd.DataFrame(r_fin.data)
                     if not df_fin.empty:
                         df_fin['nm'] = df_fin.apply(lambda x: resolver_nome(x['email_profissional'], nome_banco=x['nome_profissional']), axis=1)
                         df_final = df_fin[df_fin['nm'] == user_sel]
                         if not df_final.empty:
                             total = df_final['valor_cobrado'].sum()
-                            kc1, kc2 = st.columns(2)
-                            kc1.metric("Total a Receber", f"R$ {total:.2f}")
-                            kc2.metric("Qtd. Agendamentos", len(df_final))
-                            st.dataframe(df_final[["data_reserva", "sala_nome", "hora_inicio", "valor_cobrado"]], use_container_width=True)
+                            st.success(f"Total: R$ {total:.2f}")
                             pdf_data = gerar_pdf_fatura(df_final, user_sel, mes_sel)
                             b64 = base64.b64encode(pdf_data).decode()
-                            href = f'<a href="data:application/octet-stream;base64,{b64}" download="Fatura_{user_sel}_{mes_sel}.pdf" style="text-decoration:none; background:#0d9488; color:white; padding:10px 20px; border-radius:8px; display:block; text-align:center; font-weight:bold;">📥 BAIXAR FATURA PDF</a>'
-                            st.markdown(href, unsafe_allow_html=True)
-                        else: st.warning(f"Sem agendamentos para {user_sel} neste mês.")
-                    else: st.warning("Sem dados financeiros neste período.")
-            else: st.write("Carregando usuários...")
+                            st.markdown(f'<a href="data:application/octet-stream;base64,{b64}" download="Fatura.pdf" style="text-decoration:none; background:#0d9488; color:white; padding:10px; border-radius:8px; display:block; text-align:center;">📥 BAIXAR PDF</a>', unsafe_allow_html=True)
+                        else: st.warning("Sem agendamentos.")
+                    else: st.warning("Sem dados.")
         except: pass
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -392,149 +388,122 @@ def tela_admin_master():
 if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
 
 def main():
-    # --- TELA DE LOGIN / CADASTRO / RECUPERAÇÃO ---
     if 'user' not in st.session_state:
-        c1, c2, c3 = st.columns([1, 1.2, 1])
+        c1, c2, c3 = st.columns([1, 1.5, 1])
         with c2:
-            st.markdown("<br><br><div style='text-align:center'><div class='psi-icon' style='width:50px;height:50px;margin:auto;font-size:24px'>Ψ</div><h1 style='color:#0f172a; margin-top:10px'>LocaPsico</h1></div>", unsafe_allow_html=True)
+            st.markdown("<br><br>", unsafe_allow_html=True)
             
-            st.markdown("<div class='login-card'>", unsafe_allow_html=True)
+            # CARD DE LOGIN ESTILO CLEAN
+            st.markdown('<div class="login-container">', unsafe_allow_html=True)
             
-            # --- MODO: LOGIN ---
+            # LOGO (SE EXISTIR, SENÃO TEXTO)
+            if os.path.exists("logo.jpg"):
+                st.image("logo.jpg", width=150)
+            else:
+                st.markdown("<h1 style='color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
+
+            # --- TELA 1: LOGIN ---
             if st.session_state.auth_mode == 'login':
-                st.markdown("<h3 style='color:#334155; margin-bottom:20px'>Acesse sua conta</h3>", unsafe_allow_html=True)
                 email = st.text_input("E-mail profissional", placeholder="seu@email.com")
                 senha = st.text_input("Sua senha", type="password")
                 
-                st.markdown("<div class='btn-primary'>", unsafe_allow_html=True)
-                if st.button("Entrar na Agenda"):
+                st.markdown("<br>", unsafe_allow_html=True)
+                if st.button("Entrar na Agenda", type="primary"):
                     try:
                         u = supabase.auth.sign_in_with_password({"email": email, "password": senha})
                         st.session_state['user'] = u.user
                         st.session_state['is_admin'] = (email == "admin@admin.com.br")
                         st.rerun()
-                    except: st.error("Email ou senha incorretos.")
-                st.markdown("</div>", unsafe_allow_html=True)
+                    except: st.error("Dados incorretos.")
                 
                 st.markdown("<div class='separator'>OU</div>", unsafe_allow_html=True)
                 
-                st.markdown("<div class='btn-outline'>", unsafe_allow_html=True)
-                if st.button("Criar nova conta profissional"):
+                if st.button("Criar nova conta profissional", type="secondary"):
                     st.session_state.auth_mode = 'register'
                     st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
                 
-                st.markdown("<br><div class='btn-link'>", unsafe_allow_html=True)
+                st.markdown("<div class='forgot-btn'>", unsafe_allow_html=True)
                 if st.button("ESQUECI MINHA SENHA"):
                     st.session_state.auth_mode = 'forgot'
                     st.rerun()
                 st.markdown("</div>", unsafe_allow_html=True)
 
-            # --- MODO: REGISTRO ---
+            # --- TELA 2: CADASTRO ---
             elif st.session_state.auth_mode == 'register':
-                st.markdown("<h3 style='color:#334155'>Criar Conta</h3>", unsafe_allow_html=True)
-                nome = st.text_input("Nome Completo")
-                email = st.text_input("E-mail")
-                senha = st.text_input("Crie uma Senha", type="password")
+                st.markdown("<h4>Criar Conta</h4>", unsafe_allow_html=True)
+                n = st.text_input("Nome Completo")
+                e = st.text_input("E-mail")
+                p = st.text_input("Senha (min 6 digitos)", type="password")
                 
-                st.markdown("<div class='btn-primary'>", unsafe_allow_html=True)
-                if st.button("Cadastrar"):
+                st.markdown("<br>", unsafe_allow_html=True)
+                if st.button("Cadastrar", type="primary"):
                     try:
-                        supabase.auth.sign_up({"email": email, "password": senha, "options": {"data": {"nome": nome}}})
-                        st.success("Conta criada! Verifique seu e-mail ou faça login.")
+                        supabase.auth.sign_up({"email": e, "password": p, "options": {"data": {"nome": n}}})
+                        st.success("Sucesso! Faça login.")
                         st.session_state.auth_mode = 'login'
-                    except Exception as e: st.error(f"Erro: {e}")
-                st.markdown("</div>", unsafe_allow_html=True)
+                    except Exception as err: st.error(f"Erro: {err}")
                 
-                if st.button("Voltar ao Login"):
+                if st.button("Voltar", type="secondary"):
                     st.session_state.auth_mode = 'login'
                     st.rerun()
 
-            # --- MODO: ESQUECI SENHA ---
+            # --- TELA 3: RECUPERAÇÃO ---
             elif st.session_state.auth_mode == 'forgot':
-                st.markdown("<h3 style='color:#334155'>Recuperar Senha</h3>", unsafe_allow_html=True)
-                st.info("Digite seu e-mail para receber o link de redefinição.")
-                email_rec = st.text_input("E-mail cadastrado")
+                st.markdown("<h4>Recuperar Senha</h4>", unsafe_allow_html=True)
+                st.info("Digite seu e-mail para receber o link.")
+                rec_email = st.text_input("E-mail cadastrado")
                 
-                st.markdown("<div class='btn-primary'>", unsafe_allow_html=True)
-                if st.button("Enviar Link de Recuperação"):
+                st.markdown("<br>", unsafe_allow_html=True)
+                if st.button("Enviar Link", type="primary"):
                     try:
-                        # ATENÇÃO: Troque a URL abaixo pelo link REAL do seu aplicativo no navegador
-                        # Se estiver rodando localmente use: "http://localhost:8501"
-                        # Se estiver publicado use: "https://seu-app-nome.streamlit.app"
-                        
-                        my_url = "https://locapsico.streamlit.app"  # <--- COLOQUE SEU LINK AQUI
-                        
-                        supabase.auth.reset_password_for_email(email_rec, options={"redirect_to": my_url}) 
-                        st.success("Se o e-mail existir, você receberá um link em instantes.")
-                    except Exception as e: st.error(f"Erro ao enviar: {e}")
-                st.markdown("</div>", unsafe_allow_html=True)
+                        # URL CORRETA DO SITE (IMPORTANTE)
+                        my_url = "https://locapsico.streamlit.app"
+                        supabase.auth.reset_password_for_email(rec_email, options={"redirect_to": my_url})
+                        st.success("Verifique seu e-mail (Cheque spam).")
+                    except: st.error("Erro ao enviar.")
                 
-                if st.button("Cancelar"):
+                if st.button("Cancelar", type="secondary"):
                     st.session_state.auth_mode = 'login'
                     st.rerun()
 
-            st.markdown("</div>", unsafe_allow_html=True) # Fim do card
+            st.markdown('</div>', unsafe_allow_html=True) # Fim Container
         return
 
-    # --- ROTEAMENTO DE VISÃO ---
+    # --- ROTEAMENTO ---
     if st.session_state.get('is_admin'):
         with st.sidebar:
-            st.write("🔑 **ADMINISTRADOR**")
-            if st.button("Sair"):
-                supabase.auth.sign_out()
-                st.session_state.clear()
-                st.rerun()
+            st.image("logo.png", width=100) if os.path.exists("logo.png") else None
+            st.write("ADMIN")
+            if st.button("Sair"): supabase.auth.sign_out(); st.session_state.clear(); st.rerun()
         tela_admin_master()
     else:
         u = st.session_state['user']
         nm = resolver_nome(u.email, u.user_metadata.get('nome'))
-        
-        st.markdown(f"""
-        <div class='app-header'>
-            <div class='logo-area'><div class='psi-icon'>Ψ</div> LocaPsico</div>
-            <div style='font-size:14px; color:#64748b'>Olá, <b>{nm}</b></div>
-        </div>
-        """, unsafe_allow_html=True)
-
+        st.markdown(f"<div class='app-header'><div class='logo-area'>LocaPsico</div><div>Olá, <b>{nm}</b></div></div>", unsafe_allow_html=True)
         tabs = st.tabs(["📅 Agenda", "📊 Painel"])
-        
         with tabs[0]:
             sala = st.radio("Sala", ["Sala 1", "Sala 2"], horizontal=True)
             render_calendar(sala)
-
         with tabs[1]:
+            # Painel simplificado user
             try:
                 df = pd.DataFrame(supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").execute().data)
                 c1, c2 = st.columns(2)
                 c1.metric("Investido", f"R$ {df['valor_cobrado'].sum() if not df.empty else 0:.0f}")
                 c2.metric("Reservas", len(df) if not df.empty else 0)
-                
-                st.write("Agendamentos Futuros")
-                hj = str(datetime.date.today())
-                futs = supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").gte("data_reserva", hj).order("data_reserva").execute().data
-                if futs:
-                    for r in futs:
-                        dt = datetime.datetime.strptime(f"{r['data_reserva']} {r['hora_inicio']}", "%Y-%m-%d %H:%M:%S")
-                        dif = (dt - datetime.datetime.now()).total_seconds()/3600
-                        c_a, c_b = st.columns([3, 1])
-                        c_a.write(f"📅 {r['data_reserva'][8:]}/{r['data_reserva'][5:7]} | {r['hora_inicio'][:5]}")
-                        if dif > 24:
-                            if c_b.button("X", key=f"cl_{r['id']}"):
-                                supabase.table("reservas").update({"status": "cancelada"}).eq("id", r['id']).execute()
-                                st.rerun()
-                        else: c_b.caption("🔒")
-                        st.divider()
+                # Alterar Senha (Usuário)
+                with st.expander("Alterar Minha Senha"):
+                    p1 = st.text_input("Nova Senha", type="password", key="p1")
+                    if st.button("Salvar Senha"):
+                        supabase.auth.update_user({"password": p1})
+                        st.success("Senha alterada!")
             except: pass
-
         with st.sidebar:
-            if st.button("Sair"):
-                supabase.auth.sign_out()
-                st.session_state.clear()
-                st.rerun()
+            if st.button("Sair"): supabase.auth.sign_out(); st.session_state.clear(); st.rerun()
 
 if __name__ == "__main__":
     main()
+
 
 
 
