@@ -12,8 +12,27 @@ import os
 # --- 1. CONFIGURAÇÕES GERAIS ---
 st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide")
 
-# NOME DO ARQUIVO
+# NOME DA LOGO
 NOME_DO_ARQUIVO_LOGO = "logo.png" 
+
+# --- SEGREDO: CÓDIGO PARA ESCONDER A INTERFACE DO STREAMLIT ---
+hide_st_style = """
+    <style>
+    /* Esconde o Menu Hamburger (3 riscos) */
+    #MainMenu {visibility: hidden;}
+    
+    /* Esconde o Rodapé (Made with Streamlit) */
+    footer {visibility: hidden;}
+    
+    /* Esconde o Cabeçalho colorido padrão */
+    header {visibility: hidden;}
+    
+    /* Esconde a Toolbar de opções de desenvolvedor */
+    div[data-testid="stToolbar"] {visibility: hidden; height: 0%; position: fixed;}
+    </style>
+"""
+st.markdown(hide_st_style, unsafe_allow_html=True)
+
 
 st.markdown("""
 <style>
@@ -25,10 +44,10 @@ st.markdown("""
         font-family: 'Inter', sans-serif; 
         color: #1a1f36;
     }
-    header, footer {visibility: hidden;}
     
+    /* Ajuste fino para remover espaço em branco no topo já que removemos o header */
     .block-container {
-        padding-top: 5vh; 
+        padding-top: 2rem; 
         max-width: 1000px;
     }
 
@@ -39,6 +58,20 @@ st.markdown("""
         border-radius: 20px;
         box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
         border: 1px solid #eef2f6;
+    }
+
+    /* --- LOGO AUMENTADA E PROPORCIONAL (CSS) --- */
+    div[data-testid="stImage"] {
+        display: flex;
+        justify-content: center !important;
+        align-items: center !important;
+        width: 100%;
+        margin-bottom: 24px;
+    }
+    div[data-testid="stImage"] > img {
+        object-fit: contain;
+        width: 85% !important; /* Tamanho proporcional */
+        max-width: 400px;
     }
 
     /* --- TIPOGRAFIA --- */
@@ -76,26 +109,24 @@ st.markdown("""
         outline: none;
     }
 
-    /* --- BOTÃO PRINCIPAL (CORREÇÃO DE COR) --- */
-    /* Força o fundo verde */
+    /* --- BOTÃO PRINCIPAL (VERDE COM TEXTO BRANCO) --- */
     div[data-testid="stVerticalBlock"] button[kind="primary"] {
         background-color: #0d9488 !important;
+        color: #ffffff !important;
         border: none;
         height: 48px;
+        font-size: 16px;
+        font-weight: 600;
         border-radius: 10px;
         width: 100%;
         margin-top: 16px;
+        transition: transform 0.1s, box-shadow 0.2s;
         box-shadow: 0 4px 6px rgba(13, 148, 136, 0.2);
     }
-    
-    /* --- O SEGREDO DO TEXTO BRANCO --- */
-    /* Pinta de branco QUALQUER COISA dentro do botão (texto, p, span, div) */
+    /* FORÇA O TEXTO BRANCO DENTRO DO BOTÃO */
     div[data-testid="stVerticalBlock"] button[kind="primary"] * {
         color: #ffffff !important;
-        font-size: 16px !important;
-        font-weight: 700 !important;
     }
-    
     div[data-testid="stVerticalBlock"] button[kind="primary"]:hover {
         background-color: #0f766e !important;
         box-shadow: 0 6px 12px rgba(13, 148, 136, 0.3);
@@ -113,16 +144,18 @@ st.markdown("""
         color: #0d9488 !important; text-decoration: underline !important;
     }
 
-    /* CSS DA AGENDA INTERNA */
+    /* --- RESPONSIVIDADE --- */
+    @media (max-width: 768px) {
+        div[data-testid="column"]:nth-of-type(2) > div {
+            box-shadow: none; border: none; background-color: transparent; padding: 0;
+        }
+        .block-container { padding-top: 2rem; }
+    }
+    
+    /* CSS INTERNO */
     .app-header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 30px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
     .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; }
     .blocked-slot { background: repeating-linear-gradient(45deg, #fef2f2, #fef2f2 10px, #fee2e2 10px, #fee2e2 20px); height: 40px; border-radius: 4px; opacity: 0.5; }
-    
-    /* MOBILE */
-    @media (max-width: 768px) {
-        div[data-testid="column"]:nth-of-type(2) > div { box-shadow: none; border: none; background-color: transparent; padding: 0; }
-        .block-container { padding-top: 2rem; }
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -305,13 +338,10 @@ def main():
         with c2:
             st.write("") # Spacer
             
-            # --- LOGO VIA COLUNAS (ABORDAGEM MAIS SEGURA PARA TAMANHO) ---
+            # --- LOGO (CONTROLADA PELO CSS) ---
             if os.path.exists(NOME_DO_ARQUIVO_LOGO):
-                # Cria 3 colunas internas: Vazio | Logo | Vazio
-                # A coluna do meio (logo) tem 80% do espaço, garantindo que a logo fique grande
-                col_img_left, col_img_center, col_img_right = st.columns([0.1, 0.8, 0.1])
-                with col_img_center:
-                    st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
+                # O CSS garante width: 85% e centralização
+                st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
             else:
                 st.markdown("<h1 style='text-align:center; color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
             
@@ -323,7 +353,7 @@ def main():
                 email = st.text_input("E-mail profissional", placeholder="seu@email.com")
                 senha = st.text_input("Sua senha", type="password", placeholder="••••••••")
                 
-                if st.button("Entrar", type="primary"):
+                if st.button("Entrar na Agenda", type="primary"):
                     try:
                         u = supabase.auth.sign_in_with_password({"email": email, "password": senha})
                         st.session_state['user'] = u.user
