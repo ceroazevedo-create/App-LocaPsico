@@ -15,34 +15,51 @@ st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide")
 # NOME DA LOGO
 NOME_DO_ARQUIVO_LOGO = "logo.png" 
 
-# --- CÓDIGO PARA REMOVER ÍCONES E RODAPÉ (FORÇA BRUTA) ---
+# --- CSS NUCLEAR (REMOÇÃO TOTAL DE INTERFACE) ---
 hide_st_style = """
     <style>
-    /* Esconde o Menu Hamburger (Canto Superior Direito) */
-    #MainMenu {visibility: hidden;}
+    /* 1. Esconde o Menu Hamburger e o Header padrão */
+    #MainMenu {visibility: hidden !important;}
+    header {visibility: hidden !important;}
     
-    /* Esconde o Rodapé Padrão (Made with Streamlit) */
-    footer {visibility: hidden;}
+    /* 2. Esconde o Rodapé padrão */
+    footer {visibility: hidden !important;}
     
-    /* Esconde o Container do Rodapé (Para garantir que os ícones sumam) */
-    [data-testid="stFooter"] {
-        display: none;
+    /* 3. Esconde a Toolbar (botões de dev no canto superior direito) */
+    [data-testid="stToolbar"] {
+        display: none !important;
     }
-    
-    /* Esconde a barra colorida no topo */
-    header {visibility: hidden;}
-    
-    /* Esconde a Toolbar do desenvolvedor */
-    div[data-testid="stToolbar"] {
-        visibility: hidden; 
-        height: 0%; 
-        position: fixed;
+
+    /* 4. Esconde a Decoração colorida no topo (linha colorida) */
+    [data-testid="stDecoration"] {
+        display: none !important;
     }
+
+    /* 5. Esconde o Status Widget (o bonequinho correndo) */
+    [data-testid="stStatusWidget"] {
+        display: none !important;
+    }
+
+    /* 6. ESPECÍFICO: Tenta esconder o 'Viewer Badge' (link no canto inferior direito) */
+    /* Streamlit costuma mudar o nome da classe, então tentamos várias abordagens */
+    .viewerBadge_container__1QSob {display: none !important;}
+    ._container_gzau3_1 {display: none !important;}
+    .viewerBadge_link__1S137 {display: none !important;}
     
-    /* Remove padding extra no topo causado pela remoção do header */
+    /* Abordagem genérica para links flutuantes no rodapé */
+    a[href*="streamlit.app"] {
+        display: none !important;
+    }
+
+    /* 7. Ajuste de Layout para subir o conteúdo (já que o header sumiu) */
     .block-container {
-        padding-top: 2rem; 
+        padding-top: 1rem !important;
         max-width: 1000px;
+    }
+    
+    /* Garante que o fundo do header seja transparente se ele insistir em aparecer */
+    .stApp > header {
+        background-color: transparent !important;
     }
     </style>
 """
@@ -67,6 +84,7 @@ st.markdown("""
         border-radius: 20px;
         box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
         border: 1px solid #eef2f6;
+        margin-top: 5vh;
     }
 
     /* --- LOGO PROPORCIONAL E CENTRALIZADA --- */
@@ -79,7 +97,7 @@ st.markdown("""
     }
     div[data-testid="stImage"] > img {
         object-fit: contain;
-        width: 85% !important; /* Mantém a logo grande e proporcional ao texto */
+        width: 85% !important; /* Logo Grande */
         max-width: 400px;
     }
 
@@ -132,7 +150,6 @@ st.markdown("""
         transition: transform 0.1s, box-shadow 0.2s;
         box-shadow: 0 4px 6px rgba(13, 148, 136, 0.2);
     }
-    /* Força cor branca em todos os elementos do botão */
     div[data-testid="stVerticalBlock"] button[kind="primary"] * {
         color: #ffffff !important;
     }
@@ -158,7 +175,7 @@ st.markdown("""
         div[data-testid="column"]:nth-of-type(2) > div {
             box-shadow: none; border: none; background-color: transparent; padding: 0;
         }
-        .block-container { padding-top: 2rem; }
+        .block-container { padding-top: 2rem !important; }
     }
     
     /* CSS INTERNO */
@@ -347,7 +364,7 @@ def main():
         with c2:
             st.write("") # Spacer
             
-            # --- LOGO ---
+            # --- LOGO (CONTROLADA PELO CSS) ---
             if os.path.exists(NOME_DO_ARQUIVO_LOGO):
                 # O CSS garante width: 85% e centralização
                 st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
