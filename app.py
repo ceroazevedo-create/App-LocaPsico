@@ -9,64 +9,44 @@ import calendar
 import time
 import os
 
-# --- 1. CONFIGURAÇÃO E CSS (ESTILO NOTION/STRIPE) ---
+# --- 1. CONFIGURAÇÕES GERAIS ---
 st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide")
+
+# >>> CONFIGURE AQUI O NOME DA SUA LOGO <<<
+# Se o seu arquivo no GitHub se chama "logo.png", mude abaixo para "logo.png"
+NOME_DO_ARQUIVO_LOGO = "logo.png" 
 
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     
-    /* --- RESET GERAL --- */
+    /* RESET GERAL */
     .stApp { 
-        background-color: #f7f9fc; /* Cinza muito claro, quase branco */
+        background-color: #f7f9fc;
         font-family: 'Inter', sans-serif; 
         color: #1a1f36;
     }
-    header {visibility: hidden;} 
-    footer {visibility: hidden;}
+    header, footer {visibility: hidden;}
     
-    /* Centraliza verticalmente */
     .block-container {
         padding-top: 5vh; 
         max-width: 1000px;
     }
 
-    /* --- CARD DE LOGIN (ALVO ESPECÍFICO) --- */
-    /* Aplica estilo de card APENAS na coluna do meio */
+    /* CARD DE LOGIN (CSS ESPECÍFICO) */
     div[data-testid="column"]:nth-of-type(2) > div {
         background-color: #ffffff;
-        padding: 48px 40px;
+        padding: 40px;
         border-radius: 16px;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05), 
-                    0 15px 35px rgba(0, 0, 0, 0.05); /* Sombra difusa e elegante */
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
         border: 1px solid #f1f3f5;
     }
 
-    /* --- TIPOGRAFIA --- */
-    h1 { 
-        font-size: 26px; 
-        font-weight: 700; 
-        color: #1a1f36; 
-        margin-bottom: 8px; 
-        text-align: center;
-        letter-spacing: -0.5px;
-    }
-    p { 
-        color: #697386; 
-        font-size: 15px; 
-        line-height: 1.6; 
-        text-align: center;
-        margin-bottom: 32px;
-    }
+    /* TEXTOS */
+    h1 { font-size: 26px; font-weight: 700; color: #1a1f36; margin-bottom: 8px; text-align: center; }
+    p { color: #697386; font-size: 15px; text-align: center; margin-bottom: 24px; }
     
-    /* --- INPUTS (ESTILO STRIPE) --- */
-    .stTextInput label {
-        font-size: 13px;
-        font-weight: 600;
-        color: #3c4257;
-        margin-bottom: 4px;
-    }
-    
+    /* INPUTS */
     .stTextInput input {
         background-color: #ffffff;
         border: 1px solid #e3e8ee;
@@ -75,18 +55,14 @@ st.markdown("""
         padding: 10px 14px;
         height: 44px;
         font-size: 15px;
-        transition: all 0.15s ease;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
-    
-    /* Estado de Foco (Brilho da Marca) */
     .stTextInput input:focus {
         border-color: #0d9488;
-        box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.15);
+        box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
         outline: none;
     }
 
-    /* --- BOTÃO PRINCIPAL (ENTRAR) --- */
+    /* BOTÕES */
     div[data-testid="stVerticalBlock"] button[kind="primary"] {
         background-color: #0d9488 !important;
         color: #ffffff !important;
@@ -97,19 +73,13 @@ st.markdown("""
         border-radius: 8px;
         width: 100%;
         margin-top: 12px;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        transition: transform 0.1s, box-shadow 0.2s, background-color 0.2s;
+        transition: transform 0.1s;
     }
     div[data-testid="stVerticalBlock"] button[kind="primary"]:hover {
         background-color: #0f766e !important;
-        box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2);
         transform: translateY(-1px);
     }
-    div[data-testid="stVerticalBlock"] button[kind="primary"]:active {
-        transform: translateY(0);
-    }
 
-    /* --- BOTÃO SECUNDÁRIO (CANCELAR/VOLTAR) --- */
     div[data-testid="stVerticalBlock"] button[kind="secondary"] {
         background-color: transparent;
         color: #5c6b7f;
@@ -119,7 +89,6 @@ st.markdown("""
         font-weight: 500;
         border-radius: 8px;
         width: 100%;
-        transition: all 0.2s;
     }
     div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover {
         background-color: #f7f9fc;
@@ -127,49 +96,32 @@ st.markdown("""
         border-color: #cdd2d8;
     }
 
-    /* --- LINK ESQUECI SENHA (TEXTO SIMPLES) --- */
-    .forgot-container { 
-        text-align: center; 
-        margin-top: 24px; 
-    }
+    /* LINK ESQUECI SENHA */
     .forgot-btn button {
-        background: none !important;
-        border: none !important;
-        padding: 0 !important;
-        color: #697386 !important;
-        font-size: 13px !important;
-        font-weight: 500 !important;
-        text-decoration: none !important;
-        box-shadow: none !important;
-        width: auto !important;
+        background: none !important; border: none !important; padding: 0 !important;
+        color: #697386 !important; font-size: 13px !important; font-weight: 500 !important;
+        box-shadow: none !important; margin-top: 15px !important;
     }
-    .forgot-btn button:hover {
-        color: #0d9488 !important;
-        text-decoration: none !important; /* Sem sublinhado para ficar clean */
-        opacity: 0.8;
-    }
+    .forgot-btn button:hover { color: #0d9488 !important; }
 
-    /* Centralizar Imagem */
+    /* LOGO */
     div[data-testid="stImage"] {
-        display: flex;
-        justify-content: center;
-        margin-bottom: 24px;
+        display: flex; justify-content: center; margin-bottom: 24px;
     }
-    div[data-testid="stImage"] img {
-        object-fit: contain;
-    }
+    div[data-testid="stImage"] img { object-fit: contain; }
 
-    /* --- RESPONSIVIDADE MOBILE --- */
+    /* MOBILE */
     @media (max-width: 768px) {
-        /* No celular, remove o efeito de card para usar a tela cheia */
         div[data-testid="column"]:nth-of-type(2) > div {
-            box-shadow: none;
-            border: none;
-            background-color: transparent;
-            padding: 0;
+            box-shadow: none; border: none; background-color: transparent; padding: 0;
         }
         .block-container { padding-top: 2rem; }
     }
+    
+    /* INTERNOS */
+    .app-header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; }
+    .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; }
+    .blocked-slot { background: repeating-linear-gradient(45deg, #fef2f2, #fef2f2 10px, #fee2e2 10px, #fee2e2 20px); height: 40px; border-radius: 4px; opacity: 0.5; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -225,7 +177,7 @@ def gerar_pdf_fatura(df, nome_usuario, mes_referencia):
     pdf.cell(0, 10, f"TOTAL: R$ {total:.2f}", ln=True, align="R")
     return pdf.output(dest='S').encode('latin-1')
 
-# --- 4. FUNÇÕES DO SISTEMA ---
+# --- 4. FUNÇÕES SISTEMA ---
 if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
 if 'view_mode' not in st.session_state: st.session_state.view_mode = 'SEMANA'
 
@@ -308,7 +260,7 @@ def render_calendar(sala):
         mapa[d][x['hora_inicio']] = x
 
     if mode == 'MÊS':
-        st.info("Visão mensal simplificada. Use a semanal para detalhes.")
+        st.info("Visão mensal simplificada.")
     else:
         visiveis = [d_start + timedelta(days=i) for i in range(7 if mode == 'SEMANA' else 1)]
         ratio = [0.6] + [1]*len(visiveis)
@@ -328,12 +280,12 @@ def render_calendar(sala):
                 cont = row[i+1].container()
                 if res:
                     nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
-                    cont.markdown(f"<div style='background:#ccfbf1; border-left:3px solid #0d9488; color:#115e59; font-size:10px; padding:3px 5px; border-radius:4px; overflow:hidden; white-space:nowrap;'>{nm}</div>", unsafe_allow_html=True)
+                    cont.markdown(f"<div class='evt-chip'>{nm}</div>", unsafe_allow_html=True)
                 else:
                     dt_slot = datetime.datetime.combine(d, datetime.time(h, 0))
                     bloq_sab = (d.weekday() == 5 and h > 13)
                     if d.weekday() == 6 or dt_slot < datetime.datetime.now() or bloq_sab:
-                        cont.markdown("<div style='background:repeating-linear-gradient(45deg, #fef2f2, #fef2f2 10px, #fee2e2 10px, #fee2e2 20px); height:40px; width:100%; border-radius:4px; opacity:0.5;'></div>", unsafe_allow_html=True)
+                        cont.markdown("<div class='blocked-slot'></div>", unsafe_allow_html=True)
                     else:
                         cont.markdown("<div style='height:40px; border-left:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
 
@@ -341,33 +293,33 @@ def render_calendar(sala):
     if st.button("➕ Agendar", type="primary", use_container_width=True):
         modal_agendamento(sala, st.session_state.data_ref)
 
-# --- 5. TELA DE LOGIN (CLEAN & MODERNA) ---
+# --- 5. LOGIN ---
 if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
 
 def main():
     if 'user' not in st.session_state:
-        # Layout centralizado - Coluna do meio (c2) é o card
+        # Layout 3 colunas para centralizar
         c1, c2, c3 = st.columns([1, 1.2, 1])
         
         with c2:
-            # Espaçador
-            st.write("") 
-
-            # LOGO (Fora do card ou dentro, depende do CSS da imagem)
-            if os.path.exists("logo.png"):
-                st.image("logo.png", width=220) 
+            st.write("") # Spacer
+            
+            # --- LOGO ---
+            # Carrega a imagem definida no topo. 
+            # Se não existir, mostra texto.
+            if os.path.exists(NOME_DO_ARQUIVO_LOGO):
+                st.image(NOME_DO_ARQUIVO_LOGO, width=220) 
             else:
                 st.markdown("<h2 style='text-align:center; color:#0d9488'>LocaPsico</h2>", unsafe_allow_html=True)
             
-            # --- ESTADO: LOGIN ---
+            # --- LOGIN ---
             if st.session_state.auth_mode == 'login':
                 st.markdown("<h1>Bem-vindo de volta</h1>", unsafe_allow_html=True)
                 st.markdown("<p>Acesse sua agenda profissional</p>", unsafe_allow_html=True)
                 
-                email = st.text_input("E-mail profissional", placeholder="ex: seu@email.com")
+                email = st.text_input("E-mail profissional", placeholder="seu@email.com")
                 senha = st.text_input("Sua senha", type="password", placeholder="••••••••")
                 
-                # Botão Entrar (Destaque)
                 if st.button("Entrar", type="primary"):
                     try:
                         u = supabase.auth.sign_in_with_password({"email": email, "password": senha})
@@ -376,13 +328,17 @@ def main():
                         st.rerun()
                     except: st.error("Credenciais inválidas.")
 
-                # Link Esqueci Senha (Discreto)
-                st.markdown('<div class="forgot-container"><div class="forgot-btn">', unsafe_allow_html=True)
-                if st.button("Esqueci minha senha"):
-                    st.session_state.auth_mode = 'forgot'; st.rerun()
-                st.markdown('</div></div>', unsafe_allow_html=True)
+                st.markdown('<div class="forgot-btn">', unsafe_allow_html=True)
+                c_f1, c_f2 = st.columns(2)
+                with c_f1:
+                    # Link escondido para admin usar se precisar
+                    pass 
+                with c_f2:
+                    if st.button("Esqueci minha senha"):
+                        st.session_state.auth_mode = 'forgot'; st.rerun()
+                st.markdown('</div>', unsafe_allow_html=True)
 
-            # --- ESTADO: RECUPERAÇÃO ---
+            # --- RECUPERAÇÃO ---
             elif st.session_state.auth_mode == 'forgot':
                 st.markdown("<h1>Recuperar Senha</h1>", unsafe_allow_html=True)
                 st.markdown("<p>Informe seu e-mail cadastrado</p>", unsafe_allow_html=True)
@@ -395,10 +351,10 @@ def main():
                         st.success("Verifique seu e-mail.")
                     except: st.error("Erro ao enviar.")
                 
-                st.markdown('<div class="forgot-container"><div class="forgot-btn">', unsafe_allow_html=True)
+                st.markdown('<div class="forgot-btn">', unsafe_allow_html=True)
                 if st.button("Voltar ao Login"):
                     st.session_state.auth_mode = 'login'; st.rerun()
-                st.markdown('</div></div>', unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
         return
 
     # --- APP LOGADO ---
@@ -406,7 +362,7 @@ def main():
     
     if st.session_state.get('is_admin'):
         with st.sidebar:
-            if os.path.exists("logo.png"): st.image("logo.png", width=100)
+            if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, width=100)
             st.write("ADMIN")
             if st.button("Sair"): supabase.auth.sign_out(); st.session_state.clear(); st.rerun()
         tela_admin_master()
@@ -497,6 +453,7 @@ def tela_admin_master():
 
 if __name__ == "__main__":
     main()
+
 
 
 
