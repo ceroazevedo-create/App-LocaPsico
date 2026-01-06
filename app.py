@@ -8,122 +8,116 @@ import base64
 import calendar
 import time
 import os
-import streamlit.components.v1 as components # Importante para o Hack
+import streamlit.components.v1 as components
 
 # --- 1. CONFIGURAÇÕES GERAIS ---
-st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide")
+# initial_sidebar_state="collapsed" ajuda a esconder a sidebar antes de carregar
+st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide", initial_sidebar_state="collapsed")
 
 # NOME DA LOGO
 NOME_DO_ARQUIVO_LOGO = "logo.png" 
 
-# --- HACK JAVASCRIPT "NUCLEAR" (REMOVE TUDO) ---
-# Este script roda no navegador e apaga os elementos de interface do Streamlit
-remove_streamlit_ui = """
-<script>
-    const cleanStreamlit = () => {
-        // 1. Remove a barra superior colorida e o botão de menu (Hamburger)
-        const header = window.parent.document.querySelector('header');
-        if (header) { header.style.display = 'none'; }
-
-        // 2. Remove o Rodapé Inteiro (Onde fica o 'Hosted with Streamlit')
-        const footer = window.parent.document.querySelector('footer');
-        if (footer) { footer.style.display = 'none'; }
-
-        // 3. Remove a Toolbar de Desenvolvedor (Onde fica o botão Vermelho/Coroa)
-        const toolbar = window.parent.document.querySelector('[data-testid="stToolbar"]');
-        if (toolbar) { toolbar.style.display = 'none'; }
-
-        // 4. Remove a decoração superior (linha colorida)
-        const decoration = window.parent.document.querySelector('[data-testid="stDecoration"]');
-        if (decoration) { decoration.style.display = 'none'; }
+# --- HACK SUPREMO (CSS + JS) ---
+# Tenta limpar visualmente caso o usuário não use o link embed
+st.markdown("""
+    <style>
+        /* Esconde toda a interface padrão do Streamlit */
+        header, footer, #MainMenu, [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"] {
+            visibility: hidden !important;
+            display: none !important;
+            height: 0px !important;
+        }
         
-        // 5. Remove especificamente links de badge (caso o footer falhe)
-        const viewers = window.parent.document.querySelectorAll('.viewerBadge_container__1QSob');
-        viewers.forEach(el => el.style.display = 'none');
-    };
+        /* Força a remoção de links no rodapé */
+        a[href*="streamlit.app"] { display: none !important; }
+        .viewerBadge_container__1QSob { display: none !important; }
+        
+        /* Sobe o conteúdo para ocupar o topo */
+        .block-container {
+            padding-top: 0rem !important;
+            margin-top: 1rem !important;
+            max-width: 1000px;
+        }
+        
+        /* Fundo limpo */
+        .stApp { 
+            background-color: #f2f4f7;
+            font-family: 'Inter', sans-serif;
+            color: #1a1f36;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
-    // Roda a função repetidamente para garantir que os elementos não voltem
-    window.setInterval(cleanStreamlit, 50);
+# Javascript para tentar remover elementos do DOM (Pai)
+js_cleaner = """
+<script>
+    try {
+        const doc = window.parent.document;
+        const style = doc.createElement('style');
+        style.innerHTML = `
+            header, footer, .stApp > header { display: none !important; }
+            [data-testid="stToolbar"] { display: none !important; }
+            .viewerBadge_container__1QSob { display: none !important; }
+        `;
+        doc.head.appendChild(style);
+    } catch (e) { console.log("Modo de segurança ativado - JS externo bloqueado"); }
 </script>
 """
-# Injeta o Javascript
-components.html(remove_streamlit_ui, height=0)
+components.html(js_cleaner, height=0)
 
-# --- CSS DE APOIO (PARA GARANTIR) ---
+# --- CSS DO CARD DE LOGIN (VISUAL NOTION/STRIPE) ---
 st.markdown("""
 <style>
-    /* Esconde elementos via CSS também, por segurança */
-    #MainMenu {visibility: hidden !important;}
-    footer {visibility: hidden !important;}
-    header {visibility: hidden !important;}
-    [data-testid="stToolbar"] {display: none !important;}
-    [data-testid="stDecoration"] {display: none !important;}
-    
-    /* Sobe o conteúdo para o topo, já que removemos o cabeçalho */
-    .block-container {
-        padding-top: 1rem !important;
-        max-width: 1000px;
-    }
-    
-    /* Reset Geral de Estilo */
-    .stApp { 
-        background-color: #f2f4f7;
-        font-family: 'Inter', sans-serif; 
-        color: #1a1f36;
-    }
-
-    /* --- CARD DE LOGIN --- */
+    /* CARD DE LOGIN CENTRALIZADO */
     div[data-testid="column"]:nth-of-type(2) > div {
         background-color: #ffffff;
         padding: 48px 40px;
         border-radius: 20px;
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
         border: 1px solid #eef2f6;
         margin-top: 5vh;
     }
 
-    /* --- LOGO PROPORCIONAL E CENTRALIZADA --- */
+    /* LOGO PROPORCIONAL E CENTRALIZADA */
     div[data-testid="stImage"] {
         display: flex;
         justify-content: center !important;
         align-items: center !important;
         width: 100%;
-        margin-bottom: 24px;
+        margin-bottom: 20px;
     }
     div[data-testid="stImage"] > img {
         object-fit: contain;
-        width: 85% !important; /* Mantém a logo grande */
-        max-width: 400px;
+        width: 90% !important; /* Grande e visível */
+        max-width: 380px;
     }
 
-    /* --- TIPOGRAFIA --- */
+    /* TIPOGRAFIA */
     h1 { 
-        font-size: 28px;
-        font-weight: 700; 
+        font-size: 32px; /* Tamanho proporcional à logo */
+        font-weight: 800; 
         color: #1a1f36; 
         margin-bottom: 8px; 
         text-align: center; 
-        letter-spacing: -0.5px;
+        letter-spacing: -0.8px;
     }
     p { 
         color: #697386; 
-        font-size: 15px; 
+        font-size: 16px; 
         text-align: center; 
         margin-bottom: 32px; 
         line-height: 1.5;
     }
     
-    /* --- INPUTS --- */
-    .stTextInput label { font-size: 13px; font-weight: 600; color: #3c4257; margin-bottom: 4px;}
+    /* INPUTS */
     .stTextInput input {
         background-color: #ffffff;
         border: 1px solid #e3e8ee;
         color: #1a1f36;
         border-radius: 10px;
         padding: 12px 16px;
-        height: 48px;
+        height: 50px; /* Input mais alto e moderno */
         font-size: 16px;
-        transition: all 0.2s;
     }
     .stTextInput input:focus {
         border-color: #0d9488;
@@ -131,49 +125,50 @@ st.markdown("""
         outline: none;
     }
 
-    /* --- BOTÃO PRINCIPAL --- */
+    /* BOTÃO VERDE */
     div[data-testid="stVerticalBlock"] button[kind="primary"] {
         background-color: #0d9488 !important;
         color: #ffffff !important;
         border: none;
-        height: 48px;
+        height: 50px;
         font-size: 16px;
-        font-weight: 600;
+        font-weight: 700;
         border-radius: 10px;
         width: 100%;
-        margin-top: 16px;
-        transition: transform 0.1s, box-shadow 0.2s;
-        box-shadow: 0 4px 6px rgba(13, 148, 136, 0.2);
+        margin-top: 10px;
+        box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3);
+        transition: transform 0.2s;
     }
+    /* Garante texto branco */
     div[data-testid="stVerticalBlock"] button[kind="primary"] * {
         color: #ffffff !important;
     }
     div[data-testid="stVerticalBlock"] button[kind="primary"]:hover {
         background-color: #0f766e !important;
-        box-shadow: 0 6px 12px rgba(13, 148, 136, 0.3);
-        transform: translateY(-1px);
+        transform: translateY(-2px);
     }
 
-    /* --- LINK ESQUECI SENHA --- */
+    /* LINKS/BOTÕES SECUNDÁRIOS */
     .forgot-container { text-align: center; margin-top: 24px; }
     .forgot-btn button {
         background: none !important; border: none !important; padding: 0 !important;
-        color: #697386 !important; font-size: 13px !important; font-weight: 500 !important;
+        color: #697386 !important; font-size: 14px !important; font-weight: 500 !important;
         text-decoration: none !important; box-shadow: none !important; width: auto !important;
     }
     .forgot-btn button:hover {
         color: #0d9488 !important; text-decoration: underline !important;
     }
 
-    /* --- RESPONSIVIDADE --- */
+    /* RESPONSIVIDADE */
     @media (max-width: 768px) {
         div[data-testid="column"]:nth-of-type(2) > div {
             box-shadow: none; border: none; background-color: transparent; padding: 0;
         }
-        .block-container { padding-top: 2rem !important; }
+        div[data-testid="stImage"] > img { width: 70% !important; }
+        .block-container { padding-top: 1rem !important; }
     }
     
-    /* CSS INTERNO */
+    /* INTERNO */
     .app-header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 30px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
     .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; }
     .blocked-slot { background: repeating-linear-gradient(45deg, #fef2f2, #fef2f2 10px, #fee2e2 10px, #fee2e2 20px); height: 40px; border-radius: 4px; opacity: 0.5; }
@@ -359,9 +354,8 @@ def main():
         with c2:
             st.write("") # Spacer
             
-            # --- LOGO (CONTROLADA PELO CSS) ---
+            # --- LOGO (CSS centraliza) ---
             if os.path.exists(NOME_DO_ARQUIVO_LOGO):
-                # O CSS garante width: 85% e centralização
                 st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
             else:
                 st.markdown("<h1 style='text-align:center; color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
@@ -502,6 +496,7 @@ def tela_admin_master():
 
 if __name__ == "__main__":
     main()
+
 
 
 
