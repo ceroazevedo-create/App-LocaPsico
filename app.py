@@ -15,20 +15,35 @@ st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide")
 # NOME DA LOGO
 NOME_DO_ARQUIVO_LOGO = "logo.png" 
 
-# --- SEGREDO: CÓDIGO PARA ESCONDER A INTERFACE DO STREAMLIT ---
+# --- CÓDIGO PARA REMOVER ÍCONES E RODAPÉ (FORÇA BRUTA) ---
 hide_st_style = """
     <style>
-    /* Esconde o Menu Hamburger (3 riscos) */
+    /* Esconde o Menu Hamburger (Canto Superior Direito) */
     #MainMenu {visibility: hidden;}
     
-    /* Esconde o Rodapé (Made with Streamlit) */
+    /* Esconde o Rodapé Padrão (Made with Streamlit) */
     footer {visibility: hidden;}
     
-    /* Esconde o Cabeçalho colorido padrão */
+    /* Esconde o Container do Rodapé (Para garantir que os ícones sumam) */
+    [data-testid="stFooter"] {
+        display: none;
+    }
+    
+    /* Esconde a barra colorida no topo */
     header {visibility: hidden;}
     
-    /* Esconde a Toolbar de opções de desenvolvedor */
-    div[data-testid="stToolbar"] {visibility: hidden; height: 0%; position: fixed;}
+    /* Esconde a Toolbar do desenvolvedor */
+    div[data-testid="stToolbar"] {
+        visibility: hidden; 
+        height: 0%; 
+        position: fixed;
+    }
+    
+    /* Remove padding extra no topo causado pela remoção do header */
+    .block-container {
+        padding-top: 2rem; 
+        max-width: 1000px;
+    }
     </style>
 """
 st.markdown(hide_st_style, unsafe_allow_html=True)
@@ -44,12 +59,6 @@ st.markdown("""
         font-family: 'Inter', sans-serif; 
         color: #1a1f36;
     }
-    
-    /* Ajuste fino para remover espaço em branco no topo já que removemos o header */
-    .block-container {
-        padding-top: 2rem; 
-        max-width: 1000px;
-    }
 
     /* --- CARD DE LOGIN --- */
     div[data-testid="column"]:nth-of-type(2) > div {
@@ -60,7 +69,7 @@ st.markdown("""
         border: 1px solid #eef2f6;
     }
 
-    /* --- LOGO AUMENTADA E PROPORCIONAL (CSS) --- */
+    /* --- LOGO PROPORCIONAL E CENTRALIZADA --- */
     div[data-testid="stImage"] {
         display: flex;
         justify-content: center !important;
@@ -70,7 +79,7 @@ st.markdown("""
     }
     div[data-testid="stImage"] > img {
         object-fit: contain;
-        width: 85% !important; /* Tamanho proporcional */
+        width: 85% !important; /* Mantém a logo grande e proporcional ao texto */
         max-width: 400px;
     }
 
@@ -123,7 +132,7 @@ st.markdown("""
         transition: transform 0.1s, box-shadow 0.2s;
         box-shadow: 0 4px 6px rgba(13, 148, 136, 0.2);
     }
-    /* FORÇA O TEXTO BRANCO DENTRO DO BOTÃO */
+    /* Força cor branca em todos os elementos do botão */
     div[data-testid="stVerticalBlock"] button[kind="primary"] * {
         color: #ffffff !important;
     }
@@ -338,7 +347,7 @@ def main():
         with c2:
             st.write("") # Spacer
             
-            # --- LOGO (CONTROLADA PELO CSS) ---
+            # --- LOGO ---
             if os.path.exists(NOME_DO_ARQUIVO_LOGO):
                 # O CSS garante width: 85% e centralização
                 st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
