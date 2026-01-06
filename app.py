@@ -459,8 +459,13 @@ def main():
                 st.markdown("<div class='btn-primary'>", unsafe_allow_html=True)
                 if st.button("Enviar Link de Recuperação"):
                     try:
-                        # Requer configuração de SMTP no Supabase
-                        supabase.auth.reset_password_for_email(email_rec, options={"redirect_to": "https://locapsico.streamlit.app/"}) 
+                        # ATENÇÃO: Troque a URL abaixo pelo link REAL do seu aplicativo no navegador
+                        # Se estiver rodando localmente use: "http://localhost:8501"
+                        # Se estiver publicado use: "https://seu-app-nome.streamlit.app"
+                        
+                        my_url = "https://locapsico.streamlit.app"  # <--- COLOQUE SEU LINK AQUI
+                        
+                        supabase.auth.reset_password_for_email(email_rec, options={"redirect_to": my_url}) 
                         st.success("Se o e-mail existir, você receberá um link em instantes.")
                     except Exception as e: st.error(f"Erro ao enviar: {e}")
                 st.markdown("</div>", unsafe_allow_html=True)
@@ -530,5 +535,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
