@@ -33,30 +33,32 @@ st.markdown("""
     }
 
     /* --- CARD DE LOGIN --- */
-    /* Estiliza apenas a coluna do meio onde está o login */
     div[data-testid="column"]:nth-of-type(2) > div {
         background-color: #ffffff;
-        padding: 48px 40px; /* Espaçamento interno generoso */
+        padding: 48px 40px;
         border-radius: 20px;
         box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
         border: 1px solid #eef2f6;
     }
 
-    /* --- LOGO CENTRALIZADA (CSS CRÍTICO) --- */
+    /* --- LOGO AUMENTADA E PROPORCIONAL (CSS) --- */
     div[data-testid="stImage"] {
         display: flex;
-        justify-content: center !important; /* Força o centro horizontal */
+        justify-content: center !important;
         align-items: center !important;
         width: 100%;
-        margin-bottom: 24px; /* Espaço entre a logo e o título */
+        margin-bottom: 24px;
     }
+    /* AQUI ESTÁ A MUDANÇA DE TAMANHO */
     div[data-testid="stImage"] > img {
         object-fit: contain;
+        width: 85% !important; /* Ocupa 85% da largura do card, ficando bem grande e proporcional */
+        max-width: 400px; /* Limite para telas muito grandes */
     }
 
     /* --- TIPOGRAFIA --- */
     h1 { 
-        font-size: 28px; /* Aumentei um pouco para equilibrar com a logo maior */
+        font-size: 28px;
         font-weight: 700; 
         color: #1a1f36; 
         margin-bottom: 8px; 
@@ -80,7 +82,7 @@ st.markdown("""
         border-radius: 10px;
         padding: 12px 16px;
         height: 48px;
-        font-size: 16px; /* Fonte maior para melhor leitura */
+        font-size: 16px;
         transition: all 0.2s;
     }
     .stTextInput input:focus {
@@ -89,10 +91,10 @@ st.markdown("""
         outline: none;
     }
 
-    /* --- BOTÃO PRINCIPAL (VERDE) --- */
+    /* --- BOTÃO PRINCIPAL (VERDE COM TEXTO BRANCO) --- */
     div[data-testid="stVerticalBlock"] button[kind="primary"] {
         background-color: #0d9488 !important;
-        color: #ffffff !important;
+        color: #ffffff !important; /* GARANTE O TEXTO BRANCO */
         border: none;
         height: 48px;
         font-size: 16px;
@@ -109,7 +111,7 @@ st.markdown("""
         transform: translateY(-1px);
     }
 
-    /* --- BOTÃO SECUNDÁRIO (CONTORNO) --- */
+    /* --- BOTÃO SECUNDÁRIO --- */
     div[data-testid="stVerticalBlock"] button[kind="secondary"] {
         background-color: white;
         color: #334155;
@@ -287,7 +289,7 @@ def render_calendar(sala):
         mapa[d][x['hora_inicio']] = x
 
     if mode == 'MÊS':
-        st.info("Visão mensal simplificada. Use a semanal para detalhes.")
+        st.info("Visão mensal simplificada.")
     else:
         visiveis = [d_start + timedelta(days=i) for i in range(7 if mode == 'SEMANA' else 1)]
         ratio = [0.6] + [1]*len(visiveis)
@@ -331,9 +333,10 @@ def main():
         with c2:
             st.write("") # Spacer
             
-            # --- LOGO (Aumentada e Centralizada) ---
+            # --- LOGO (CONTROLADA PELO CSS AGORA) ---
             if os.path.exists(NOME_DO_ARQUIVO_LOGO):
-                st.image(NOME_DO_ARQUIVO_LOGO, width=280) # Logo grande
+                # Removemos o width fixo aqui para o CSS controlar
+                st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
             else:
                 st.markdown("<h1 style='text-align:center; color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
             
