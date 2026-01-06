@@ -12,17 +12,16 @@ import os
 # --- 1. CONFIGURAÇÕES GERAIS ---
 st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide")
 
-# >>> CONFIGURE AQUI O NOME DA SUA LOGO <<<
-# Se o seu arquivo no GitHub se chama "logo.png", mude abaixo para "logo.png"
+# >>> CONFIRA O NOME DA SUA LOGO AQUI <<<
 NOME_DO_ARQUIVO_LOGO = "logo.png" 
 
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     
-    /* RESET GERAL */
+    /* --- RESET GERAL --- */
     .stApp { 
-        background-color: #f7f9fc;
+        background-color: #f2f4f7;
         font-family: 'Inter', sans-serif; 
         color: #1a1f36;
     }
@@ -33,84 +32,112 @@ st.markdown("""
         max-width: 1000px;
     }
 
-    /* CARD DE LOGIN (CSS ESPECÍFICO) */
+    /* --- CARD DE LOGIN --- */
+    /* Estiliza apenas a coluna do meio onde está o login */
     div[data-testid="column"]:nth-of-type(2) > div {
         background-color: #ffffff;
-        padding: 40px;
-        border-radius: 16px;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-        border: 1px solid #f1f3f5;
+        padding: 48px 40px; /* Espaçamento interno generoso */
+        border-radius: 20px;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+        border: 1px solid #eef2f6;
     }
 
-    /* TEXTOS */
-    h1 { font-size: 26px; font-weight: 700; color: #1a1f36; margin-bottom: 8px; text-align: center; }
-    p { color: #697386; font-size: 15px; text-align: center; margin-bottom: 24px; }
+    /* --- LOGO CENTRALIZADA (CSS CRÍTICO) --- */
+    div[data-testid="stImage"] {
+        display: flex;
+        justify-content: center !important; /* Força o centro horizontal */
+        align-items: center !important;
+        width: 100%;
+        margin-bottom: 24px; /* Espaço entre a logo e o título */
+    }
+    div[data-testid="stImage"] > img {
+        object-fit: contain;
+    }
+
+    /* --- TIPOGRAFIA --- */
+    h1 { 
+        font-size: 28px; /* Aumentei um pouco para equilibrar com a logo maior */
+        font-weight: 700; 
+        color: #1a1f36; 
+        margin-bottom: 8px; 
+        text-align: center; 
+        letter-spacing: -0.5px;
+    }
+    p { 
+        color: #697386; 
+        font-size: 15px; 
+        text-align: center; 
+        margin-bottom: 32px; 
+        line-height: 1.5;
+    }
     
-    /* INPUTS */
+    /* --- INPUTS --- */
+    .stTextInput label { font-size: 13px; font-weight: 600; color: #3c4257; margin-bottom: 4px;}
     .stTextInput input {
         background-color: #ffffff;
         border: 1px solid #e3e8ee;
         color: #1a1f36;
-        border-radius: 8px;
-        padding: 10px 14px;
-        height: 44px;
-        font-size: 15px;
+        border-radius: 10px;
+        padding: 12px 16px;
+        height: 48px;
+        font-size: 16px; /* Fonte maior para melhor leitura */
+        transition: all 0.2s;
     }
     .stTextInput input:focus {
         border-color: #0d9488;
-        box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
+        box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.15);
         outline: none;
     }
 
-    /* BOTÕES */
+    /* --- BOTÃO PRINCIPAL (VERDE) --- */
     div[data-testid="stVerticalBlock"] button[kind="primary"] {
         background-color: #0d9488 !important;
         color: #ffffff !important;
         border: none;
-        height: 44px;
-        font-size: 15px;
+        height: 48px;
+        font-size: 16px;
         font-weight: 600;
-        border-radius: 8px;
+        border-radius: 10px;
         width: 100%;
-        margin-top: 12px;
-        transition: transform 0.1s;
+        margin-top: 16px;
+        transition: transform 0.1s, box-shadow 0.2s;
+        box-shadow: 0 4px 6px rgba(13, 148, 136, 0.2);
     }
     div[data-testid="stVerticalBlock"] button[kind="primary"]:hover {
         background-color: #0f766e !important;
+        box-shadow: 0 6px 12px rgba(13, 148, 136, 0.3);
         transform: translateY(-1px);
     }
 
+    /* --- BOTÃO SECUNDÁRIO (CONTORNO) --- */
     div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-        background-color: transparent;
-        color: #5c6b7f;
-        border: 1px solid #e3e8ee;
-        height: 40px;
+        background-color: white;
+        color: #334155;
+        border: 1px solid #e2e8f0;
+        height: 44px;
         font-size: 14px;
         font-weight: 500;
-        border-radius: 8px;
+        border-radius: 10px;
         width: 100%;
+        transition: all 0.2s;
     }
     div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover {
-        background-color: #f7f9fc;
-        color: #1a1f36;
-        border-color: #cdd2d8;
+        background-color: #f8fafc;
+        border-color: #cbd5e1;
     }
 
-    /* LINK ESQUECI SENHA */
+    /* --- LINK ESQUECI SENHA --- */
+    .forgot-container { text-align: center; margin-top: 24px; }
     .forgot-btn button {
         background: none !important; border: none !important; padding: 0 !important;
         color: #697386 !important; font-size: 13px !important; font-weight: 500 !important;
-        box-shadow: none !important; margin-top: 15px !important;
+        text-decoration: none !important; box-shadow: none !important; width: auto !important;
     }
-    .forgot-btn button:hover { color: #0d9488 !important; }
-
-    /* LOGO */
-    div[data-testid="stImage"] {
-        display: flex; justify-content: center; margin-bottom: 24px;
+    .forgot-btn button:hover {
+        color: #0d9488 !important; text-decoration: underline !important;
     }
-    div[data-testid="stImage"] img { object-fit: contain; }
 
-    /* MOBILE */
+    /* --- RESPONSIVIDADE --- */
     @media (max-width: 768px) {
         div[data-testid="column"]:nth-of-type(2) > div {
             box-shadow: none; border: none; background-color: transparent; padding: 0;
@@ -118,8 +145,8 @@ st.markdown("""
         .block-container { padding-top: 2rem; }
     }
     
-    /* INTERNOS */
-    .app-header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; }
+    /* CSS INTERNO (AGENDA) */
+    .app-header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 30px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
     .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; }
     .blocked-slot { background: repeating-linear-gradient(45deg, #fef2f2, #fef2f2 10px, #fee2e2 10px, #fee2e2 20px); height: 40px; border-radius: 4px; opacity: 0.5; }
 </style>
@@ -260,7 +287,7 @@ def render_calendar(sala):
         mapa[d][x['hora_inicio']] = x
 
     if mode == 'MÊS':
-        st.info("Visão mensal simplificada.")
+        st.info("Visão mensal simplificada. Use a semanal para detalhes.")
     else:
         visiveis = [d_start + timedelta(days=i) for i in range(7 if mode == 'SEMANA' else 1)]
         ratio = [0.6] + [1]*len(visiveis)
@@ -293,7 +320,7 @@ def render_calendar(sala):
     if st.button("➕ Agendar", type="primary", use_container_width=True):
         modal_agendamento(sala, st.session_state.data_ref)
 
-# --- 5. LOGIN ---
+# --- 5. TELA DE LOGIN ---
 if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
 
 def main():
@@ -304,13 +331,11 @@ def main():
         with c2:
             st.write("") # Spacer
             
-            # --- LOGO ---
-            # Carrega a imagem definida no topo. 
-            # Se não existir, mostra texto.
+            # --- LOGO (Aumentada e Centralizada) ---
             if os.path.exists(NOME_DO_ARQUIVO_LOGO):
-                st.image(NOME_DO_ARQUIVO_LOGO, width=220) 
+                st.image(NOME_DO_ARQUIVO_LOGO, width=280) # Logo grande
             else:
-                st.markdown("<h2 style='text-align:center; color:#0d9488'>LocaPsico</h2>", unsafe_allow_html=True)
+                st.markdown("<h1 style='text-align:center; color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
             
             # --- LOGIN ---
             if st.session_state.auth_mode == 'login':
@@ -328,15 +353,10 @@ def main():
                         st.rerun()
                     except: st.error("Credenciais inválidas.")
 
-                st.markdown('<div class="forgot-btn">', unsafe_allow_html=True)
-                c_f1, c_f2 = st.columns(2)
-                with c_f1:
-                    # Link escondido para admin usar se precisar
-                    pass 
-                with c_f2:
-                    if st.button("Esqueci minha senha"):
-                        st.session_state.auth_mode = 'forgot'; st.rerun()
-                st.markdown('</div>', unsafe_allow_html=True)
+                st.markdown('<div class="forgot-container"><div class="forgot-btn">', unsafe_allow_html=True)
+                if st.button("Esqueci minha senha"):
+                    st.session_state.auth_mode = 'forgot'; st.rerun()
+                st.markdown('</div></div>', unsafe_allow_html=True)
 
             # --- RECUPERAÇÃO ---
             elif st.session_state.auth_mode == 'forgot':
@@ -351,10 +371,10 @@ def main():
                         st.success("Verifique seu e-mail.")
                     except: st.error("Erro ao enviar.")
                 
-                st.markdown('<div class="forgot-btn">', unsafe_allow_html=True)
+                st.markdown('<div class="forgot-container"><div class="forgot-btn">', unsafe_allow_html=True)
                 if st.button("Voltar ao Login"):
                     st.session_state.auth_mode = 'login'; st.rerun()
-                st.markdown('</div>', unsafe_allow_html=True)
+                st.markdown('</div></div>', unsafe_allow_html=True)
         return
 
     # --- APP LOGADO ---
