@@ -9,7 +9,7 @@ import calendar
 import time
 import os
 
-# --- 1. CONFIGURAÇÃO E CSS (DESIGN SYSTEM PREMIUM) ---
+# --- 1. CONFIGURAÇÃO E CSS (ESTILO NOTION/STRIPE) ---
 st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide")
 
 st.markdown("""
@@ -18,94 +18,125 @@ st.markdown("""
     
     /* --- RESET GERAL --- */
     .stApp { 
-        background-color: #f2f4f7;
+        background-color: #f7f9fc; /* Cinza muito claro, quase branco */
         font-family: 'Inter', sans-serif; 
+        color: #1a1f36;
     }
     header {visibility: hidden;} 
     footer {visibility: hidden;}
     
-    /* Centraliza na tela */
+    /* Centraliza verticalmente */
     .block-container {
         padding-top: 5vh; 
         max-width: 1000px;
     }
 
-    /* --- CARD DE LOGIN (ESTILIZANDO A COLUNA DO MEIO) --- */
+    /* --- CARD DE LOGIN (ALVO ESPECÍFICO) --- */
+    /* Aplica estilo de card APENAS na coluna do meio */
     div[data-testid="column"]:nth-of-type(2) > div {
         background-color: #ffffff;
-        padding: 48px;
-        border-radius: 24px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 
-                    0 10px 15px -3px rgba(0, 0, 0, 0.05);
-        border: 1px solid #eef2f6;
+        padding: 48px 40px;
+        border-radius: 16px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05), 
+                    0 15px 35px rgba(0, 0, 0, 0.05); /* Sombra difusa e elegante */
+        border: 1px solid #f1f3f5;
     }
 
     /* --- TIPOGRAFIA --- */
-    h1 { font-size: 24px; font-weight: 700; color: #1e293b; margin-bottom: 0.5rem; letter-spacing: -0.5px; text-align: center; }
-    p { color: #64748b; font-size: 14px; line-height: 1.5; text-align: center; }
+    h1 { 
+        font-size: 26px; 
+        font-weight: 700; 
+        color: #1a1f36; 
+        margin-bottom: 8px; 
+        text-align: center;
+        letter-spacing: -0.5px;
+    }
+    p { 
+        color: #697386; 
+        font-size: 15px; 
+        line-height: 1.6; 
+        text-align: center;
+        margin-bottom: 32px;
+    }
     
-    /* --- INPUTS --- */
-    .stTextInput label { font-size: 13px; font-weight: 600; color: #334155; }
+    /* --- INPUTS (ESTILO STRIPE) --- */
+    .stTextInput label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #3c4257;
+        margin-bottom: 4px;
+    }
+    
     .stTextInput input {
         background-color: #ffffff;
-        border: 1px solid #e2e8f0;
-        color: #1e293b;
-        border-radius: 10px;
-        padding: 12px 16px;
-        height: 48px;
+        border: 1px solid #e3e8ee;
+        color: #1a1f36;
+        border-radius: 8px;
+        padding: 10px 14px;
+        height: 44px;
         font-size: 15px;
-        transition: all 0.2s ease-in-out;
+        transition: all 0.15s ease;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
+    
+    /* Estado de Foco (Brilho da Marca) */
     .stTextInput input:focus {
         border-color: #0d9488;
-        box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.1);
+        box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.15);
         outline: none;
     }
 
     /* --- BOTÃO PRINCIPAL (ENTRAR) --- */
     div[data-testid="stVerticalBlock"] button[kind="primary"] {
-        background-color: #0d9488 !important; /* Verde da marca */
-        color: #ffffff !important; /* TEXTO BRANCO PURO */
+        background-color: #0d9488 !important;
+        color: #ffffff !important;
         border: none;
-        height: 48px;
+        height: 44px;
         font-size: 15px;
         font-weight: 600;
-        border-radius: 10px;
+        border-radius: 8px;
         width: 100%;
-        margin-top: 15px;
-        transition: transform 0.1s, box-shadow 0.2s;
-        letter-spacing: 0.5px;
+        margin-top: 12px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        transition: transform 0.1s, box-shadow 0.2s, background-color 0.2s;
     }
     div[data-testid="stVerticalBlock"] button[kind="primary"]:hover {
         background-color: #0f766e !important;
-        box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25);
+        box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2);
         transform: translateY(-1px);
+    }
+    div[data-testid="stVerticalBlock"] button[kind="primary"]:active {
+        transform: translateY(0);
     }
 
     /* --- BOTÃO SECUNDÁRIO (CANCELAR/VOLTAR) --- */
     div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-        background-color: white;
-        color: #334155;
-        border: 1px solid #e2e8f0;
-        height: 44px;
+        background-color: transparent;
+        color: #5c6b7f;
+        border: 1px solid #e3e8ee;
+        height: 40px;
         font-size: 14px;
         font-weight: 500;
-        border-radius: 10px;
+        border-radius: 8px;
         width: 100%;
         transition: all 0.2s;
     }
     div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover {
-        background-color: #f8fafc;
-        border-color: #cbd5e1;
+        background-color: #f7f9fc;
+        color: #1a1f36;
+        border-color: #cdd2d8;
     }
 
-    /* --- LINK ESQUECI SENHA --- */
-    .forgot-container { text-align: center; margin-top: 24px; }
+    /* --- LINK ESQUECI SENHA (TEXTO SIMPLES) --- */
+    .forgot-container { 
+        text-align: center; 
+        margin-top: 24px; 
+    }
     .forgot-btn button {
         background: none !important;
         border: none !important;
         padding: 0 !important;
-        color: #64748b !important;
+        color: #697386 !important;
         font-size: 13px !important;
         font-weight: 500 !important;
         text-decoration: none !important;
@@ -114,24 +145,29 @@ st.markdown("""
     }
     .forgot-btn button:hover {
         color: #0d9488 !important;
-        text-decoration: underline !important;
+        text-decoration: none !important; /* Sem sublinhado para ficar clean */
+        opacity: 0.8;
     }
 
-    /* Centralizar Imagem no Streamlit */
+    /* Centralizar Imagem */
     div[data-testid="stImage"] {
         display: flex;
         justify-content: center;
-        margin-bottom: 20px;
+        margin-bottom: 24px;
+    }
+    div[data-testid="stImage"] img {
+        object-fit: contain;
     }
 
-    /* CSS App Interno */
-    .app-header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 30px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-    .day-num.today { color: #0d9488; }
-    .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 3px 5px; border-radius: 4px; overflow: hidden; white-space: nowrap; }
-    .blocked-slot { background: repeating-linear-gradient(45deg, #fef2f2, #fef2f2 10px, #fee2e2 10px, #fee2e2 20px); height: 40px; width: 100%; border-radius: 4px; opacity: 0.5; }
-    
+    /* --- RESPONSIVIDADE MOBILE --- */
     @media (max-width: 768px) {
-        div[data-testid="column"]:nth-of-type(2) > div { box-shadow: none; border: none; background-color: transparent; padding: 0; }
+        /* No celular, remove o efeito de card para usar a tela cheia */
+        div[data-testid="column"]:nth-of-type(2) > div {
+            box-shadow: none;
+            border: none;
+            background-color: transparent;
+            padding: 0;
+        }
         .block-container { padding-top: 2rem; }
     }
 </style>
@@ -189,7 +225,7 @@ def gerar_pdf_fatura(df, nome_usuario, mes_referencia):
     pdf.cell(0, 10, f"TOTAL: R$ {total:.2f}", ln=True, align="R")
     return pdf.output(dest='S').encode('latin-1')
 
-# --- 4. FUNÇÕES CALENDÁRIO ---
+# --- 4. FUNÇÕES DO SISTEMA ---
 if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
 if 'view_mode' not in st.session_state: st.session_state.view_mode = 'SEMANA'
 
@@ -281,23 +317,23 @@ def render_calendar(sala):
         d_n = ["SEG","TER","QUA","QUI","SEX","SÁB","DOM"]
         for i, d in enumerate(visiveis):
             wd = d.weekday()
-            c_h[i+1].markdown(f"<div class='day-col-header'><div class='day-name'>{d_n[wd]}</div><div class='day-num'>{d.day}</div></div>", unsafe_allow_html=True)
+            c_h[i+1].markdown(f"<div style='text-align:center; padding-bottom:5px; border-bottom:2px solid #e2e8f0; margin-bottom:5px'><div style='font-size:10px; font-weight:bold; color:#64748b'>{d_n[wd]}</div><div style='font-size:16px; font-weight:bold; color:#1e293b'>{d.day}</div></div>", unsafe_allow_html=True)
         for h in range(7, 22):
             hora = f"{h:02d}:00:00"
             row = st.columns(ratio)
-            row[0].markdown(f"<div class='time-label'>{h:02d}:00</div>", unsafe_allow_html=True)
+            row[0].markdown(f"<div style='font-size:11px; color:#94a3b8; text-align:right; margin-top:10px'>{h:02d}:00</div>", unsafe_allow_html=True)
             for i, d in enumerate(visiveis):
                 d_s = str(d)
                 res = mapa.get(d_s, {}).get(hora)
                 cont = row[i+1].container()
                 if res:
                     nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
-                    cont.markdown(f"<div class='evt-chip'>{nm}</div>", unsafe_allow_html=True)
+                    cont.markdown(f"<div style='background:#ccfbf1; border-left:3px solid #0d9488; color:#115e59; font-size:10px; padding:3px 5px; border-radius:4px; overflow:hidden; white-space:nowrap;'>{nm}</div>", unsafe_allow_html=True)
                 else:
                     dt_slot = datetime.datetime.combine(d, datetime.time(h, 0))
                     bloq_sab = (d.weekday() == 5 and h > 13)
                     if d.weekday() == 6 or dt_slot < datetime.datetime.now() or bloq_sab:
-                        cont.markdown("<div class='blocked-slot'></div>", unsafe_allow_html=True)
+                        cont.markdown("<div style='background:repeating-linear-gradient(45deg, #fef2f2, #fef2f2 10px, #fee2e2 10px, #fee2e2 20px); height:40px; width:100%; border-radius:4px; opacity:0.5;'></div>", unsafe_allow_html=True)
                     else:
                         cont.markdown("<div style='height:40px; border-left:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
 
@@ -305,43 +341,42 @@ def render_calendar(sala):
     if st.button("➕ Agendar", type="primary", use_container_width=True):
         modal_agendamento(sala, st.session_state.data_ref)
 
-# --- 5. TELA DE LOGIN ATUALIZADA ---
+# --- 5. TELA DE LOGIN (CLEAN & MODERNA) ---
 if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
 
 def main():
     if 'user' not in st.session_state:
-        # Layout centralizado
+        # Layout centralizado - Coluna do meio (c2) é o card
         c1, c2, c3 = st.columns([1, 1.2, 1])
         
         with c2:
-            # --- LOGO (Aumentada e Proporcional) ---
-            # O CSS centraliza div[data-testid="stImage"]
+            # Espaçador
+            st.write("") 
+
+            # LOGO (Fora do card ou dentro, depende do CSS da imagem)
             if os.path.exists("logo.png"):
-                # Width 220px é um bom tamanho, proporcional ao card de login
                 st.image("logo.png", width=220) 
             else:
                 st.markdown("<h2 style='text-align:center; color:#0d9488'>LocaPsico</h2>", unsafe_allow_html=True)
             
-            st.write("") 
-
             # --- ESTADO: LOGIN ---
             if st.session_state.auth_mode == 'login':
                 st.markdown("<h1>Bem-vindo de volta</h1>", unsafe_allow_html=True)
-                st.markdown("<p style='margin-bottom:30px'>Entre para gerenciar seus agendamentos</p>", unsafe_allow_html=True)
+                st.markdown("<p>Acesse sua agenda profissional</p>", unsafe_allow_html=True)
                 
-                email = st.text_input("E-mail profissional", placeholder="exemplo@email.com")
-                senha = st.text_input("Senha", type="password", placeholder="••••••••")
+                email = st.text_input("E-mail profissional", placeholder="ex: seu@email.com")
+                senha = st.text_input("Sua senha", type="password", placeholder="••••••••")
                 
-                # BOTÃO BRANCO FORÇADO
-                if st.button("Entrar na Agenda", type="primary"):
+                # Botão Entrar (Destaque)
+                if st.button("Entrar", type="primary"):
                     try:
                         u = supabase.auth.sign_in_with_password({"email": email, "password": senha})
                         st.session_state['user'] = u.user
                         st.session_state['is_admin'] = (email == "admin@admin.com.br")
                         st.rerun()
-                    except: st.error("Email ou senha incorretos.")
+                    except: st.error("Credenciais inválidas.")
 
-                # Rodapé (Apenas Recuperação - Clean)
+                # Link Esqueci Senha (Discreto)
                 st.markdown('<div class="forgot-container"><div class="forgot-btn">', unsafe_allow_html=True)
                 if st.button("Esqueci minha senha"):
                     st.session_state.auth_mode = 'forgot'; st.rerun()
@@ -350,14 +385,14 @@ def main():
             # --- ESTADO: RECUPERAÇÃO ---
             elif st.session_state.auth_mode == 'forgot':
                 st.markdown("<h1>Recuperar Senha</h1>", unsafe_allow_html=True)
-                st.markdown("<p style='margin-bottom:20px'>Digite seu email para receber o link de acesso</p>", unsafe_allow_html=True)
+                st.markdown("<p>Informe seu e-mail cadastrado</p>", unsafe_allow_html=True)
                 
-                rec_e = st.text_input("E-mail cadastrado")
+                rec_e = st.text_input("E-mail")
                 
-                if st.button("Enviar Link de Recuperação", type="primary"):
+                if st.button("Enviar Link", type="primary"):
                     try:
                         supabase.auth.reset_password_for_email(rec_e, options={"redirect_to": "https://locapsico.streamlit.app"})
-                        st.success("Link enviado! Verifique seu e-mail.")
+                        st.success("Verifique seu e-mail.")
                     except: st.error("Erro ao enviar.")
                 
                 st.markdown('<div class="forgot-container"><div class="forgot-btn">', unsafe_allow_html=True)
@@ -462,7 +497,6 @@ def tela_admin_master():
 
 if __name__ == "__main__":
     main()
-
 
 
 
