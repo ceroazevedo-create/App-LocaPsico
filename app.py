@@ -16,15 +16,13 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
     .stApp { background-color: #f8fafc; font-family: 'Inter', sans-serif; }
     
-    /* REMOVER PADDING PADRÃO */
     .block-container { padding-top: 2rem; padding-bottom: 5rem; }
 
-    /* BOTÕES ESTILIZADOS */
+    /* BOTÕES */
     .stButton>button {
         border-radius: 8px; font-weight: 600; border: none; transition: all 0.2s;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
-    /* Botão Primário (Teal) */
     div[data-testid="stHorizontalBlock"] button:hover { transform: translateY(-2px); }
 
     /* HEADER */
@@ -48,7 +46,7 @@ st.markdown("""
     .time-slot-row { border-bottom: 1px solid #f1f5f9; min-height: 50px; display: flex; align-items: center; }
     .time-label { font-size: 11px; color: #94a3b8; font-weight: 600; padding-right: 10px; text-align: right; width: 100%; }
     
-    /* EVENT CHIPS (CÁPSULAS) */
+    /* EVENT CHIPS */
     .evt-chip {
         background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59;
         font-size: 11px; font-weight: 600; padding: 4px 8px; border-radius: 6px;
@@ -70,7 +68,7 @@ st.markdown("""
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     
-    /* ESTADO VAZIO/BLOQUEADO */
+    /* BLOQUEIOS */
     .blocked-slot { 
         background: repeating-linear-gradient(45deg, #fef2f2, #fef2f2 10px, #fee2e2 10px, #fee2e2 20px); 
         height: 45px; width: 100%; border-radius: 4px; opacity: 0.5;
@@ -86,7 +84,7 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. LÓGICA DE NOME E DADOS ---
+# --- 3. LÓGICA DE DADOS ---
 def resolver_nome(email, nome_meta=None, nome_banco=None):
     if email == "cesar_unib@msn.com": return "Cesar"
     if email == "thascaranalle@gmail.com": return "Thays"
@@ -98,46 +96,67 @@ def get_preco():
         return float(r.data[0]['preco_hora']) if r.data else 32.00
     except: return 32.00
 
-# --- 4. CONTROLE DE ESTADO DA DATA ---
+# --- 4. CONTROLE DE ESTADO ---
 if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
-if 'view_mode' not in st.session_state: st.session_state.view_mode = 'SEMANA' # Padrão Semanal
+if 'view_mode' not in st.session_state: st.session_state.view_mode = 'SEMANA'
 
 def navegar(direcao):
     mode = st.session_state.view_mode
     delta = 0
     if mode == 'DIA': delta = 1
     elif mode == 'SEMANA': delta = 7
-    elif mode == 'MÊS': delta = 30 # Aproximação segura
+    elif mode == 'MÊS': delta = 30
     
     if direcao == 'prev': st.session_state.data_ref -= timedelta(days=delta)
     else: st.session_state.data_ref += timedelta(days=delta)
 
-# --- 5. MODAL AGENDAMENTO ---
+# --- 5. MODAL AGENDAMENTO (REGRAS DE HORÁRIO AQUI) ---
 @st.dialog("Novo Agendamento")
 def modal_agendamento(sala_padrao, data_sugerida):
     st.write("Preencha os detalhes da reserva.")
     c1, c2 = st.columns(2)
-    dt = c1.date_input("Data", value=data_sugerida, min_value=datetime.date.today())
-    hr = c2.selectbox("Horário", [f"{h:02d}:00" for h in range(7, 23)])
     
-    # Admin override
+    # 1. Seleção de Data
+    dt = c1.date_input("Data", value=data_sugerida, min_value=datetime.date.today())
+    
+    # 2. Definição Dinâmica de Horários baseada no Dia da Semana
+    # 0=Seg, 5=Sáb, 6=Dom
+    dia_sem = dt.weekday()
+    
+    if dia_sem == 6: # Domingo
+        lista_horas = []
+        st.warning("A clínica encerra aos Domingos.")
+    elif dia_sem == 5: # Sábado (Até as 13:00, terminando as 14:00)
+        lista_horas = [f"{h:02d}:00" for h in range(7, 14)] # 07, 08... 13
+        st.info("Sábados: Atendimento até às 14:00.")
+    else: # Seg-Sex (Até as 21:00, terminando as 22:00)
+        lista_horas = [f"{h:02d}:00" for h in range(7, 22)] # 07, 08... 21
+    
+    # Selectbox com a lista filtrada
+    hr = c2.selectbox("Horário", lista_horas, disabled=(len(lista_horas)==0))
+    
     ignore = st.checkbox("Admin: Ignorar bloqueios") if st.session_state.get('is_admin') else False
 
-    if st.button("Confirmar Reserva", use_container_width=True):
+    if st.button("Confirmar Reserva", use_container_width=True, disabled=(len(lista_horas)==0 and not ignore)):
+        # Se for admin ignorando, permite qualquer hora
+        if ignore: 
+            hr_final = hr if hr else "07:00" # fallback
+        else: 
+            hr_final = hr
+
         agora = datetime.datetime.now()
-        dt_check = datetime.datetime.combine(dt, datetime.time(int(hr[:2]), 0))
+        dt_check = datetime.datetime.combine(dt, datetime.time(int(hr_final[:2]), 0))
         
         erro = None
         if not ignore:
-            if dt.weekday() == 6: erro = "Fechado aos domingos."
+            if dia_sem == 6: erro = "Fechado aos domingos."
             elif dt_check < agora: erro = "Data no passado."
         
         if erro: st.error(erro)
         else:
             try:
-                # Conflito?
                 chk = supabase.table("reservas").select("id").eq("sala_nome", sala_padrao)\
-                    .eq("data_reserva", str(dt)).eq("hora_inicio", hr).eq("status", "confirmada").execute()
+                    .eq("data_reserva", str(dt)).eq("hora_inicio", hr_final).eq("status", "confirmada").execute()
                 if chk.data:
                     st.error("Horário já reservado!")
                 else:
@@ -145,7 +164,7 @@ def modal_agendamento(sala_padrao, data_sugerida):
                     nm = resolver_nome(user.email, user.user_metadata.get('nome'))
                     supabase.table("reservas").insert({
                         "sala_nome": sala_padrao, "data_reserva": str(dt),
-                        "hora_inicio": hr, "hora_fim": f"{int(hr[:2])+1:02d}:00",
+                        "hora_inicio": hr_final, "hora_fim": f"{int(hr_final[:2])+1:02d}:00",
                         "user_id": user.id, "email_profissional": user.email, "nome_profissional": nm,
                         "valor_cobrado": get_preco(), "status": "confirmada"
                     }).execute()
@@ -153,9 +172,9 @@ def modal_agendamento(sala_padrao, data_sugerida):
                     st.rerun()
             except Exception as e: st.error(f"Erro: {e}")
 
-# --- 6. RENDERIZAÇÃO DO CALENDÁRIO (CORE) ---
+# --- 6. RENDER CALENDÁRIO (VISUALIZAÇÃO) ---
 def render_calendar(sala):
-    # 1. CONTROLES SUPERIORES
+    # Header Navegação
     col_nav_L, col_nav_C, col_nav_R = st.columns([1, 4, 1])
     
     with col_nav_L:
@@ -164,12 +183,10 @@ def render_calendar(sala):
         if st.button("▶", use_container_width=True): navegar('next'); st.rerun()
         
     with col_nav_C:
-        # Toggle View
         c_v1, c_v2, c_v3 = st.columns(3)
         mode = st.session_state.view_mode
         def set_mode(m): st.session_state.view_mode = m
         
-        # Botões coloridos conforme estado
         bt_d = "primary" if mode == 'DIA' else "secondary"
         bt_s = "primary" if mode == 'SEMANA' else "secondary"
         bt_m = "primary" if mode == 'MÊS' else "secondary"
@@ -181,7 +198,6 @@ def render_calendar(sala):
         with c_v3: 
             if st.button("Mês", type=bt_m, use_container_width=True): set_mode('MÊS'); st.rerun()
             
-        # Label da Data
         ref = st.session_state.data_ref
         mes_str = ref.strftime("%B").capitalize()
         label = f"{mes_str} {ref.year}"
@@ -196,7 +212,7 @@ def render_calendar(sala):
 
     st.markdown("---")
 
-    # 2. PREPARAÇÃO DOS DADOS
+    # Preparação Dados
     if mode == 'MÊS':
         ano, mes = ref.year, ref.month
         last_day = calendar.monthrange(ano, mes)[1]
@@ -207,7 +223,6 @@ def render_calendar(sala):
     else: # DIA
         d_start = d_end = ref
 
-    # Query Banco
     reservas = []
     try:
         r = supabase.table("reservas").select("*").eq("sala_nome", sala).eq("status", "confirmada")\
@@ -215,7 +230,6 @@ def render_calendar(sala):
         reservas = r.data
     except: pass
 
-    # Indexar dados
     mapa = {}
     for item in reservas:
         d = item['data_reserva']
@@ -226,13 +240,12 @@ def render_calendar(sala):
             if d not in mapa: mapa[d] = {}
             mapa[d][item['hora_inicio']] = item
 
-    # 3. RENDERIZAÇÃO VISUAL
+    # --- RENDER VISUAL ---
     
-    # >>> MODO MÊS (GRID) <<<
+    # MODO MÊS
     if mode == 'MÊS':
-        dias_nome = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB']
         cols = st.columns(7)
-        for i, d in enumerate(dias_nome):
+        for i, d in enumerate(['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB']):
             cols[i].markdown(f"<div style='text-align:center; font-size:11px; font-weight:bold; color:#94a3b8'>{d}</div>", unsafe_allow_html=True)
         
         cal_mat = calendar.monthcalendar(ref.year, ref.month)
@@ -249,7 +262,6 @@ def render_calendar(sala):
                     if dt_str in mapa:
                         for evt in mapa[dt_str]:
                             nm = resolver_nome(evt['email_profissional'], nome_banco=evt.get('nome_profissional'))
-                            # Chip compacto para mês
                             html_evts += f"<div class='month-evt-dot' title='{evt['hora_inicio'][:5]} - {nm}'>{evt['hora_inicio'][:5]} {nm}</div>"
                     
                     bg_color = "#f0fdfa" if dt_atual == datetime.date.today() else "white"
@@ -262,9 +274,8 @@ def render_calendar(sala):
                     </div>
                     """, unsafe_allow_html=True)
 
-    # >>> MODO DIA / SEMANA (TIMELINE) <<<
+    # MODO DIA / SEMANA
     else:
-        # Configurar Colunas
         if mode == 'SEMANA':
             dias_visiveis = [d_start + timedelta(days=i) for i in range(7)]
             razao_cols = [0.5] + [1]*7
@@ -272,7 +283,6 @@ def render_calendar(sala):
             dias_visiveis = [d_start]
             razao_cols = [0.5, 6]
 
-        # Cabeçalho
         c_head = st.columns(razao_cols)
         c_head[0].write("")
         d_names = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
@@ -290,8 +300,11 @@ def render_calendar(sala):
             </div>
             """, unsafe_allow_html=True)
 
-        # Slots de Hora
-        horarios = [f"{h:02d}:00:00" for h in range(7, 23)]
+        # RANGE VISUAL DO CALENDÁRIO: 07:00 AS 21:00 (Para mostrar até 22h, o ultimo slot começa as 21)
+        # O pedido foi: Semanal até 21h (termina 22h) e Sábado até 13h (termina 14h)
+        # O grid deve mostrar o máximo (até 21h). Bloqueamos visualmente o que não pode.
+        horarios = [f"{h:02d}:00:00" for h in range(7, 22)] 
+        
         for hora in horarios:
             c_slots = st.columns(razao_cols)
             c_slots[0].markdown(f"<div class='time-label'>{hora[:5]}</div>", unsafe_allow_html=True)
@@ -301,20 +314,24 @@ def render_calendar(sala):
                 reserva = mapa.get(d_str, {}).get(hora)
                 container = c_slots[i+1].container()
                 
-                # Renderiza Conteúdo do Slot
                 if reserva:
                     nm = resolver_nome(reserva['email_profissional'], nome_banco=reserva.get('nome_profissional'))
                     container.markdown(f"<div class='evt-chip' title='{nm}'>👤 {nm}</div>", unsafe_allow_html=True)
                 else:
-                    # Verifica Bloqueio (Passado ou Domingo)
+                    # LÓGICA DE BLOQUEIO VISUAL
                     dt_slot = datetime.datetime.combine(d, datetime.time(int(hora[:2]), 0))
-                    if d.weekday() == 6 or dt_slot < datetime.datetime.now():
+                    
+                    # 1. Domingo (wd=6) -> Bloqueado
+                    # 2. Passado -> Bloqueado
+                    # 3. Sábado (wd=5) e hora > 13 -> Bloqueado
+                    hora_int = int(hora[:2])
+                    bloqueado_sabado = (d.weekday() == 5 and hora_int > 13)
+                    
+                    if d.weekday() == 6 or dt_slot < datetime.datetime.now() or bloqueado_sabado:
                         container.markdown("<div class='blocked-slot'></div>", unsafe_allow_html=True)
                     else:
-                        # Slot Livre (Vazio transparente para manter grid)
                         container.markdown("<div style='height:45px'></div>", unsafe_allow_html=True)
 
-    # Botão Flutuante Inferior
     st.markdown("<br>", unsafe_allow_html=True)
     if st.button("➕ Novo Agendamento", type="primary", use_container_width=True):
         modal_agendamento(sala, st.session_state.data_ref)
@@ -325,7 +342,6 @@ def tela_admin():
     t1, t2 = st.tabs(["Dashboard & Preço", "Gerenciar Tudo"])
     
     with t1:
-        # KPIs
         try:
             df = pd.DataFrame(supabase.table("reservas").select("*").eq("status", "confirmada").execute().data)
             receita = df['valor_cobrado'].sum() if not df.empty else 0
@@ -338,7 +354,6 @@ def tela_admin():
             
             st.divider()
             
-            # Alterar Preço
             c_p, c_g = st.columns([1, 2])
             with c_p:
                 nv = st.number_input("Novo Valor Hora", value=get_preco())
@@ -354,9 +369,8 @@ def tela_admin():
         except: pass
 
     with t2:
-        st.write("Lista Global (Cancelamento sem restrição)")
+        st.write("Lista Global")
         try:
-            # Lista com busca simples
             q = st.text_input("Buscar (Nome/Email)")
             res = supabase.table("reservas").select("*").eq("status", "confirmada").order("data_reserva", desc=True).limit(50).execute()
             df_r = pd.DataFrame(res.data)
@@ -415,26 +429,22 @@ def main():
     </div>
     """, unsafe_allow_html=True)
 
-    # TABS PRINCIPAIS
     tabs_labels = ["📅 AGENDA", "📊 MEU PAINEL"]
     if st.session_state.get('is_admin'): tabs_labels.append("⚙️ ADMIN")
     
     tabs = st.tabs(tabs_labels)
     
-    # 1. AGENDA
     with tabs[0]:
         c_sala, c_cal = st.columns([1, 4])
         with c_sala:
             st.markdown("#### Selecione a Sala")
             sala = st.radio("S", ["Sala 1", "Sala 2"], label_visibility="collapsed")
-            st.info("Utilize a visualização 'Semana' para agendar com mais precisão.")
+            st.info("Sábados até às 14h.\nSemana até às 22h.")
         with c_cal:
             render_calendar(sala)
 
-    # 2. MEU PAINEL
     with tabs[1]:
         try:
-            # Pega SÓ CONFIRMADAS
             df = pd.DataFrame(supabase.table("reservas").select("*").eq("user_id", user.id).eq("status", "confirmada").execute().data)
             
             c1, c2 = st.columns(2)
@@ -467,7 +477,6 @@ def main():
             else: st.info("Sem agendamentos futuros.")
         except: pass
 
-    # 3. ADMIN
     if len(tabs) > 2:
         with tabs[2]: tela_admin()
 
