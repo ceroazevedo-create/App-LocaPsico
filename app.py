@@ -397,8 +397,8 @@ def main():
             st.markdown('<div class="login-container">', unsafe_allow_html=True)
             
             # LOGO (SE EXISTIR, SENÃO TEXTO)
-            if os.path.exists("logo.jpg"):
-                st.image("logo.jpg", width=150)
+            if os.path.exists("logo.png"):
+                st.image("logo.png", width=150)
             else:
                 st.markdown("<h1 style='color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
 
@@ -503,6 +503,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
