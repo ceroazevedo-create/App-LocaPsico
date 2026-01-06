@@ -7,51 +7,74 @@ from fpdf import FPDF
 import base64
 import calendar
 import plotly.express as px
-import plotly.graph_objects as go
 
-# --- 1. CONFIGURAÇÃO E DESIGN SYSTEM ---
-st.set_page_config(page_title="LocaPsico Admin", page_icon="Ψ", layout="wide")
+# --- 1. CONFIGURAÇÃO E CSS (VISUAL MODERNO) ---
+st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide")
 
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
     .stApp { background-color: #f8fafc; font-family: 'Inter', sans-serif; }
-    .block-container { padding-top: 2rem; }
-
-    /* CORES DA MARCA: Teal (#0d9488) & Slate (#0f172a) */
     
-    /* Botões */
+    /* REMOVER PADDING PADRÃO */
+    .block-container { padding-top: 2rem; padding-bottom: 5rem; }
+
+    /* BOTÕES ESTILIZADOS */
     .stButton>button {
-        background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
-        color: white !important; border: none; border-radius: 10px;
-        font-weight: 600; padding: 0.5rem 1rem;
-        box-shadow: 0 4px 6px -1px rgba(13, 148, 136, 0.2);
+        border-radius: 8px; font-weight: 600; border: none; transition: all 0.2s;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
-    .stButton>button:hover { transform: translateY(-1px); box-shadow: 0 6px 8px -2px rgba(13, 148, 136, 0.3); }
+    /* Botão Primário (Teal) */
+    div[data-testid="stHorizontalBlock"] button:hover { transform: translateY(-2px); }
 
-    /* Cards */
-    .kpi-card {
-        background: white; padding: 20px; border-radius: 12px;
-        border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-        text-align: center;
-    }
-    .kpi-val { font-size: 24px; font-weight: 800; color: #0f172a; }
-    .kpi-lbl { font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; }
-
-    /* Header */
+    /* HEADER */
     .app-header {
         display: flex; justify-content: space-between; align-items: center;
-        background: white; padding: 15px 30px; border-radius: 16px;
-        margin-bottom: 25px; border: 1px solid #e2e8f0;
+        background: white; padding: 15px 30px; border-radius: 12px;
+        margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .logo-area { font-size: 22px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 10px; }
+    .psi-icon { background: #0d9488; color: white; width: 35px; height: 35px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+
+    /* CALENDÁRIO: GERAL */
+    .cal-container { background: white; border-radius: 12px; padding: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    
+    /* CALENDÁRIO: SEMANA/DIA */
+    .day-col-header { text-align: center; padding: 10px 0; border-bottom: 2px solid #e2e8f0; margin-bottom: 10px; }
+    .day-name { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; }
+    .day-num { font-size: 20px; font-weight: 800; color: #1e293b; }
+    .day-num.today { color: #0d9488; }
+    
+    .time-slot-row { border-bottom: 1px solid #f1f5f9; min-height: 50px; display: flex; align-items: center; }
+    .time-label { font-size: 11px; color: #94a3b8; font-weight: 600; padding-right: 10px; text-align: right; width: 100%; }
+    
+    /* EVENT CHIPS (CÁPSULAS) */
+    .evt-chip {
+        background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59;
+        font-size: 11px; font-weight: 600; padding: 4px 8px; border-radius: 6px;
+        margin: 2px 0; cursor: default; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    .evt-chip:hover { background: #99f6e4; }
+
+    /* CALENDÁRIO: MÊS */
+    .month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+    .month-day {
+        background: white; border: 1px solid #e2e8f0; min-height: 100px; padding: 5px; border-radius: 6px;
+        display: flex; flex-direction: column; gap: 3px;
+    }
+    .month-day:hover { border-color: #cbd5e1; }
+    .month-day-header { font-weight: 700; font-size: 12px; color: #475569; margin-bottom: 4px; }
+    .month-evt-dot {
+        font-size: 10px; background: #0f766e; color: white; padding: 2px 4px; border-radius: 4px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     
-    /* Calendário */
-    .cal-day-box { background: white; min-height: 100px; padding: 5px; border: 1px solid #f1f5f9; font-size: 12px; }
-    .cal-evt { background: #ccfbf1; color: #115e59; padding: 2px 5px; border-radius: 4px; margin-bottom: 2px; font-size: 10px; font-weight: bold; overflow: hidden; white-space: nowrap; }
-    .day-header { text-align: center; font-weight: 700; color: #475569; padding-bottom: 5px; border-bottom: 2px solid #e2e8f0; margin-bottom: 5px; }
-    
-    /* Tabelas */
-    [data-testid="stDataFrame"] { border-radius: 10px; overflow: hidden; border: 1px solid #e2e8f0; }
+    /* ESTADO VAZIO/BLOQUEADO */
+    .blocked-slot { 
+        background: repeating-linear-gradient(45deg, #fef2f2, #fef2f2 10px, #fee2e2 10px, #fee2e2 20px); 
+        height: 45px; width: 100%; border-radius: 4px; opacity: 0.5;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -63,7 +86,7 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. LÓGICA DE NEGÓCIO ---
+# --- 3. LÓGICA DE NOME E DADOS ---
 def resolver_nome(email, nome_meta=None, nome_banco=None):
     if email == "cesar_unib@msn.com": return "Cesar"
     if email == "thascaranalle@gmail.com": return "Thays"
@@ -75,377 +98,385 @@ def get_preco():
         return float(r.data[0]['preco_hora']) if r.data else 32.00
     except: return 32.00
 
-def gerar_pdf(df, nome, mes):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", "B", 16)
-    pdf.set_text_color(13, 148, 136)
-    pdf.cell(0, 10, "LOCAPSICO - Extrato Mensal", ln=True, align="C")
-    pdf.set_font("Arial", "", 12)
-    pdf.set_text_color(50,50,50)
-    pdf.ln(5)
-    pdf.cell(0, 10, f"Profissional: {nome}", ln=True)
-    pdf.cell(0, 10, f"Referencia: {mes}", ln=True)
-    pdf.ln(5)
+# --- 4. CONTROLE DE ESTADO DA DATA ---
+if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
+if 'view_mode' not in st.session_state: st.session_state.view_mode = 'SEMANA' # Padrão Semanal
+
+def navegar(direcao):
+    mode = st.session_state.view_mode
+    delta = 0
+    if mode == 'DIA': delta = 1
+    elif mode == 'SEMANA': delta = 7
+    elif mode == 'MÊS': delta = 30 # Aproximação segura
     
-    # Header Tabela
-    pdf.set_fill_color(240, 253, 250)
-    pdf.set_font("Arial", "B", 10)
-    cols = [("Data", 30), ("Sala", 30), ("Inicio", 30), ("Fim", 30), ("Valor", 40)]
-    for c in cols: pdf.cell(c[1], 10, c[0], 1, 0, 'C', True)
-    pdf.ln()
-    
-    # Rows
-    pdf.set_font("Arial", "", 10)
-    total = 0
-    for _, row in df.iterrows():
-        total += float(row['valor_cobrado'])
-        dt = pd.to_datetime(row['data_reserva']).strftime('%d/%m')
-        pdf.cell(30, 10, dt, 1, 0, 'C')
-        pdf.cell(30, 10, str(row['sala_nome']), 1, 0, 'C')
-        pdf.cell(30, 10, str(row['hora_inicio'])[:5], 1, 0, 'C')
-        pdf.cell(30, 10, str(row['hora_fim'])[:5], 1, 0, 'C')
-        pdf.cell(40, 10, f"R$ {row['valor_cobrado']:.2f}", 1, 1, 'R')
-        
-    pdf.ln(5)
-    pdf.set_font("Arial", "B", 14)
-    pdf.cell(0, 10, f"TOTAL: R$ {total:.2f}", ln=True, align="R")
-    return pdf.output(dest='S').encode('latin-1')
+    if direcao == 'prev': st.session_state.data_ref -= timedelta(days=delta)
+    else: st.session_state.data_ref += timedelta(days=delta)
 
-# --- 4. COMPONENTE DE CALENDÁRIO ---
-def render_calendar(sala):
-    # Controles Navegação
-    c1, c2, c3 = st.columns([1, 6, 1])
-    with c1: 
-        if st.button("◀"): st.session_state.data_ref -= timedelta(days=30)
-    with c3: 
-        if st.button("▶"): st.session_state.data_ref += timedelta(days=30)
-    with c2:
-        dt = st.session_state.data_ref
-        mes_nome = dt.strftime("%B").capitalize()
-        st.markdown(f"<h3 style='text-align:center; margin:0; color:#334155'>{mes_nome} {dt.year}</h3>", unsafe_allow_html=True)
-
-    st.markdown("---")
-    
-    # Lógica Mês
-    ano, mes = dt.year, dt.month
-    cal = calendar.monthcalendar(ano, mes)
-    
-    # Busca Dados
-    ult_dia = calendar.monthrange(ano, mes)[1]
-    d_ini, d_fim = f"{ano}-{mes:02d}-01", f"{ano}-{mes:02d}-{ult_dia}"
-    
-    try:
-        r = supabase.table("reservas").select("*").eq("sala_nome", sala).eq("status", "confirmada").gte("data_reserva", d_ini).lte("data_reserva", d_fim).execute()
-        df = pd.DataFrame(r.data)
-    except: df = pd.DataFrame()
-
-    # Renderiza Grid
-    cols_head = st.columns(7)
-    for i, d in enumerate(['DOM','SEG','TER','QUA','QUI','SEX','SÁB']):
-        cols_head[i].markdown(f"<div style='text-align:center; font-weight:bold; font-size:12px; color:#94a3b8'>{d}</div>", unsafe_allow_html=True)
-
-    for semana in cal:
-        cols = st.columns(7)
-        for i, dia in enumerate(semana):
-            if dia == 0:
-                cols[i].markdown("<div style='min-height:80px; background:#f8fafc'></div>", unsafe_allow_html=True)
-            else:
-                conteudo = ""
-                if not df.empty:
-                    # Filtra eventos do dia
-                    dia_str = f"{ano}-{mes:02d}-{dia:02d}"
-                    evts = df[df['data_reserva'] == dia_str]
-                    for _, row in evts.iterrows():
-                        nm = resolver_nome(row['email_profissional'], nome_banco=row.get('nome_profissional'))
-                        conteudo += f"<div class='cal-evt' title='{nm}'>{row['hora_inicio'][:5]} {nm}</div>"
-                
-                bg = "#f0fdfa" if datetime.date(ano, mes, dia) == datetime.date.today() else "white"
-                cols[i].markdown(f"""
-                <div class='cal-day-box' style='background:{bg}'>
-                    <div style='font-weight:bold; color:#cbd5e1'>{dia}</div>
-                    {conteudo}
-                </div>
-                """, unsafe_allow_html=True)
-
-# --- 5. TELA ADMIN (NOVA) ---
-def tela_admin():
-    st.markdown("## ⚙️ Painel de Controle Master")
-    
-    tabs = st.tabs(["📊 Dashboard & Config", "❌ Gerenciar Reservas", "💰 Faturamento & Relatórios"])
-
-    # TAB 1: VISÃO GERAL E PREÇO
-    with tabs[0]:
-        c_kpi1, c_kpi2, c_kpi3 = st.columns(3)
-        
-        # Dados Globais
-        try:
-            r_all = supabase.table("reservas").select("*").eq("status", "confirmada").execute()
-            df_all = pd.DataFrame(r_all.data)
-            
-            receita_total = df_all['valor_cobrado'].sum() if not df_all.empty else 0
-            horas_total = len(df_all) if not df_all.empty else 0
-            
-            c_kpi1.markdown(f"<div class='kpi-card'><div class='kpi-val'>R$ {receita_total:,.0f}</div><div class='kpi-lbl'>Receita Histórica</div></div>", unsafe_allow_html=True)
-            c_kpi2.markdown(f"<div class='kpi-card'><div class='kpi-val'>{horas_total}</div><div class='kpi-lbl'>Horas Locadas</div></div>", unsafe_allow_html=True)
-            
-            # KPI Preço Atual
-            preco = get_preco()
-            c_kpi3.markdown(f"<div class='kpi-card'><div class='kpi-val'>R$ {preco:.2f}</div><div class='kpi-lbl'>Preço Atual / Hora</div></div>", unsafe_allow_html=True)
-            
-            st.divider()
-            
-            # Coluna 1: Configurar Preço
-            col_cfg, col_chart = st.columns([1, 2])
-            with col_cfg:
-                st.subheader("Alterar Valor Hora")
-                novo_preco = st.number_input("Novo valor (R$)", value=preco, step=1.0)
-                if st.button("💾 Salvar Novo Preço", use_container_width=True):
-                    supabase.table("configuracoes").update({"preco_hora": novo_preco}).gt("id", 0).execute()
-                    st.toast("Preço atualizado!", icon="✅")
-                    st.rerun()
-
-            # Coluna 2: Gráficos
-            with col_chart:
-                st.subheader("Ocupação por Sala")
-                if not df_all.empty:
-                    fig = px.pie(df_all, names='sala_nome', values='valor_cobrado', hole=0.4, color_discrete_sequence=['#0d9488', '#3b82f6'])
-                    fig.update_layout(height=250, margin=dict(l=0, r=0, t=0, b=0))
-                    st.plotly_chart(fig, use_container_width=True)
-        except Exception as e: st.error(str(e))
-
-    # TAB 2: GERENCIAR RESERVAS (Cancelar Tudo)
-    with tabs[1]:
-        st.write("Lista completa de reservas ativas. **O Admin pode cancelar qualquer uma (ignora regra de 24h).**")
-        
-        # Filtros
-        c_flt1, c_flt2 = st.columns(2)
-        mes_filtro = c_flt1.selectbox("Filtrar Mês", ["Todos", "2026-01", "2026-02", "2026-03", "2026-04"])
-        user_filtro = c_flt2.text_input("Buscar Profissional (Nome/Email)")
-
-        try:
-            query = supabase.table("reservas").select("*").eq("status", "confirmada").order("data_reserva", desc=True)
-            if mes_filtro != "Todos":
-                query = query.ilike("data_reserva", f"{mes_filtro}%")
-            
-            r_list = query.execute()
-            df_list = pd.DataFrame(r_list.data)
-
-            if not df_list.empty:
-                # Resolve nomes para busca
-                df_list['display_name'] = df_list.apply(lambda x: resolver_nome(x['email_profissional'], nome_banco=x.get('nome_profissional')), axis=1)
-                
-                # Filtro de texto
-                if user_filtro:
-                    df_list = df_list[df_list['display_name'].str.contains(user_filtro, case=False) | df_list['email_profissional'].str.contains(user_filtro, case=False)]
-
-                # Exibir Tabela com Botões
-                for idx, row in df_list.iterrows():
-                    with st.container():
-                        c_dat, c_sal, c_usr, c_act = st.columns([1.5, 1.5, 3, 1.5])
-                        c_dat.write(f"📅 {row['data_reserva']}")
-                        c_sal.write(f"🏠 {row['sala_nome']} ({row['hora_inicio'][:5]})")
-                        c_usr.write(f"👤 {row['display_name']}")
-                        if c_act.button("❌ Cancelar", key=f"adm_cancel_{row['id']}"):
-                            supabase.table("reservas").update({"status": "cancelada"}).eq("id", row['id']).execute()
-                            st.toast("Reserva cancelada pelo Admin!", icon="🗑️")
-                            st.rerun()
-                        st.markdown("<hr style='margin:5px 0'>", unsafe_allow_html=True)
-            else:
-                st.info("Nenhuma reserva encontrada com esses filtros.")
-
-        except Exception as e: st.error(f"Erro: {e}")
-
-    # TAB 3: FATURAMENTO & RELATÓRIOS
-    with tabs[2]:
-        st.subheader("Fechamento Mensal")
-        
-        c_sel_mes, c_sel_user = st.columns(2)
-        mes_ref = c_sel_mes.selectbox("Selecione o Mês", ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05"])
-        
-        # Busca lista única de usuários que têm reserva
-        try:
-            users_raw = supabase.table("reservas").select("email_profissional, nome_profissional").execute()
-            df_users = pd.DataFrame(users_raw.data)
-            if not df_users.empty:
-                df_users['display'] = df_users.apply(lambda x: resolver_nome(x['email_profissional'], nome_banco=x['nome_profissional']), axis=1)
-                lista_users = df_users['display'].unique()
-                user_target = c_sel_user.selectbox("Selecione o Profissional", lista_users)
-                
-                # Botão Gerar
-                if st.button("📄 Gerar Relatório PDF", use_container_width=True):
-                    # Datas limite
-                    ano, mes = map(int, mes_ref.split('-'))
-                    ult_dia = calendar.monthrange(ano, mes)[1]
-                    d_ini, d_fim = f"{ano}-{mes:02d}-01", f"{ano}-{mes:02d}-{ult_dia}"
-
-                    # Query Específica
-                    r_rep = supabase.table("reservas").select("*").eq("status", "confirmada")\
-                        .gte("data_reserva", d_ini).lte("data_reserva", d_fim).execute()
-                    
-                    df_rep = pd.DataFrame(r_rep.data)
-                    
-                    if not df_rep.empty:
-                        # Filtra pelo nome resolvido
-                        df_rep['nm'] = df_rep.apply(lambda x: resolver_nome(x['email_profissional'], nome_banco=x['nome_profissional']), axis=1)
-                        df_final = df_rep[df_rep['nm'] == user_target]
-                        
-                        if not df_final.empty:
-                            total = df_final['valor_cobrado'].sum()
-                            st.success(f"Fatura gerada: R$ {total:.2f} ({len(df_final)} sessões)")
-                            
-                            # Download
-                            pdf_bytes = gerar_pdf(df_final, user_target, mes_ref)
-                            b64 = base64.b64encode(pdf_bytes).decode()
-                            href = f'<a href="data:application/octet-stream;base64,{b64}" download="Fatura_{user_target}_{mes_ref}.pdf" style="text-decoration:none; background:#0d9488; color:white; padding:10px 20px; border-radius:8px; display:block; text-align:center;">📥 BAIXAR PDF AGORA</a>'
-                            st.markdown(href, unsafe_allow_html=True)
-                            
-                            st.dataframe(df_final[["data_reserva", "sala_nome", "hora_inicio", "valor_cobrado"]])
-                        else: st.warning("Este usuário não teve agendamentos neste mês.")
-                    else: st.warning("Sem dados no mês selecionado.")
-            else: st.info("Sem usuários na base.")
-        except Exception as e: st.error(f"Erro relatório: {e}")
-
-# --- 6. TELAS DO USUÁRIO ---
-def tela_usuario():
-    user = st.session_state['user']
-    nome = resolver_nome(user.email, nome_meta=user.user_metadata.get('nome'))
-    
-    # Header User
-    st.markdown(f"""
-    <div class='app-header'>
-        <div style='font-weight:800; font-size:20px; color:#0f172a'>Olá, {nome}!</div>
-        <div style='color:#64748b; font-size:14px'>Painel do Terapeuta</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    tabs = st.tabs(["📅 Agenda", "💰 Meu Painel"])
-    
-    # TAB AGENDA USER
-    with tabs[0]:
-        c_sala, c_cal = st.columns([1, 4])
-        with c_sala:
-            sala = st.radio("Sala", ["Sala 1", "Sala 2"], label_visibility="collapsed")
-            st.info("💡 Selecione o dia no calendário para ver horários livres.")
-            
-            # Modal Trigger
-            if st.button("➕ Agendar Horário", use_container_width=True):
-                modal_agendamento()
-
-        with c_cal:
-            render_calendar(sala)
-
-    # TAB PAINEL USER
-    with tabs[1]:
-        try:
-            # Métricas
-            r = supabase.table("reservas").select("*").eq("user_id", user.id).eq("status", "confirmada").execute()
-            df = pd.DataFrame(r.data)
-            
-            inv = df['valor_cobrado'].sum() if not df.empty else 0
-            qtd = len(df) if not df.empty else 0
-            
-            c1, c2 = st.columns(2)
-            c1.markdown(f"<div class='kpi-card'><div class='kpi-val'>R$ {inv:.0f}</div><div class='kpi-lbl'>Total Investido</div></div>", unsafe_allow_html=True)
-            c2.markdown(f"<div class='kpi-card'><div class='kpi-val'>{qtd}</div><div class='kpi-lbl'>Sessões Realizadas</div></div>", unsafe_allow_html=True)
-            
-            st.markdown("### 🗓️ Próximos Agendamentos")
-            hoje = str(datetime.date.today())
-            futs = supabase.table("reservas").select("*").eq("user_id", user.id).eq("status", "confirmada").gte("data_reserva", hoje).order("data_reserva").execute().data
-            
-            if futs:
-                for row in futs:
-                    # Lógica Cancelamento 24h
-                    dt_obj = datetime.datetime.strptime(f"{row['data_reserva']} {row['hora_inicio']}", "%Y-%m-%d %H:%M:%S")
-                    diff = (dt_obj - datetime.datetime.now()).total_seconds()/3600
-                    
-                    with st.container():
-                        c_d, c_i, c_b = st.columns([1, 4, 1])
-                        c_d.markdown(f"**{row['data_reserva'][8:]}/{row['data_reserva'][5:7]}**")
-                        c_i.markdown(f"{row['sala_nome']} • {row['hora_inicio'][:5]}")
-                        
-                        if diff > 24:
-                            if c_b.button("Cancelar", key=f"usr_c_{row['id']}"):
-                                supabase.table("reservas").update({"status": "cancelada"}).eq("id", row['id']).execute()
-                                st.rerun()
-                        else:
-                            c_b.caption("🔒 < 24h")
-                        st.markdown("<hr style='margin:5px 0'>", unsafe_allow_html=True)
-            else: st.info("Sua agenda futura está vazia.")
-            
-        except Exception as e: st.error(str(e))
-
-# --- 7. MODAL AGENDAMENTO USER ---
+# --- 5. MODAL AGENDAMENTO ---
 @st.dialog("Novo Agendamento")
-def modal_agendamento():
+def modal_agendamento(sala_padrao, data_sugerida):
+    st.write("Preencha os detalhes da reserva.")
     c1, c2 = st.columns(2)
-    dt = c1.date_input("Data", min_value=datetime.date.today())
+    dt = c1.date_input("Data", value=data_sugerida, min_value=datetime.date.today())
     hr = c2.selectbox("Horário", [f"{h:02d}:00" for h in range(7, 23)])
-    sala_t = st.radio("Sala", ["Sala 1", "Sala 2"], horizontal=True)
     
+    # Admin override
+    ignore = st.checkbox("Admin: Ignorar bloqueios") if st.session_state.get('is_admin') else False
+
     if st.button("Confirmar Reserva", use_container_width=True):
         agora = datetime.datetime.now()
         dt_check = datetime.datetime.combine(dt, datetime.time(int(hr[:2]), 0))
         
-        # Validacoes User
-        if dt.weekday() == 6: st.error("Domingo fechado."); return
-        if dt_check < agora: st.error("Data passada."); return
+        erro = None
+        if not ignore:
+            if dt.weekday() == 6: erro = "Fechado aos domingos."
+            elif dt_check < agora: erro = "Data no passado."
         
-        # Check conflito
-        c = supabase.table("reservas").select("id").eq("sala_nome", sala_t).eq("data_reserva", str(dt)).eq("hora_inicio", hr).eq("status", "confirmada").execute()
-        if c.data: st.error("Horário Ocupado!"); return
-        
-        # Insert
-        user = st.session_state['user']
-        nm = resolver_nome(user.email, nome_meta=user.user_metadata.get('nome'))
-        
-        supabase.table("reservas").insert({
-            "sala_nome": sala_t, "data_reserva": str(dt), "hora_inicio": hr, "hora_fim": f"{int(hr[:2])+1:02d}:00",
-            "user_id": user.id, "email_profissional": user.email, "nome_profissional": nm,
-            "valor_cobrado": get_preco(), "status": "confirmada"
-        }).execute()
-        st.toast("Sucesso!"); st.rerun()
+        if erro: st.error(erro)
+        else:
+            try:
+                # Conflito?
+                chk = supabase.table("reservas").select("id").eq("sala_nome", sala_padrao)\
+                    .eq("data_reserva", str(dt)).eq("hora_inicio", hr).eq("status", "confirmada").execute()
+                if chk.data:
+                    st.error("Horário já reservado!")
+                else:
+                    user = st.session_state['user']
+                    nm = resolver_nome(user.email, user.user_metadata.get('nome'))
+                    supabase.table("reservas").insert({
+                        "sala_nome": sala_padrao, "data_reserva": str(dt),
+                        "hora_inicio": hr, "hora_fim": f"{int(hr[:2])+1:02d}:00",
+                        "user_id": user.id, "email_profissional": user.email, "nome_profissional": nm,
+                        "valor_cobrado": get_preco(), "status": "confirmada"
+                    }).execute()
+                    st.toast("Sucesso!", icon="✅")
+                    st.rerun()
+            except Exception as e: st.error(f"Erro: {e}")
 
-# --- 8. LOGIN E MAIN ---
-if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
+# --- 6. RENDERIZAÇÃO DO CALENDÁRIO (CORE) ---
+def render_calendar(sala):
+    # 1. CONTROLES SUPERIORES
+    col_nav_L, col_nav_C, col_nav_R = st.columns([1, 4, 1])
+    
+    with col_nav_L:
+        if st.button("◀", use_container_width=True): navegar('prev'); st.rerun()
+    with col_nav_R:
+        if st.button("▶", use_container_width=True): navegar('next'); st.rerun()
+        
+    with col_nav_C:
+        # Toggle View
+        c_v1, c_v2, c_v3 = st.columns(3)
+        mode = st.session_state.view_mode
+        def set_mode(m): st.session_state.view_mode = m
+        
+        # Botões coloridos conforme estado
+        bt_d = "primary" if mode == 'DIA' else "secondary"
+        bt_s = "primary" if mode == 'SEMANA' else "secondary"
+        bt_m = "primary" if mode == 'MÊS' else "secondary"
+        
+        with c_v1: 
+            if st.button("Dia", type=bt_d, use_container_width=True): set_mode('DIA'); st.rerun()
+        with c_v2: 
+            if st.button("Semana", type=bt_s, use_container_width=True): set_mode('SEMANA'); st.rerun()
+        with c_v3: 
+            if st.button("Mês", type=bt_m, use_container_width=True): set_mode('MÊS'); st.rerun()
+            
+        # Label da Data
+        ref = st.session_state.data_ref
+        mes_str = ref.strftime("%B").capitalize()
+        label = f"{mes_str} {ref.year}"
+        if mode == 'SEMANA':
+            ini = ref - timedelta(days=ref.weekday())
+            fim = ini + timedelta(days=6)
+            label = f"{ini.day} - {fim.day} {mes_str}"
+        elif mode == 'DIA':
+            label = f"{ref.day} de {mes_str}"
+            
+        st.markdown(f"<div style='text-align:center; font-weight:800; color:#334155; margin-top:5px'>{label}</div>", unsafe_allow_html=True)
 
+    st.markdown("---")
+
+    # 2. PREPARAÇÃO DOS DADOS
+    if mode == 'MÊS':
+        ano, mes = ref.year, ref.month
+        last_day = calendar.monthrange(ano, mes)[1]
+        d_start, d_end = datetime.date(ano, mes, 1), datetime.date(ano, mes, last_day)
+    elif mode == 'SEMANA':
+        d_start = ref - timedelta(days=ref.weekday())
+        d_end = d_start + timedelta(days=6)
+    else: # DIA
+        d_start = d_end = ref
+
+    # Query Banco
+    reservas = []
+    try:
+        r = supabase.table("reservas").select("*").eq("sala_nome", sala).eq("status", "confirmada")\
+            .gte("data_reserva", str(d_start)).lte("data_reserva", str(d_end)).execute()
+        reservas = r.data
+    except: pass
+
+    # Indexar dados
+    mapa = {}
+    for item in reservas:
+        d = item['data_reserva']
+        if mode == 'MÊS':
+            if d not in mapa: mapa[d] = []
+            mapa[d].append(item)
+        else:
+            if d not in mapa: mapa[d] = {}
+            mapa[d][item['hora_inicio']] = item
+
+    # 3. RENDERIZAÇÃO VISUAL
+    
+    # >>> MODO MÊS (GRID) <<<
+    if mode == 'MÊS':
+        dias_nome = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB']
+        cols = st.columns(7)
+        for i, d in enumerate(dias_nome):
+            cols[i].markdown(f"<div style='text-align:center; font-size:11px; font-weight:bold; color:#94a3b8'>{d}</div>", unsafe_allow_html=True)
+        
+        cal_mat = calendar.monthcalendar(ref.year, ref.month)
+        for semana in cal_mat:
+            cols = st.columns(7)
+            for i, dia in enumerate(semana):
+                if dia == 0:
+                    cols[i].markdown("<div style='height:80px; background:#f8fafc; border:1px solid #f1f5f9; border-radius:6px'></div>", unsafe_allow_html=True)
+                else:
+                    dt_atual = datetime.date(ref.year, ref.month, dia)
+                    dt_str = str(dt_atual)
+                    
+                    html_evts = ""
+                    if dt_str in mapa:
+                        for evt in mapa[dt_str]:
+                            nm = resolver_nome(evt['email_profissional'], nome_banco=evt.get('nome_profissional'))
+                            # Chip compacto para mês
+                            html_evts += f"<div class='month-evt-dot' title='{evt['hora_inicio'][:5]} - {nm}'>{evt['hora_inicio'][:5]} {nm}</div>"
+                    
+                    bg_color = "#f0fdfa" if dt_atual == datetime.date.today() else "white"
+                    border_color = "#0d9488" if dt_atual == datetime.date.today() else "#e2e8f0"
+                    
+                    cols[i].markdown(f"""
+                    <div class='month-day' style='background:{bg_color}; border-color:{border_color}'>
+                        <div class='month-day-header'>{dia}</div>
+                        {html_evts}
+                    </div>
+                    """, unsafe_allow_html=True)
+
+    # >>> MODO DIA / SEMANA (TIMELINE) <<<
+    else:
+        # Configurar Colunas
+        if mode == 'SEMANA':
+            dias_visiveis = [d_start + timedelta(days=i) for i in range(7)]
+            razao_cols = [0.5] + [1]*7
+        else: # DIA
+            dias_visiveis = [d_start]
+            razao_cols = [0.5, 6]
+
+        # Cabeçalho
+        c_head = st.columns(razao_cols)
+        c_head[0].write("")
+        d_names = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
+        
+        for i, d in enumerate(dias_visiveis):
+            wd = d.weekday()
+            is_today = d == datetime.date.today()
+            cor_num = "today" if is_today else ""
+            txt_cor = "#ef4444" if wd == 6 else "#64748b"
+            
+            c_head[i+1].markdown(f"""
+            <div class='day-col-header'>
+                <div class='day-name' style='color:{txt_cor}'>{d_names[wd]}</div>
+                <div class='day-num {cor_num}'>{d.day}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # Slots de Hora
+        horarios = [f"{h:02d}:00:00" for h in range(7, 23)]
+        for hora in horarios:
+            c_slots = st.columns(razao_cols)
+            c_slots[0].markdown(f"<div class='time-label'>{hora[:5]}</div>", unsafe_allow_html=True)
+            
+            for i, d in enumerate(dias_visiveis):
+                d_str = str(d)
+                reserva = mapa.get(d_str, {}).get(hora)
+                container = c_slots[i+1].container()
+                
+                # Renderiza Conteúdo do Slot
+                if reserva:
+                    nm = resolver_nome(reserva['email_profissional'], nome_banco=reserva.get('nome_profissional'))
+                    container.markdown(f"<div class='evt-chip' title='{nm}'>👤 {nm}</div>", unsafe_allow_html=True)
+                else:
+                    # Verifica Bloqueio (Passado ou Domingo)
+                    dt_slot = datetime.datetime.combine(d, datetime.time(int(hora[:2]), 0))
+                    if d.weekday() == 6 or dt_slot < datetime.datetime.now():
+                        container.markdown("<div class='blocked-slot'></div>", unsafe_allow_html=True)
+                    else:
+                        # Slot Livre (Vazio transparente para manter grid)
+                        container.markdown("<div style='height:45px'></div>", unsafe_allow_html=True)
+
+    # Botão Flutuante Inferior
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("➕ Novo Agendamento", type="primary", use_container_width=True):
+        modal_agendamento(sala, st.session_state.data_ref)
+
+# --- 7. TELA ADMIN ---
+def tela_admin():
+    st.markdown("### ⚙️ Painel Administrativo")
+    t1, t2 = st.tabs(["Dashboard & Preço", "Gerenciar Tudo"])
+    
+    with t1:
+        # KPIs
+        try:
+            df = pd.DataFrame(supabase.table("reservas").select("*").eq("status", "confirmada").execute().data)
+            receita = df['valor_cobrado'].sum() if not df.empty else 0
+            horas = len(df) if not df.empty else 0
+            
+            k1, k2, k3 = st.columns(3)
+            k1.metric("Receita Total", f"R$ {receita:.0f}")
+            k2.metric("Horas Locadas", horas)
+            k3.metric("Preço Atual", f"R$ {get_preco():.2f}")
+            
+            st.divider()
+            
+            # Alterar Preço
+            c_p, c_g = st.columns([1, 2])
+            with c_p:
+                nv = st.number_input("Novo Valor Hora", value=get_preco())
+                if st.button("Salvar Valor"):
+                    supabase.table("configuracoes").update({"preco_hora": nv}).gt("id", 0).execute()
+                    st.toast("Preço atualizado!")
+                    st.rerun()
+            with c_g:
+                if not df.empty:
+                    fig = px.pie(df, names='sala_nome', title="Ocupação por Sala", color_discrete_sequence=['#0d9488', '#3b82f6'])
+                    fig.update_layout(height=250)
+                    st.plotly_chart(fig, use_container_width=True)
+        except: pass
+
+    with t2:
+        st.write("Lista Global (Cancelamento sem restrição)")
+        try:
+            # Lista com busca simples
+            q = st.text_input("Buscar (Nome/Email)")
+            res = supabase.table("reservas").select("*").eq("status", "confirmada").order("data_reserva", desc=True).limit(50).execute()
+            df_r = pd.DataFrame(res.data)
+            
+            if not df_r.empty:
+                if q: 
+                    df_r = df_r[df_r['email_profissional'].str.contains(q, case=False)]
+                
+                for _, r in df_r.iterrows():
+                    nm = resolver_nome(r['email_profissional'], nome_banco=r.get('nome_profissional'))
+                    c1, c2, c3 = st.columns([2, 4, 2])
+                    c1.write(f"📅 {r['data_reserva']}")
+                    c2.write(f"👤 {nm} ({r['sala_nome']})")
+                    if c3.button("Cancelar", key=f"adm_{r['id']}"):
+                        supabase.table("reservas").update({"status": "cancelada"}).eq("id", r['id']).execute()
+                        st.rerun()
+                    st.divider()
+        except: pass
+
+# --- 8. APP PRINCIPAL ---
 def main():
     if 'user' not in st.session_state:
-        c1, c2, c3 = st.columns([1, 1.5, 1])
+        c1, c2, c3 = st.columns([1, 1.2, 1])
         with c2:
-            st.markdown("<br><h1 style='text-align:center; color:#0d9488'>Ψ LocaPsico</h1>", unsafe_allow_html=True)
-            t1, t2 = st.tabs(["Entrar", "Cadastrar"])
-            with t1:
+            st.markdown("<br><br><div style='text-align:center'><div class='psi-icon' style='width:60px;height:60px;margin:auto;font-size:30px'>Ψ</div><h1 style='color:#0f172a'>LocaPsico</h1></div>", unsafe_allow_html=True)
+            t_log, t_cad = st.tabs(["Entrar", "Cadastrar"])
+            with t_log:
                 e = st.text_input("Email")
                 s = st.text_input("Senha", type="password")
-                if st.button("Entrar", use_container_width=True):
+                if st.button("Acessar", use_container_width=True):
                     try:
                         u = supabase.auth.sign_in_with_password({"email": e, "password": s})
                         st.session_state['user'] = u.user
                         st.session_state['is_admin'] = (e == "admin@admin.com.br")
                         st.rerun()
                     except: st.error("Erro login")
-            with t2:
+            with t_cad:
                 n = st.text_input("Nome")
-                ne = st.text_input("Email Reg")
-                ns = st.text_input("Senha Reg", type="password")
-                if st.button("Criar", use_container_width=True):
-                    supabase.auth.sign_up({"email": ne, "password": ns, "options": {"data": {"nome": n}}})
-                    st.success("Criado!")
+                em = st.text_input("Email Reg")
+                ps = st.text_input("Senha Reg", type="password")
+                if st.button("Criar Conta", use_container_width=True):
+                    try:
+                        supabase.auth.sign_up({"email": em, "password": ps, "options": {"data": {"nome": n}}})
+                        st.success("Criado! Faça login.")
+                    except: st.error("Erro cadastro")
         return
 
-    # Routing
+    # LOGADO
+    user = st.session_state['user']
+    nome_topo = resolver_nome(user.email, user.user_metadata.get('nome'))
+    
+    st.markdown(f"""
+    <div class='app-header'>
+        <div class='logo-area'><div class='psi-icon'>Ψ</div> LOCAPSICO</div>
+        <div style='color:#64748b'>Olá, <b>{nome_topo}</b></div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # TABS PRINCIPAIS
+    tabs_labels = ["📅 AGENDA", "📊 MEU PAINEL"]
+    if st.session_state.get('is_admin'): tabs_labels.append("⚙️ ADMIN")
+    
+    tabs = st.tabs(tabs_labels)
+    
+    # 1. AGENDA
+    with tabs[0]:
+        c_sala, c_cal = st.columns([1, 4])
+        with c_sala:
+            st.markdown("#### Selecione a Sala")
+            sala = st.radio("S", ["Sala 1", "Sala 2"], label_visibility="collapsed")
+            st.info("Utilize a visualização 'Semana' para agendar com mais precisão.")
+        with c_cal:
+            render_calendar(sala)
+
+    # 2. MEU PAINEL
+    with tabs[1]:
+        try:
+            # Pega SÓ CONFIRMADAS
+            df = pd.DataFrame(supabase.table("reservas").select("*").eq("user_id", user.id).eq("status", "confirmada").execute().data)
+            
+            c1, c2 = st.columns(2)
+            val = df['valor_cobrado'].sum() if not df.empty else 0
+            qtd = len(df) if not df.empty else 0
+            
+            c1.metric("Total Investido", f"R$ {val:.0f}")
+            c2.metric("Reservas Ativas", qtd)
+            
+            st.markdown("### 🗓️ Próximos Agendamentos")
+            hoje = str(datetime.date.today())
+            futs = supabase.table("reservas").select("*").eq("user_id", user.id).eq("status", "confirmada").gte("data_reserva", hoje).order("data_reserva").execute().data
+            
+            if futs:
+                for r in futs:
+                    dt_obj = datetime.datetime.strptime(f"{r['data_reserva']} {r['hora_inicio']}", "%Y-%m-%d %H:%M:%S")
+                    diff = (dt_obj - datetime.datetime.now()).total_seconds()/3600
+                    
+                    cc1, cc2, cc3 = st.columns([1, 3, 1])
+                    cc1.write(f"📅 **{r['data_reserva'][8:]}/{r['data_reserva'][5:7]}**")
+                    cc2.write(f"{r['sala_nome']} às {r['hora_inicio'][:5]}")
+                    
+                    if diff > 24:
+                        if cc3.button("Cancelar", key=f"uc_{r['id']}"):
+                            supabase.table("reservas").update({"status": "cancelada"}).eq("id", r['id']).execute()
+                            st.toast("Cancelado!")
+                            st.rerun()
+                    else: cc3.caption("🔒 < 24h")
+                    st.divider()
+            else: st.info("Sem agendamentos futuros.")
+        except: pass
+
+    # 3. ADMIN
+    if len(tabs) > 2:
+        with tabs[2]: tela_admin()
+
     with st.sidebar:
-        st.write(f"Logado: **{resolver_nome(st.session_state['user'].email)}**")
-        if st.button("Sair"):
+        if st.button("Sair da Conta"):
             supabase.auth.sign_out()
             st.session_state.clear()
             st.rerun()
 
-    if st.session_state.get('is_admin'):
-        tela_admin()
-    else:
-        tela_usuario()
-
 if __name__ == "__main__":
     main()
+
