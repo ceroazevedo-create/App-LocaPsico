@@ -8,6 +8,7 @@ import base64
 import calendar
 import time
 import os
+import streamlit.components.v1 as components
 
 # --- 1. CONFIGURAÇÕES GERAIS ---
 st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide")
@@ -15,69 +16,61 @@ st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide")
 # NOME DA LOGO
 NOME_DO_ARQUIVO_LOGO = "logo.png" 
 
-# --- CSS NUCLEAR (REMOÇÃO TOTAL DE INTERFACE) ---
-hide_st_style = """
+# --- HACK JAVASCRIPT + CSS (A SOLUÇÃO DEFINITIVA) ---
+# O CSS esconde, o Javascript remove do HTML para garantir
+html_code = """
+    <script>
+    // Função para remover elementos persistentes
+    function removeElements() {
+        // Remove o botão de "Manage App" e o "Viewer Badge"
+        const badges = window.parent.document.querySelectorAll('[data-testid="stDecoration"], [data-testid="stToolbar"], .viewerBadge_container__1QSob, .stApp > header');
+        badges.forEach(el => el.style.display = 'none');
+        
+        // Tenta remover pelo texto do rodapé
+        const footerLinks = window.parent.document.querySelectorAll('a');
+        footerLinks.forEach(el => {
+            if(el.innerText.includes("Streamlit")) {
+                el.style.display = 'none';
+            }
+        });
+    }
+    // Roda repetidamente para garantir que suma mesmo se a net for lenta
+    window.setInterval(removeElements, 500);
+    </script>
+    
     <style>
-    /* 1. Esconde o Menu Hamburger e o Header padrão */
+    /* CSS de Segurança caso o JS falhe */
     #MainMenu {visibility: hidden !important;}
-    header {visibility: hidden !important;}
-    
-    /* 2. Esconde o Rodapé padrão */
     footer {visibility: hidden !important;}
+    header {visibility: hidden !important;}
+    [data-testid="stToolbar"] {display: none !important;}
+    [data-testid="stDecoration"] {display: none !important;}
+    [data-testid="stStatusWidget"] {display: none !important;}
     
-    /* 3. Esconde a Toolbar (botões de dev no canto superior direito) */
-    [data-testid="stToolbar"] {
-        display: none !important;
-    }
-
-    /* 4. Esconde a Decoração colorida no topo (linha colorida) */
-    [data-testid="stDecoration"] {
-        display: none !important;
-    }
-
-    /* 5. Esconde o Status Widget (o bonequinho correndo) */
-    [data-testid="stStatusWidget"] {
-        display: none !important;
-    }
-
-    /* 6. ESPECÍFICO: Tenta esconder o 'Viewer Badge' (link no canto inferior direito) */
-    /* Streamlit costuma mudar o nome da classe, então tentamos várias abordagens */
+    /* Remove a marca d'água no canto inferior direito */
     .viewerBadge_container__1QSob {display: none !important;}
-    ._container_gzau3_1 {display: none !important;}
-    .viewerBadge_link__1S137 {display: none !important;}
     
-    /* Abordagem genérica para links flutuantes no rodapé */
-    a[href*="streamlit.app"] {
-        display: none !important;
-    }
-
-    /* 7. Ajuste de Layout para subir o conteúdo (já que o header sumiu) */
+    /* Ajuste de topo */
     .block-container {
         padding-top: 1rem !important;
         max-width: 1000px;
     }
-    
-    /* Garante que o fundo do header seja transparente se ele insistir em aparecer */
-    .stApp > header {
-        background-color: transparent !important;
-    }
     </style>
 """
-st.markdown(hide_st_style, unsafe_allow_html=True)
-
+components.html(html_code, height=0)
 
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     
-    /* --- RESET GERAL --- */
+    /* RESET GERAL */
     .stApp { 
         background-color: #f2f4f7;
         font-family: 'Inter', sans-serif; 
         color: #1a1f36;
     }
 
-    /* --- CARD DE LOGIN --- */
+    /* CARD DE LOGIN */
     div[data-testid="column"]:nth-of-type(2) > div {
         background-color: #ffffff;
         padding: 48px 40px;
@@ -87,21 +80,20 @@ st.markdown("""
         margin-top: 5vh;
     }
 
-    /* --- LOGO PROPORCIONAL E CENTRALIZADA --- */
+    /* LOGO PROPORCIONAL */
     div[data-testid="stImage"] {
         display: flex;
         justify-content: center !important;
-        align-items: center !important;
         width: 100%;
         margin-bottom: 24px;
     }
     div[data-testid="stImage"] > img {
         object-fit: contain;
-        width: 85% !important; /* Logo Grande */
+        width: 85% !important;
         max-width: 400px;
     }
 
-    /* --- TIPOGRAFIA --- */
+    /* TIPOGRAFIA */
     h1 { 
         font-size: 28px;
         font-weight: 700; 
@@ -118,7 +110,7 @@ st.markdown("""
         line-height: 1.5;
     }
     
-    /* --- INPUTS --- */
+    /* INPUTS */
     .stTextInput label { font-size: 13px; font-weight: 600; color: #3c4257; margin-bottom: 4px;}
     .stTextInput input {
         background-color: #ffffff;
@@ -136,7 +128,7 @@ st.markdown("""
         outline: none;
     }
 
-    /* --- BOTÃO PRINCIPAL (VERDE COM TEXTO BRANCO) --- */
+    /* BOTÃO PRINCIPAL */
     div[data-testid="stVerticalBlock"] button[kind="primary"] {
         background-color: #0d9488 !important;
         color: #ffffff !important;
@@ -147,7 +139,7 @@ st.markdown("""
         border-radius: 10px;
         width: 100%;
         margin-top: 16px;
-        transition: transform 0.1s, box-shadow 0.2s;
+        transition: transform 0.1s;
         box-shadow: 0 4px 6px rgba(13, 148, 136, 0.2);
     }
     div[data-testid="stVerticalBlock"] button[kind="primary"] * {
@@ -155,11 +147,10 @@ st.markdown("""
     }
     div[data-testid="stVerticalBlock"] button[kind="primary"]:hover {
         background-color: #0f766e !important;
-        box-shadow: 0 6px 12px rgba(13, 148, 136, 0.3);
         transform: translateY(-1px);
     }
 
-    /* --- LINK ESQUECI SENHA --- */
+    /* LINK ESQUECI SENHA */
     .forgot-container { text-align: center; margin-top: 24px; }
     .forgot-btn button {
         background: none !important; border: none !important; padding: 0 !important;
@@ -170,7 +161,7 @@ st.markdown("""
         color: #0d9488 !important; text-decoration: underline !important;
     }
 
-    /* --- RESPONSIVIDADE --- */
+    /* RESPONSIVIDADE */
     @media (max-width: 768px) {
         div[data-testid="column"]:nth-of-type(2) > div {
             box-shadow: none; border: none; background-color: transparent; padding: 0;
@@ -178,7 +169,7 @@ st.markdown("""
         .block-container { padding-top: 2rem !important; }
     }
     
-    /* CSS INTERNO */
+    /* INTERNO */
     .app-header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 30px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
     .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; }
     .blocked-slot { background: repeating-linear-gradient(45deg, #fef2f2, #fef2f2 10px, #fee2e2 10px, #fee2e2 20px); height: 40px; border-radius: 4px; opacity: 0.5; }
@@ -366,7 +357,6 @@ def main():
             
             # --- LOGO (CONTROLADA PELO CSS) ---
             if os.path.exists(NOME_DO_ARQUIVO_LOGO):
-                # O CSS garante width: 85% e centralização
                 st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
             else:
                 st.markdown("<h1 style='text-align:center; color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
