@@ -34,177 +34,40 @@ supabase = init_connection()
 # --- 3. CSS VISUAL (DESIGN PREMIUM) ---
 st.markdown("""
 <style>
-    /* --- FUNDO E TIPOGRAFIA GERAL --- */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-    
-    .stApp {
-        background-color: #f8fafc;
-        font-family: 'Inter', sans-serif;
-        color: #1e293b;
-    }
-    
-    .block-container {
-        padding-top: 2rem !important;
-        max-width: 1100px;
-    }
-
-    /* Container Principal */
-    div[data-testid="column"]:nth-of-type(2) > div {
-        background-color: #ffffff;
-        padding: 40px;
-        border-radius: 16px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-        border: 1px solid #f1f5f9;
-        margin-bottom: 20px;
-    }
-
-    div[data-testid="stImage"] {
-        display: flex;
-        justify-content: center;
-        margin-bottom: 24px;
-    }
-    div[data-testid="stImage"] > img {
-        max-height: 120px;
-        object-fit: contain;
-    }
-
-    h1 {
-        font-size: 26px;
-        font-weight: 700;
-        color: #0f172a;
-        text-align: center;
-        margin-bottom: 8px;
-        letter-spacing: -0.5px;
-    }
+    .stApp { background-color: #f8fafc; font-family: 'Inter', sans-serif; color: #1e293b; }
+    .block-container { padding-top: 2rem !important; max-width: 1100px; }
+    div[data-testid="column"]:nth-of-type(2) > div { background-color: #ffffff; padding: 40px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid #f1f5f9; margin-bottom: 20px; }
+    div[data-testid="stImage"] { display: flex; justify-content: center; margin-bottom: 24px; }
+    div[data-testid="stImage"] > img { max-height: 120px; object-fit: contain; }
+    h1 { font-size: 26px; font-weight: 700; color: #0f172a; text-align: center; margin-bottom: 8px; letter-spacing: -0.5px; }
     h2, h3 { color: #334155; font-weight: 600; }
     p { color: #64748b; }
-
-    /* --- INPUTS --- */
-    .stTextInput input {
-        background-color: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        padding: 10px 12px;
-        height: 45px;
-        font-size: 15px;
-        transition: all 0.2s;
-    }
-    .stTextInput input:focus {
-        border-color: #0d9488;
-        box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2);
-    }
-
-    /* --- BOTÕES PRIMÁRIOS (VERDE TEAL) --- */
-    div[data-testid="stForm"] button, 
-    button[kind="primary"] {
-        background: linear-gradient(180deg, #0f766e 0%, #0d9488 100%) !important;
-        border: none !important;
-        height: 45px !important;
-        font-weight: 600 !important;
-        letter-spacing: 0.5px;
-        border-radius: 8px !important;
-        box-shadow: 0 2px 4px rgba(13, 148, 136, 0.2) !important;
-        color: white !important;
-        transition: transform 0.1s ease !important;
-    }
-    div[data-testid="stForm"] button:hover, 
-    button[kind="primary"]:hover {
-        background: #0f766e !important;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 6px rgba(13, 148, 136, 0.3) !important;
-    }
-    div[data-testid="stForm"] button *, button[kind="primary"] * {
-        color: white !important;
-    }
-
-    /* --- BOTÕES SECUNDÁRIOS --- */
-    button[kind="secondary"] {
-        background-color: white !important;
-        border: 1px solid #cbd5e1 !important;
-        color: #475569 !important;
-        border-radius: 8px !important;
-        height: 45px !important;
-        font-weight: 500 !important;
-    }
-    button[kind="secondary"]:hover {
-        background-color: #f1f5f9 !important;
-        border-color: #94a3b8 !important;
-        color: #1e293b !important;
-    }
-
-    /* --- BOTÕES DO CALENDÁRIO (DIAS) --- */
-    div[data-testid="stButton"] button {
-        border-radius: 8px !important;
-        border: none !important;
-        font-weight: bold !important;
-    }
-
-    /* --- SLOT "LIVRE" --- */
-    div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-        background-color: #f0fdf4 !important;
-        border: 1px solid #bbf7d0 !important;
-        color: #15803d !important;
-        font-size: 12px !important;
-        font-weight: 600 !important;
-        height: 38px !important;
-        min-height: 38px !important;
-        border-radius: 6px !important;
-        box-shadow: none !important;
-        transition: all 0.2s;
-    }
-    div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover {
-        background-color: #16a34a !important;
-        border-color: #16a34a !important;
-        color: white !important;
-    }
-    div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover p {
-        color: white !important;
-    }
-
-    /* --- MÉTRICAS --- */
-    div[data-testid="stMetric"] {
-        background-color: #f8fafc;
-        padding: 15px;
-        border-radius: 10px;
-        border: 1px solid #e2e8f0;
-        text-align: center;
-    }
+    .stTextInput input { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; height: 45px; font-size: 15px; }
+    .stTextInput input:focus { border-color: #0d9488; box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2); }
+    
+    div[data-testid="stForm"] button, button[kind="primary"] { background: linear-gradient(180deg, #0f766e 0%, #0d9488 100%) !important; border: none !important; height: 45px !important; font-weight: 600 !important; border-radius: 8px !important; box-shadow: 0 2px 4px rgba(13, 148, 136, 0.2) !important; color: white !important; }
+    div[data-testid="stForm"] button:hover, button[kind="primary"]:hover { background: #0f766e !important; transform: translateY(-1px); }
+    div[data-testid="stForm"] button *, button[kind="primary"] * { color: white !important; }
+    
+    button[kind="secondary"] { background-color: white !important; border: 1px solid #cbd5e1 !important; color: #475569 !important; border-radius: 8px !important; height: 45px !important; font-weight: 500 !important; }
+    button[kind="secondary"]:hover { background-color: #f1f5f9 !important; border-color: #94a3b8 !important; }
+    
+    div[data-testid="stButton"] button { border-radius: 8px !important; border: none !important; font-weight: bold !important; }
+    div[data-testid="stVerticalBlock"] button[kind="secondary"] { background-color: #f0fdf4 !important; border: 1px solid #bbf7d0 !important; color: #15803d !important; font-size: 12px !important; font-weight: 600 !important; height: 38px !important; min-height: 38px !important; border-radius: 6px !important; box-shadow: none !important; }
+    div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover { background-color: #16a34a !important; border-color: #16a34a !important; color: white !important; }
+    div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover p { color: white !important; }
+    
+    div[data-testid="stMetric"] { background-color: #f8fafc; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; text-align: center; }
     div[data-testid="stMetricLabel"] { font-size: 14px !important; color: #64748b !important; }
     div[data-testid="stMetricValue"] { font-size: 24px !important; color: #0d9488 !important; font-weight: 700 !important; }
-
-    /* --- BOTÕES DE PERIGO --- */
-    button[help="Excluir Usuário"], button[key="logout_btn"], button[key="admin_logout"] { 
-        border-color: #fecaca !important; 
-        color: #dc2626 !important; 
-        background-color: #fef2f2 !important; 
-    }
-    button[help="Excluir Usuário"]:hover, button[key="logout_btn"]:hover {
-        background-color: #dc2626 !important;
-        color: white !important;
-        border-color: #dc2626 !important;
-    }
-    button[help="Excluir Usuário"]:hover *, button[key="logout_btn"]:hover * { color: white !important; }
-
-    /* Olhinho da senha */
-    div[data-testid="stTextInput"] button {
-        background-color: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-    }
     
-    .evt-chip {
-        background: white;
-        border-left: 4px solid #0d9488;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        color: #0f766e;
-        font-size: 11px;
-        font-weight: 600;
-        padding: 6px 8px;
-        border-radius: 4px;
-        margin-bottom: 4px;
-        display: flex;
-        align-items: center;
-    }
+    button[help="Excluir Usuário"], button[key="logout_btn"], button[key="admin_logout"] { border-color: #fecaca !important; color: #dc2626 !important; background-color: #fef2f2 !important; }
+    button[help="Excluir Usuário"]:hover, button[key="logout_btn"]:hover { background-color: #dc2626 !important; color: white !important; border-color: #dc2626 !important; }
+    button[help="Excluir Usuário"]:hover *, button[key="logout_btn"]:hover * { color: white !important; }
+    div[data-testid="stTextInput"] button { background-color: transparent !important; border: none !important; box-shadow: none !important; }
+    
+    .evt-chip { background: white; border-left: 4px solid #0d9488; box-shadow: 0 1px 2px rgba(0,0,0,0.05); color: #0f766e; font-size: 11px; font-weight: 600; padding: 6px 8px; border-radius: 4px; margin-bottom: 4px; display: flex; align-items: center; }
     .admin-blocked { background: #334155; color: #f8fafc; border-radius: 4px; font-size: 10px; font-weight: bold; text-align: center; padding: 8px; letter-spacing: 1px; }
     .blocked-slot { background-color: #fef2f2; height: 35px; border-radius: 6px; border: 1px solid #fecaca; opacity: 0.7; margin-bottom: 5px; }
 </style>
@@ -298,8 +161,7 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
         idx_padrao = 0
         if hora_sugerida_int:
             str_h = f"{hora_sugerida_int:02d}:00"
-            if str_h in lista_horas:
-                idx_padrao = lista_horas.index(str_h)
+            if str_h in lista_horas: idx_padrao = lista_horas.index(str_h)
         hr = st.selectbox("Horário de Início", lista_horas, index=idx_padrao, disabled=(len(lista_horas)==0))
         if hr:
             horarios_selecionados = [(hr, f"{int(hr[:2])+1:02d}:00")]
@@ -499,22 +361,44 @@ def tela_admin_master():
         c_dt_b, c_sl_b, c_bt_b = st.columns([2, 2, 2])
         dt_block = c_dt_b.date_input("Data para Bloquear")
         sala_block = c_sl_b.selectbox("Sala", ["Sala 1", "Sala 2", "Ambas"])
-        if c_bt_b.button("🔒 Bloquear Data", type="primary"):
+        
+        c_act_1, c_act_2 = st.columns(2)
+        
+        # BOTÃO 1: BLOQUEAR
+        if c_act_1.button("🔒 Bloquear Data", type="primary", use_container_width=True):
             salas_to_block = ["Sala 1", "Sala 2"] if sala_block == "Ambas" else [sala_block]
             try:
+                # 1. Limpa o dia para não duplicar ou conflitar
                 for s in salas_to_block:
                     supabase.table("reservas").update({"status": "cancelada"}).eq("sala_nome", s).eq("data_reserva", str(dt_block)).neq("status", "cancelada").execute()
+                
+                # 2. Insere bloqueio (CORREÇÃO DE UUID APLICADA)
                 inserts = []
                 for s in salas_to_block:
                     for h in range(7, 22):
                         inserts.append({
                             "sala_nome": s, "data_reserva": str(dt_block), "hora_inicio": f"{h:02d}:00", "hora_fim": f"{h+1:02d}:00",
-                            "user_id": "admin_block", "email_profissional": "admin@locapsico.com", "nome_profissional": "BLOQUEIO ADM",
+                            "user_id": st.session_state.user.id, # USA O ID DO ADMIN
+                            "email_profissional": st.session_state.user.email,
+                            "nome_profissional": "BLOQUEIO ADM",
                             "valor_cobrado": 0, "status": "bloqueado"
                         })
                 supabase.table("reservas").insert(inserts).execute()
                 st.success(f"Dia {dt_block} bloqueado!")
             except Exception as e: st.error(f"Erro: {e}")
+
+        # BOTÃO 2: DESBLOQUEAR
+        if c_act_2.button("🔓 Desbloquear Data", type="secondary", use_container_width=True):
+            salas_to_block = ["Sala 1", "Sala 2"] if sala_block == "Ambas" else [sala_block]
+            try:
+                for s in salas_to_block:
+                    # Remove APENAS os bloqueios (status='bloqueado'), preserva reservas reais se houver
+                    supabase.table("reservas").delete().eq("sala_nome", s).eq("data_reserva", str(dt_block)).eq("status", "bloqueado").execute()
+                st.success(f"Dia {dt_block} desbloqueado!")
+                time.sleep(1)
+                st.rerun()
+            except Exception as e: st.error(f"Erro ao desbloquear: {e}")
+
     with tabs[3]:
         col_m, col_u = st.columns(2)
         mes_sel = col_m.selectbox("Mês", ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"])
@@ -730,14 +614,10 @@ def main():
         with c_head_btn:
             if st.button("Sair", key="logout_btn", use_container_width=True): supabase.auth.sign_out(); st.session_state.clear(); st.rerun()
         st.divider()
-        
-        # --- ABAS (SEGURANÇA AGORA É UMA ABA) ---
         tabs = st.tabs(["📅 Agenda", "📊 Painel", "🔒 Segurança"])
-        
         with tabs[0]:
             sala = st.radio("Sala", ["Sala 1", "Sala 2"], horizontal=True)
             render_calendar(sala)
-            
         with tabs[1]:
             st.markdown("### Meus Agendamentos")
             agora = datetime.datetime.now()
@@ -745,7 +625,6 @@ def main():
             inicio_mes = hoje.replace(day=1)
             df_fut = pd.DataFrame()
             try:
-                # LISTA DESDE INICIO DO MÊS (Histórico + Futuro)
                 res_user = supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").gte("data_reserva", str(inicio_mes)).order("data_reserva").order("hora_inicio").execute()
                 df_fut = pd.DataFrame(res_user.data)
             except: st.error("Erro ao carregar dados.")
@@ -753,9 +632,7 @@ def main():
             if not df_fut.empty:
                 for _, row in df_fut.iterrows():
                     dt_reserva = datetime.datetime.combine(datetime.date.fromisoformat(row['data_reserva']), datetime.datetime.strptime(row['hora_inicio'], "%H:%M:%S").time())
-                    
                     if dt_reserva < agora:
-                        # PASSADO (CINZA - SEM BOTÃO)
                         st.markdown(f"""
                         <div style="background-color: #f8fafc; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; color: #94a3b8; margin-bottom: 10px;">
                             <strong>✅ Realizado: {row['data_reserva']}</strong> às {row['hora_inicio'][:5]}<br>
@@ -763,7 +640,6 @@ def main():
                         </div>
                         """, unsafe_allow_html=True)
                     else:
-                        # FUTURO (VERDE - COM BOTÃO)
                         with st.container():
                             c_info, c_btn = st.columns([3, 1])
                             c_info.markdown(f"**{row['data_reserva']}** às **{row['hora_inicio'][:5]}** - {row['sala_nome']}")
@@ -779,19 +655,16 @@ def main():
                             else: c_btn.caption("🚫 < 24h")
                             st.divider()
             else: st.info("Sem agendamentos este mês.")
-                
             st.markdown("### Financeiro")
             try:
                 df_all = pd.DataFrame(supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").execute().data)
                 k1, k2 = st.columns(2)
                 k1.metric("Investido Total", f"R$ {df_all['valor_cobrado'].sum() if not df_all.empty else 0:.0f}")
                 k2.metric("Sessões Totais", len(df_all) if not df_all.empty else 0)
-            except: st.error("Erro ao carregar financeiro.")
-            
+            except: st.error("Erro ao carregar dados.")
         with tabs[2]:
             st.markdown("### Segurança da Conta")
             st.markdown("Redefina sua senha de acesso abaixo.")
-            
             p1 = st.text_input("Nova Senha", type="password")
             if st.button("Alterar Senha"):
                 if len(p1) < 6: st.warning("A senha deve ter pelo menos 6 caracteres.")
