@@ -69,7 +69,7 @@ st.markdown("""
         border-color: #fecaca !important; color: #ef4444 !important; background: #fef2f2 !important; font-weight: 600; 
     }
     
-    /* ESTILOS DE AGENDA */
+    /* AGENDA */
     .blocked-slot { 
         background-color: #fef2f2; 
         background-image: repeating-linear-gradient(45deg, #fee2e2 25%, transparent 25%, transparent 50%, #fee2e2 50%, #fee2e2 75%, transparent 75%, transparent);
@@ -96,11 +96,26 @@ def resolver_nome(email, nome_meta=None, nome_banco=None):
     if email and "thascaranalle" in email: return "Thays"
     return nome_banco or nome_meta or email.split('@')[0].title()
 
-def get_preco_hora():
+# Busca todos os preços configurados no banco
+def get_config_precos():
+    defaults = {
+        'preco_hora': 32.0, 'preco_manha': 100.0, 
+        'preco_tarde': 100.0, 'preco_noite': 80.0, 'preco_diaria': 250.0
+    }
     try:
-        r = supabase.table("configuracoes").select("preco_hora").limit(1).execute()
-        return float(r.data[0]['preco_hora']) if r.data else 32.00
-    except: return 32.00
+        r = supabase.table("configuracoes").select("*").limit(1).execute()
+        if r.data:
+            data = r.data[0]
+            # Usa .get() para evitar erro se a coluna ainda não existir no banco
+            return {
+                'preco_hora': float(data.get('preco_hora', 32.0)),
+                'preco_manha': float(data.get('preco_manha', 100.0)),
+                'preco_tarde': float(data.get('preco_tarde', 100.0)),
+                'preco_noite': float(data.get('preco_noite', 80.0)),
+                'preco_diaria': float(data.get('preco_diaria', 250.0)),
+            }
+        return defaults
+    except: return defaults
 
 def gerar_pdf_fatura(df, nome_usuario, mes_referencia):
     df = df.sort_values(by=['data_reserva', 'hora_inicio'])
@@ -119,7 +134,7 @@ def gerar_pdf_fatura(df, nome_usuario, mes_referencia):
     pdf.set_font("Arial", "B", 10)
     pdf.cell(30, 10, "Data", 1, 0, 'C', True)
     pdf.cell(30, 10, "Dia Sem.", 1, 0, 'C', True)
-    pdf.cell(30, 10, "Horario", 1, 0, 'C', True)
+    pdf.cell(25, 10, "Horario", 1, 0, 'C', True)
     pdf.cell(40, 10, "Sala", 1, 0, 'C', True)
     pdf.cell(30, 10, "Valor", 1, 1, 'C', True)
     pdf.set_font("Arial", "", 10)
@@ -132,7 +147,7 @@ def gerar_pdf_fatura(df, nome_usuario, mes_referencia):
         dia_sem_str = dias_sem[dt_obj.weekday()]
         pdf.cell(30, 10, dt_str, 1, 0, 'C')
         pdf.cell(30, 10, dia_sem_str, 1, 0, 'C')
-        pdf.cell(30, 10, str(row['hora_inicio'])[:5], 1, 0, 'C')
+        pdf.cell(25, 10, str(row['hora_inicio'])[:5], 1, 0, 'C')
         pdf.cell(40, 10, str(row['sala_nome']), 1, 0, 'C')
         pdf.cell(30, 10, f"R$ {row['valor_cobrado']:.2f}", 1, 1, 'R')
     pdf.ln(5)
@@ -152,36 +167,94 @@ def navegar(direcao):
 
 @st.dialog("Novo Agendamento")
 def modal_agendamento(sala_padrao, data_sugerida):
-    st.write("Confirmar Reserva")
+    st.markdown("### Detalhes da Reserva")
+    
+    # Busca configurações de preço
+    config_precos = get_config_precos()
+    
+    # 1. Escolha do Modo
+    modo = st.radio("Tipo de Cobrança", ["Por Hora", "Por Período"], horizontal=True)
+    
     dt = st.date_input("Data", value=data_sugerida, min_value=datetime.date.today())
-    dia_sem = dt.weekday()
-    if dia_sem == 6: 
-        lista_horas = []; st.error("Domingo: Fechado")
-    elif dia_sem == 5: 
-        lista_horas = [f"{h:02d}:00" for h in range(7, 14)]; st.info("Sábado: Até 14h")
-    else:
-        lista_horas = [f"{h:02d}:00" for h in range(7, 22)]
-    hr = st.selectbox("Horário", lista_horas, disabled=(len(lista_horas)==0))
-    if st.button("Confirmar", type="primary", use_container_width=True, disabled=(len(lista_horas)==0)):
+    
+    horarios_selecionados = []
+    valor_final = 0.0
+    
+    if modo == "Por Hora":
+        dia_sem = dt.weekday()
+        if dia_sem == 6: lista_horas = []; st.error("Domingo: Fechado")
+        elif dia_sem == 5: lista_horas = [f"{h:02d}:00" for h in range(7, 14)]; st.info("Sábado: Até 14h")
+        else: lista_horas = [f"{h:02d}:00" for h in range(7, 22)]
+        
+        hr = st.selectbox("Horário de Início", lista_horas, disabled=(len(lista_horas)==0))
+        if hr:
+            horarios_selecionados = [(hr, f"{int(hr[:2])+1:02d}:00")]
+            valor_final = config_precos['preco_hora']
+            
+    else: # Por Período
+        opcoes_periodo = {
+            "Manhã (07h - 12h)": {"start": 7, "end": 12, "price": config_precos['preco_manha']},
+            "Tarde (13h - 18h)": {"start": 13, "end": 18, "price": config_precos['preco_tarde']},
+            "Noite (18h - 22h)": {"start": 18, "end": 22, "price": config_precos['preco_noite']},
+            "Diária (07h - 22h)": {"start": 7, "end": 22, "price": config_precos['preco_diaria']}
+        }
+        sel_periodo = st.selectbox("Escolha o Período", list(opcoes_periodo.keys()))
+        dados_p = opcoes_periodo[sel_periodo]
+        
+        st.info(f"Reservando das {dados_p['start']}:00 às {dados_p['end']}:00 - Valor: R$ {dados_p['price']:.2f}")
+        
+        for h in range(dados_p['start'], dados_p['end']):
+            horarios_selecionados.append((f"{h:02d}:00", f"{h+1:02d}:00"))
+        valor_final = dados_p['price']
+
+    st.markdown("---")
+    is_recurring = st.checkbox("🔄 Repetir nas próximas 4 semanas (Mensal)")
+    
+    if st.button("Confirmar Agendamento", type="primary", use_container_width=True):
+        if not horarios_selecionados:
+            st.error("Nenhum horário selecionado."); return
+
+        user = st.session_state['user']
+        nm = resolver_nome(user.email, user.user_metadata.get('nome'))
         agora = datetime.datetime.now()
-        dt_check = datetime.datetime.combine(dt, datetime.time(int(hr[:2]), 0))
-        if dt_check < agora: st.error("Passado."); return
-        if dt.weekday() == 6: st.error("Fechado."); return
-        if dt.weekday() == 5 and int(hr[:2]) >= 14: st.error("Sábado fecha às 14h."); return
+        
+        datas_to_book = [dt]
+        if is_recurring:
+            for i in range(1, 4): datas_to_book.append(dt + timedelta(days=7*i))
+        
         try:
-            chk = supabase.table("reservas").select("id").eq("sala_nome", sala_padrao).eq("data_reserva", str(dt)).eq("hora_inicio", hr).neq("status", "cancelada").execute()
-            if chk.data: st.error("Horário indisponível!")
-            else:
-                user = st.session_state['user']
-                nm = resolver_nome(user.email, user.user_metadata.get('nome'))
-                # Usa o valor da hora atual para o agendamento
-                val_hora = get_preco_hora()
-                supabase.table("reservas").insert({
-                    "sala_nome": sala_padrao, "data_reserva": str(dt), "hora_inicio": hr, "hora_fim": f"{int(hr[:2])+1:02d}:00",
-                    "user_id": user.id, "email_profissional": user.email, "nome_profissional": nm, "valor_cobrado": val_hora, "status": "confirmada"
-                }).execute()
-                st.toast("Agendado!", icon="✅"); st.rerun()
-        except Exception as e: st.error(f"Erro: {e}")
+            inserts = []
+            for d_res in datas_to_book:
+                if d_res.weekday() == 6: st.warning(f"Ignorado {d_res} (Domingo)."); continue
+                
+                for h_start, h_end in horarios_selecionados:
+                    dt_check = datetime.datetime.combine(d_res, datetime.datetime.strptime(h_start, "%H:%M").time())
+                    
+                    if dt_check < agora: st.error(f"Horário {h_start} em {d_res} já passou."); return
+                    if d_res.weekday() == 5 and int(h_start[:2]) >= 14: st.error(f"Sábado {d_res} fecha às 14h."); return
+
+                    chk = supabase.table("reservas").select("id").eq("sala_nome", sala_padrao).eq("data_reserva", str(d_res)).eq("hora_inicio", f"{h_start}:00").neq("status", "cancelada").execute()
+                    if chk.data: st.error(f"Conflito: {d_res} às {h_start} já está ocupado."); return 
+                    
+                    val_to_save = 0.0
+                    # Se for período, cobra o valor cheio SOMENTE no primeiro slot do dia
+                    if (h_start, h_end) == horarios_selecionados[0]:
+                        val_to_save = valor_final
+                    elif modo == "Por Hora": 
+                        val_to_save = valor_final 
+
+                    inserts.append({
+                        "sala_nome": sala_padrao, "data_reserva": str(d_res),
+                        "hora_inicio": f"{h_start}:00", "hora_fim": f"{h_end}:00",
+                        "user_id": user.id, "email_profissional": user.email, "nome_profissional": nm,
+                        "valor_cobrado": val_to_save, "status": "confirmada"
+                    })
+            
+            if inserts:
+                supabase.table("reservas").insert(inserts).execute()
+                st.toast("Agendamento(s) realizado(s)!", icon="✅"); time.sleep(1); st.rerun()
+                
+        except Exception as e: st.error(f"Erro técnico: {e}")
 
 def render_calendar(sala, is_admin_mode=False):
     c_L, c_R = st.columns([1, 1])
@@ -235,7 +308,6 @@ def render_calendar(sala, is_admin_mode=False):
         dias = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
         for i, d in enumerate(dias):
             cols[i].markdown(f"<div style='text-align:center; font-weight:bold; color:#64748b; font-size:12px; margin-bottom:5px'>{d}</div>", unsafe_allow_html=True)
-        
         cal_matrix = calendar.monthcalendar(ref.year, ref.month)
         for week in cal_matrix:
             cols = st.columns(7)
@@ -424,25 +496,24 @@ def tela_admin_master():
     tabs = st.tabs(["💰 Config", "📅 Visualizar/Excluir", "🚫 Bloqueios", "📄 Relatórios"])
     
     with tabs[0]: 
-        # Busca todas as configurações
-        r_conf = supabase.table("configuracoes").select("*").limit(1).execute()
-        current_conf = r_conf.data[0] if r_conf.data else {'preco_hora': 32.0, 'preco_periodo': 0.0}
-        
-        # Pega valores com fallback caso a coluna nova ainda não exista
-        val_h = current_conf.get('preco_hora', 32.0)
-        val_p = current_conf.get('preco_periodo', 0.0)
-
-        c1, c2, c3 = st.columns([1, 1, 1])
-        with c1: novo_preco_h = st.number_input("Valor da Hora (R$)", value=float(val_h), step=1.0)
-        with c2: novo_preco_p = st.number_input("Valor do Período (R$)", value=float(val_p), step=10.0)
-        with c3: 
-            st.write("<br>", unsafe_allow_html=True)
-            if st.button("💾 Salvar Configurações", type="primary"):
+        cf = get_config_precos()
+        st.markdown("### Configuração de Preços")
+        c1, c2 = st.columns(2)
+        with c1: 
+            ph = st.number_input("Valor Hora (R$)", value=cf['preco_hora'], step=1.0)
+            pm = st.number_input("Valor Manhã (07-12h)", value=cf['preco_manha'], step=1.0)
+            pt = st.number_input("Valor Tarde (13-18h)", value=cf['preco_tarde'], step=1.0)
+        with c2:
+            pn = st.number_input("Valor Noite (18-22h)", value=cf['preco_noite'], step=1.0)
+            pdia = st.number_input("Valor Diária (07-22h)", value=cf['preco_diaria'], step=1.0)
+            st.write("")
+            st.write("")
+            if st.button("💾 Salvar Tabela de Preços", type="primary"):
                 supabase.table("configuracoes").update({
-                    "preco_hora": novo_preco_h,
-                    "preco_periodo": novo_preco_p
+                    "preco_hora": ph, "preco_manha": pm, "preco_tarde": pt, 
+                    "preco_noite": pn, "preco_diaria": pdia
                 }).gt("id", 0).execute()
-                st.success("Configurações atualizadas!")
+                st.success("Preços atualizados!")
     
     with tabs[1]:
         st.info("Selecione a sala para visualizar e use o botão 🗑️ para excluir agendamentos.")
@@ -487,23 +558,18 @@ def tela_admin_master():
                     r_fin = supabase.table("reservas").select("*").eq("status", "confirmada").gte("data_reserva", d_ini).lte("data_reserva", d_fim).execute()
                     df_fin = pd.DataFrame(r_fin.data)
                     if not df_fin.empty:
-                        # Ordena
                         df_fin = df_fin.sort_values(by=['data_reserva', 'hora_inicio'])
-                        
                         df_fin['nm'] = df_fin.apply(lambda x: resolver_nome(x['email_profissional'], nome_banco=x['nome_profissional']), axis=1)
                         df_final = df_fin[df_fin['nm'] == user_sel]
-                        
                         if not df_final.empty:
                             total = df_final['valor_cobrado'].sum()
                             st.success(f"Total a Receber: R$ {total:.2f}")
                             
-                            # --- EXIBIR TABELA NA TELA ---
                             st.markdown("### Detalhamento")
                             df_table = df_final[['data_reserva', 'hora_inicio', 'sala_nome', 'valor_cobrado']].copy()
                             df_table.columns = ['Data', 'Horário', 'Sala', 'Valor (R$)']
                             st.dataframe(df_table, use_container_width=True, hide_index=True)
                             
-                            # --- PDF ---
                             pdf_data = gerar_pdf_fatura(df_final, user_sel, mes_sel)
                             b64 = base64.b64encode(pdf_data).decode()
                             st.markdown(f'<a href="data:application/octet-stream;base64,{b64}" download="Extrato_{user_sel}_{mes_sel}.pdf" style="text-decoration:none; background:#0d9488; color:white; padding:10px; border-radius:8px; display:block; text-align:center;">📥 BAIXAR PDF DETALHADO</a>', unsafe_allow_html=True)
@@ -513,4 +579,5 @@ def tela_admin_master():
 
 if __name__ == "__main__":
     main()
+
 
