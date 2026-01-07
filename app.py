@@ -13,13 +13,12 @@ import streamlit.components.v1 as components
 # --- 1. CONFIGURAÇÕES INICIAIS ---
 st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide", initial_sidebar_state="collapsed")
 
-# Inicializa Estado
+# Inicializa Estado (Garante que as variáveis existem)
 if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
 if 'user' not in st.session_state: st.session_state.user = None
 if 'is_admin' not in st.session_state: st.session_state.is_admin = False
 if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
 if 'view_mode' not in st.session_state: st.session_state.view_mode = 'SEMANA'
-if 'force_pass_reset' not in st.session_state: st.session_state.force_pass_reset = False
 
 NOME_DO_ARQUIVO_LOGO = "logo.png" 
 
@@ -31,29 +30,23 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. JAVASCRIPT CORRETOR DE URL ---
-js_fixer = """
+# --- 3. JAVASCRIPT: CAPTURA DE HASH (CRUCIAL) ---
+# Esse script converte o #access_token... do email em ?access_token... que o Python lê
+js_hash_fix = """
 <script>
-    try {
-        const doc = window.parent.document;
-        const style = doc.createElement('style');
-        style.innerHTML = `header, footer, .stApp > header { display: none !important; } [data-testid="stToolbar"] { display: none !important; } .viewerBadge_container__1QSob { display: none !important; }`;
-        doc.head.appendChild(style);
-    } catch (e) {}
-    
     if (window.location.hash) {
         const params = new URLSearchParams(window.location.hash.substring(1));
         if (params.has('access_token') && params.has('refresh_token')) {
             const newUrl = window.location.origin + window.location.pathname + 
                            '?access_token=' + params.get('access_token') + 
-                           '&refresh_token=' + params.get('refresh_token') +
+                           '&refresh_token=' + params.get('refresh_token') + 
                            '&type=' + (params.get('type') || 'recovery');
             window.location.href = newUrl;
         }
     }
 </script>
 """
-components.html(js_fixer, height=0)
+components.html(js_hash_fix, height=0)
 
 # --- 4. CSS VISUAL ---
 st.markdown("""
@@ -78,7 +71,7 @@ st.markdown("""
     div[data-testid="stVerticalBlock"] button[kind="primary"] * { color: #ffffff !important; }
     button[kind="secondary"] { border: 1px solid #e2e8f0; color: #64748b; }
     
-    button[key="logout_btn"], button[key="admin_logout"], button[kind="secondary"][help="Excluir"] { 
+    button[key="logout_btn"], button[key="admin_logout"] { 
         border-color: #fecaca !important; color: #ef4444 !important; background: #fef2f2 !important; font-weight: 600; 
     }
     
@@ -88,7 +81,34 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 5. FUNÇÕES ---
+# --- 5. FUNÇÕES LÓGICAS ---
+
+def process_url_token():
+    """Verifica e processa tokens na URL antes de qualquer coisa"""
+    qp = st.query_params
+    if "access_token" in qp and "refresh_token" in qp:
+        try:
+            # Tenta autenticar com o token do email
+            session = supabase.auth.set_session(qp["access_token"], qp["refresh_token"])
+            if session and session.user:
+                st.session_state.user = session.user
+                st.session_state.is_admin = (session.user.email == "admin@admin.com.br") # Ajuste seu email admin
+                
+                # Se for recuperação de senha, força o modo
+                if qp.get("type") == "recovery":
+                    st.session_state.auth_mode = 'reset_password'
+                
+                # Limpa URL para não processar de novo
+                st.query_params.clear()
+                st.rerun()
+        except:
+            st.error("O link de recuperação é inválido ou expirou.")
+            time.sleep(3)
+            st.query_params.clear()
+            st.rerun()
+
+# CHAMADA IMEDIATA DA VERIFICAÇÃO DE URL
+process_url_token()
 
 def resolver_nome(email, nome_meta=None, nome_banco=None):
     if not email: return "Visitante"
@@ -408,42 +428,46 @@ def tela_admin_master():
                     else: st.warning("Sem dados.")
         except: pass
 
-# --- 7. MAIN ---
+# --- 6. EXECUÇÃO ---
 def main():
-    # 1. Fluxo de Recuperação de Senha (Prioridade 1)
-    # Se a flag de reset estiver ativa, mostra APENAS a tela de troca
-    if st.session_state.force_pass_reset:
+    # 1. VERIFICA MODO DE RECUPERAÇÃO DE SENHA (PRIORIDADE ALTA)
+    if st.session_state.auth_mode == 'reset_password':
         c1, c2, c3 = st.columns([1, 1.5, 1])
         with c2:
             st.write("")
             if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True)
-            st.markdown("<h2 style='text-align:center'>🔒 Definir Nova Senha</h2>", unsafe_allow_html=True)
+            st.markdown("<h2 style='text-align:center'>🔒 Nova Senha</h2>", unsafe_allow_html=True)
             
-            new_pass = st.text_input("Nova Senha", type="password")
-            confirm_pass = st.text_input("Confirme a Senha", type="password")
-            
+            new_pass = st.text_input("Digite sua nova senha", type="password")
             if st.button("Atualizar Senha", type="primary"):
-                if new_pass == confirm_pass and len(new_pass) >= 6:
+                if len(new_pass) >= 6:
                     try:
+                        # Tenta atualizar
                         supabase.auth.update_user({"password": new_pass})
                         st.success("Senha atualizada! Redirecionando...")
-                        st.session_state.force_pass_reset = False
-                        st.session_state.auth_mode = 'login'
+                        st.session_state.auth_mode = 'login' 
                         time.sleep(2)
                         st.rerun()
-                    except Exception as e: st.error(f"Erro: {e}")
-                else:
-                    st.warning("Senhas não conferem.")
-        return # Para a execução aqui.
+                    except: st.error("Erro ao atualizar. Tente novamente.")
+                else: st.warning("Senha muito curta.")
+        return 
 
-    # 2. Tela de Login (Se não logado)
+    # 2. SE NÃO LOGADO:
     if not st.session_state.user:
+        # Tenta pegar sessão ativa antes de mostrar login
+        try:
+            sess = supabase.auth.get_session()
+            if sess:
+                st.session_state.user = sess.user
+                st.session_state.is_admin = (sess.user.email == "admin@admin.com.br")
+                st.rerun()
+        except: pass
+
         c1, c2, c3 = st.columns([1, 1.2, 1])
         with c2:
             st.write("") 
             if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
             else: st.markdown("<h1 style='text-align:center; color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
-            
             if st.session_state.auth_mode == 'login':
                 st.markdown("<h1>Bem-vindo de volta</h1>", unsafe_allow_html=True)
                 email = st.text_input("E-mail profissional", placeholder="seu@email.com")
@@ -461,7 +485,6 @@ def main():
                     if st.button("Criar conta", type="secondary", use_container_width=True): st.session_state.auth_mode = 'register'; st.rerun()
                 with col_rec:
                     if st.button("Esqueci senha", type="secondary", use_container_width=True): st.session_state.auth_mode = 'forgot'; st.rerun()
-
             elif st.session_state.auth_mode == 'register':
                 st.markdown("<h1>Criar Nova Conta</h1>", unsafe_allow_html=True)
                 new_nome = st.text_input("Nome Completo")
@@ -475,26 +498,19 @@ def main():
                             st.success("Sucesso! Faça login."); st.session_state.auth_mode = 'login'; time.sleep(1.5); st.rerun()
                         except: st.error("Erro ao cadastrar.")
                 if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'login'; st.rerun()
-
             elif st.session_state.auth_mode == 'forgot':
                 st.markdown("<h1>Recuperar Senha</h1>", unsafe_allow_html=True)
                 rec_e = st.text_input("E-mail")
                 if st.button("Enviar Link", type="primary"):
                     try:
-                        # Redireciona com trailing slash por segurança
-                        supabase.auth.reset_password_for_email(rec_e, options={"redirect_to": "https://app-locapsico.streamlit.app/"})
+                        supabase.auth.reset_password_for_email(rec_e, options={"redirect_to": "https://app-locapsico.streamlit.app"})
                         st.success("Verifique seu e-mail.")
-                    except Exception as e: st.error(f"Erro ao enviar: {e}")
+                    except: st.error("Erro.")
                 if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'login'; st.rerun()
         return
 
-    # 3. App Logado
+    # 3. SE LOGADO E NÃO ESTÁ EM MODO DE RECUPERAÇÃO
     u = st.session_state['user']
-    if u is None: # Redundância de segurança
-        st.session_state.auth_mode = 'login'
-        st.rerun()
-        return
-
     if st.session_state.get('is_admin'):
         c_adm_title, c_adm_out = st.columns([5,1])
         with c_adm_title: st.markdown(f"<h3 style='color:#0d9488; margin:0'>Painel Administrativo</h3>", unsafe_allow_html=True)
