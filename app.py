@@ -107,12 +107,18 @@ st.markdown("""
 # Javascript Cleaner
 components.html("""<script>try{const doc=window.parent.document;const style=doc.createElement('style');style.innerHTML=`header, footer, .stApp > header { display: none !important; } [data-testid="stToolbar"] { display: none !important; } .viewerBadge_container__1QSob { display: none !important; }`;doc.head.appendChild(style);}catch(e){}</script>""", height=0)
 
-# --- 4. FUNÇÕES DE SUPORTE ---
+# --- 4. FUNÇÕES DE SUPORTE (MODIFICADA PARA PRIMEIRO NOME) ---
 def resolver_nome(email, nome_meta=None, nome_banco=None):
     if not email: return "Visitante"
+    # Overrides manuais (se quiser manter)
     if "cesar_unib" in email: return "Cesar"
     if "thascaranalle" in email: return "Thays"
-    return nome_banco or nome_meta or email.split('@')[0].title()
+    
+    # 1. Pega o nome completo disponível
+    nome_completo = nome_banco or nome_meta or email.split('@')[0]
+    
+    # 2. Pega só a primeira palavra e coloca a 1ª letra maiúscula
+    return nome_completo.strip().split(' ')[0].title()
 
 def get_config_precos():
     defaults = {'preco_hora': 32.0, 'preco_manha': 100.0, 'preco_tarde': 100.0, 'preco_noite': 80.0, 'preco_diaria': 250.0}
@@ -566,32 +572,46 @@ def main():
             sala = st.radio("Sala", ["Sala 1", "Sala 2"], horizontal=True)
             render_calendar(sala)
         with tabs[1]:
+            # Fetch de dados (Seguro)
             st.markdown("### Meus Agendamentos")
             agora = datetime.datetime.now()
             hoje = datetime.date.today()
             try:
                 res_futuras = supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").gte("data_reserva", str(hoje)).order("data_reserva").order("hora_inicio").execute()
                 df_fut = pd.DataFrame(res_futuras.data)
-                if not df_fut.empty:
-                    for _, row in df_fut.iterrows():
-                        dt_reserva = datetime.datetime.combine(datetime.date.fromisoformat(row['data_reserva']), datetime.datetime.strptime(row['hora_inicio'], "%H:%M:%S").time())
-                        if dt_reserva > agora:
-                            with st.container():
-                                c_info, c_btn = st.columns([3, 1])
-                                c_info.markdown(f"**{row['data_reserva']}** às **{row['hora_inicio'][:5]}** - {row['sala_nome']}")
-                                diff = dt_reserva - agora
-                                if diff > timedelta(hours=24):
-                                    if c_btn.button("Cancelar", key=f"usr_cancel_{row['id']}"):
-                                        supabase.table("reservas").update({"status": "cancelada"}).eq("id", row['id']).execute(); st.toast("Cancelado!", icon="✅"); time.sleep(1); st.rerun()
-                                else: c_btn.caption("🚫 < 24h")
-                                st.divider()
-                else: st.info("Sem agendamentos futuros.")
-                st.markdown("### Financeiro")
+            except: 
+                st.error("Erro ao conectar com banco de dados.")
+                st.stop()
+
+            if not df_fut.empty:
+                for _, row in df_fut.iterrows():
+                    dt_reserva = datetime.datetime.combine(datetime.date.fromisoformat(row['data_reserva']), datetime.datetime.strptime(row['hora_inicio'], "%H:%M:%S").time())
+                    if dt_reserva > agora:
+                        with st.container():
+                            c_info, c_btn = st.columns([3, 1])
+                            c_info.markdown(f"**{row['data_reserva']}** às **{row['hora_inicio'][:5]}** - {row['sala_nome']}")
+                            diff = dt_reserva - agora
+                            if diff > timedelta(hours=24):
+                                if c_btn.button("Cancelar", key=f"usr_cancel_{row['id']}"):
+                                    try:
+                                        supabase.table("reservas").update({"status": "cancelada"}).eq("id", row['id']).execute()
+                                        st.toast("Cancelado!", icon="✅")
+                                        time.sleep(1)
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Erro ao cancelar: {e}")
+                            else: c_btn.caption("🚫 < 24h")
+                            st.divider()
+            else: st.info("Sem agendamentos futuros.")
+            
+            st.markdown("### Financeiro")
+            try:
                 df_all = pd.DataFrame(supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").execute().data)
                 k1, k2 = st.columns(2)
                 k1.metric("Investido Total", f"R$ {df_all['valor_cobrado'].sum() if not df_all.empty else 0:.0f}")
                 k2.metric("Sessões Totais", len(df_all) if not df_all.empty else 0)
-            except: st.error("Erro ao carregar dados.")
+            except: st.error("Erro ao carregar financeiro.")
+            
             with st.expander("Segurança"):
                 p1 = st.text_input("Nova Senha", type="password")
                 if st.button("Alterar Senha"): supabase.auth.update_user({"password": p1}); st.success("Senha atualizada!")
