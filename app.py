@@ -23,7 +23,7 @@ if 'view_mode' not in st.session_state: st.session_state.view_mode = 'SEMANA'
 
 NOME_DO_ARQUIVO_LOGO = "logo.png"
 
-# --- 2. CONEXÃO ---
+# --- 2. CONEXÃO SUPABASE ---
 @st.cache_resource
 def init_connection():
     try: return create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
@@ -51,7 +51,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Javascript Cleaner (Remove cabeçalhos padrão)
+# Javascript Cleaner
 components.html("""<script>try{const doc=window.parent.document;const style=doc.createElement('style');style.innerHTML=`header, footer, .stApp > header { display: none !important; } [data-testid="stToolbar"] { display: none !important; } .viewerBadge_container__1QSob { display: none !important; }`;doc.head.appendChild(style);}catch(e){}</script>""", height=0)
 
 # --- 4. FUNÇÕES DE SUPORTE ---
@@ -371,6 +371,8 @@ def main():
             st.write("") 
             if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
             else: st.markdown("<h1 style='text-align:center; color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
+            
+            # LOGIN
             if st.session_state.auth_mode == 'login':
                 st.markdown("<h1>Bem-vindo de volta</h1>", unsafe_allow_html=True)
                 email = st.text_input("E-mail profissional", placeholder="seu@email.com")
@@ -388,21 +390,8 @@ def main():
                     if st.button("Criar conta", type="secondary", use_container_width=True): st.session_state.auth_mode = 'register'; st.rerun()
                 with col_rec:
                     if st.button("Esqueci senha", type="secondary", use_container_width=True): st.session_state.auth_mode = 'forgot'; st.rerun()
-            elif st.session_state.auth_mode == 'register':
-                st.markdown("<h1>Criar Nova Conta</h1>", unsafe_allow_html=True)
-                new_nome = st.text_input("Nome Completo")
-                new_email = st.text_input("Seu E-mail")
-                new_pass = st.text_input("Crie uma Senha", type="password")
-                if st.button("Cadastrar", type="primary"):
-                    if len(new_pass) < 6: st.warning("Senha curta.")
-                    else:
-                        try:
-                            supabase.auth.sign_up({"email": new_email, "password": new_pass, "options": {"data": {"nome": new_nome}}})
-                            st.success("Sucesso! Faça login."); st.session_state.auth_mode = 'login'; time.sleep(1.5); st.rerun()
-                        except: st.error("Erro ao cadastrar.")
-                if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'login'; st.rerun()
-            
-            # --- FLUXO DE RECUPERAÇÃO DE SENHA MANUAL (CÓDIGO) ---
+
+            # FORGOT PASSWORD (INICIO)
             elif st.session_state.auth_mode == 'forgot':
                 st.markdown("<h1>Recuperar Senha</h1>", unsafe_allow_html=True)
                 st.info("Vamos enviar um CÓDIGO para seu e-mail.")
@@ -416,37 +405,89 @@ def main():
                     except Exception as e: st.error(f"Erro: {e}")
                 if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'login'; st.rerun()
 
+            # VERIFICAR CODIGO (CHAVE MESTRA)
             elif st.session_state.auth_mode == 'verify_otp':
                 st.markdown("<h1>Verificar Código</h1>", unsafe_allow_html=True)
                 st.info(f"Enviado para: {st.session_state.reset_email}")
                 otp_code = st.text_input("Digite o CÓDIGO do e-mail")
+                
                 if st.button("Verificar e Redefinir", type="primary"):
+                    success = False
+                    # TENTA VALIDAÇÃO TRIPLA
+                    # 1. Tenta como MAGICLINK (Padrão para Login OTP)
                     try:
-                        res = supabase.auth.verify_otp({"email": st.session_state.reset_email, "token": otp_code, "type": "email"})
-                        if res.user:
-                            st.session_state.user = res.user
-                            st.session_state.is_admin = (res.user.email == "admin@admin.com.br")
-                            st.session_state.auth_mode = 'reset_screen' # Tela exclusiva de reset
+                        res = supabase.auth.verify_otp({"email": st.session_state.reset_email, "token": otp_code, "type": "magiclink"})
+                        if res.user: success = True
+                    except: pass
+                    
+                    # 2. Tenta como RECOVERY (Caso seja fluxo de reset antigo)
+                    if not success:
+                        try:
+                            res = supabase.auth.verify_otp({"email": st.session_state.reset_email, "token": otp_code, "type": "recovery"})
+                            if res.user: success = True
+                        except: pass
+                    
+                    # 3. Tenta como EMAIL (Caso seja mudança de email)
+                    if not success:
+                        try:
+                            res = supabase.auth.verify_otp({"email": st.session_state.reset_email, "token": otp_code, "type": "email"})
+                            if res.user: success = True
+                        except: pass
+
+                    if success:
+                        # Pega o usuário logado da sessão atual
+                        curr_session = supabase.auth.get_session()
+                        if curr_session:
+                            st.session_state.user = curr_session.user
+                            st.session_state.is_admin = (curr_session.user.email == "admin@admin.com.br")
+                            st.session_state.auth_mode = 'reset_screen' # Manda pra nova senha
                             st.rerun()
-                    except: st.error("Código inválido.")
+                    else:
+                        st.error("Código inválido em todas as tentativas.")
+                
                 if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'forgot'; st.rerun()
 
-            elif st.session_state.auth_mode == 'reset_screen':
-                st.markdown("<h1>Nova Senha</h1>", unsafe_allow_html=True)
-                new_pass = st.text_input("Digite sua nova senha", type="password")
-                if st.button("Salvar Senha", type="primary"):
-                    if len(new_pass) >= 6:
-                        supabase.auth.update_user({"password": new_pass})
-                        st.success("Senha alterada! Faça login.")
-                        st.session_state.auth_mode = 'login'
-                        st.session_state.user = None
-                        time.sleep(2)
-                        st.rerun()
-                    else: st.warning("Senha curta.")
+            # REGISTER
+            elif st.session_state.auth_mode == 'register':
+                st.markdown("<h1>Criar Nova Conta</h1>", unsafe_allow_html=True)
+                new_nome = st.text_input("Nome Completo")
+                new_email = st.text_input("Seu E-mail")
+                new_pass = st.text_input("Crie uma Senha", type="password")
+                if st.button("Cadastrar", type="primary"):
+                    if len(new_pass) < 6: st.warning("Senha curta.")
+                    else:
+                        try:
+                            supabase.auth.sign_up({"email": new_email, "password": new_pass, "options": {"data": {"nome": new_nome}}})
+                            st.success("Sucesso! Faça login."); st.session_state.auth_mode = 'login'; time.sleep(1.5); st.rerun()
+                        except: st.error("Erro ao cadastrar.")
+                if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'login'; st.rerun()
         return
 
     # LOGADO
     u = st.session_state['user']
+    if u is None: st.session_state.auth_mode = 'login'; st.rerun(); return
+
+    # TELA DE NOVA SENHA (SE ESTIVER LOGADO APÓS OTP)
+    if st.session_state.auth_mode == 'reset_screen':
+        c1, c2, c3 = st.columns([1, 1.5, 1])
+        with c2:
+            st.write("")
+            if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True)
+            st.markdown("<h2 style='text-align:center'>🔒 Nova Senha</h2>", unsafe_allow_html=True)
+            new_pass = st.text_input("Digite sua nova senha", type="password")
+            if st.button("Salvar Senha", type="primary"):
+                if len(new_pass) >= 6:
+                    try:
+                        supabase.auth.update_user({"password": new_pass})
+                        st.success("Sucesso! Senha alterada.")
+                        st.session_state.auth_mode = 'app_main' # Sai do modo reset
+                        time.sleep(1)
+                        st.rerun()
+                    except Exception as e: st.error(f"Erro: {e}")
+                else: st.warning("Senha curta.")
+        return
+
+    # APP PRINCIPAL
     if st.session_state.get('is_admin'):
         c_adm_title, c_adm_out = st.columns([5,1])
         with c_adm_title: st.markdown(f"<h3 style='color:#0d9488; margin:0'>Painel Administrativo</h3>", unsafe_allow_html=True)
