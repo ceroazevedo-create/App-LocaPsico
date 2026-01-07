@@ -424,8 +424,6 @@ def tela_admin_master():
                         else: st.warning("Sem dados.")
                     else: st.warning("Sem dados.")
         except: pass
-    
-    # --- ABA DE USUÁRIOS (CORRIGIDA COM FORCE DELETE) ---
     with tabs[4]:
         st.markdown("### Gerenciar Usuários")
         
@@ -463,9 +461,7 @@ def tela_admin_master():
         # 3. RENDERIZA A LISTA
         if not df_users.empty:
             for _, row in df_users.iterrows():
-                # Evita que o próprio admin se delete
-                if st.session_state.user.id == row['user_id']:
-                    continue
+                if st.session_state.user.id == row['user_id']: continue
 
                 with st.container():
                     c1, c2, c3 = st.columns([3, 3, 2])
@@ -480,24 +476,29 @@ def tela_admin_master():
                     if c3.button("🗑️ Remover", key=f"rm_user_{row['user_id']}", help="Excluir Usuário"):
                         if service_key:
                             try:
-                                # 1. Apaga reservas usando o CLIENTE ADMIN (Bypass RLS)
-                                # Isso garante que o admin possa apagar dados que não são dele
+                                # LIMPEZA FORTE: Usa o cliente ADMIN para apagar reservas (Burlando RLS se necessário)
                                 adm_client = create_client(st.secrets["SUPABASE_URL"], service_key)
+                                
+                                # 1. Apaga por ID
                                 adm_client.table("reservas").delete().eq("user_id", row['user_id']).execute()
                                 
-                                # 2. Apaga o Login
+                                # 2. Apaga por Email (Garante redundância)
+                                adm_client.table("reservas").delete().eq("email_profissional", row['email_profissional']).execute()
+                                
+                                # 3. Apaga o Login (Agora deve funcionar)
                                 adm_client.auth.admin.delete_user(row['user_id'])
                                 st.toast("Usuário excluído completamente!", icon="✅")
                             except Exception as e:
-                                st.error(f"Erro detalhado: {e}")
+                                st.error(f"Erro ao excluir login: {e}")
+                                st.info("Dica: Se o erro persistir, vá no Supabase > SQL Editor e rode o comando abaixo para corrigir o banco de dados:")
+                                st.code("alter table public.reservas drop constraint if exists reservas_user_id_fkey, add constraint reservas_user_id_fkey foreign key (user_id) references auth.users(id) on delete cascade;")
                         else:
                             try:
-                                # Modo simples (apaga só se tiver permissão RLS)
                                 supabase.table("reservas").delete().eq("user_id", row['user_id']).execute()
                                 st.toast("Histórico limpo (Login mantido).", icon="⚠️")
                             except: pass
                         
-                        time.sleep(1.5)
+                        time.sleep(2)
                         st.rerun()
                     st.divider()
         else:
@@ -522,7 +523,6 @@ def main():
                     
                     if submitted:
                         try:
-                            # Apenas sobrescreve, sem sign_out() prévio
                             u = supabase.auth.sign_in_with_password({"email": email, "password": senha})
                             if u.user:
                                 st.session_state['user'] = u.user
@@ -563,7 +563,6 @@ def main():
                 
                 if st.button("Verificar e Redefinir", type="primary"):
                     success = False
-                    # TENTA VALIDAÇÃO (TODOS OS TIPOS)
                     try:
                         res = supabase.auth.verify_otp({"email": st.session_state.reset_email, "token": otp_code, "type": "magiclink"})
                         if res.user: success = True
@@ -617,10 +616,8 @@ def main():
                     if len(new_pass) < 6: st.warning("Senha curta.")
                     else:
                         try:
-                            # CRIAÇÃO DA CONTA
                             supabase.auth.sign_up({"email": new_email, "password": new_pass, "options": {"data": {"nome": new_nome}}})
                             st.success("Sucesso! Faça login.")
-                            # CORREÇÃO DO ERRO FALSO: Espera e redireciona
                             time.sleep(1.5)
                             st.session_state.auth_mode = 'login'
                             st.rerun()
@@ -691,4 +688,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
