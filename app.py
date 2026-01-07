@@ -31,7 +31,7 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS VISUAL (CORRIGIDO PARA O VERDE) ---
+# --- 3. CSS VISUAL (CORRIGIDO FORÇA BRUTA) ---
 st.markdown("""
 <style>
     .block-container { padding-top: 1rem !important; margin-top: 0rem !important; max-width: 1000px; }
@@ -45,17 +45,26 @@ st.markdown("""
     p { color: #697386; font-size: 15px; text-align: center; margin-bottom: 24px; }
     .stTextInput input { background-color: #ffffff; border: 1px solid #e3e8ee; border-radius: 10px; padding: 12px; height: 48px; }
     
-    /* FORÇA A COR VERDE NO BOTÃO DO FORMULÁRIO */
-    div[data-testid="stForm"] button[kind="primary"], 
+    /* --- CORREÇÃO DO BOTÃO VERDE --- */
+    /* Alvo: Botão normal E Botão de Formulário */
+    div[data-testid="stForm"] button, 
     div[data-testid="stVerticalBlock"] button[kind="primary"] {
         background-color: #0d9488 !important; 
         color: #ffffff !important; 
-        border: none; 
-        height: 48px; 
-        font-weight: 700; 
-        border-radius: 10px; 
-        margin-top: 10px;
-        width: 100%;
+        border: none !important; 
+        height: 48px !important; 
+        font-weight: 700 !important; 
+        border-radius: 10px !important; 
+        margin-top: 10px !important;
+        width: 100% !important;
+        box-shadow: none !important;
+    }
+    
+    /* Efeito Hover para ficar bonito */
+    div[data-testid="stForm"] button:hover,
+    div[data-testid="stVerticalBlock"] button[kind="primary"]:hover {
+        background-color: #0f766e !important;
+        color: white !important;
     }
     
     button[kind="secondary"] { border: 1px solid #e2e8f0; color: #64748b; }
@@ -399,19 +408,19 @@ def main():
                 with st.form("login_form"):
                     email = st.text_input("E-mail profissional", placeholder="seu@email.com")
                     senha = st.text_input("Sua senha", type="password", placeholder="••••••••")
+                    # Removemos type="primary" daqui pois o CSS já força a cor
                     submitted = st.form_submit_button("Entrar na Agenda", type="primary")
                     
                     if submitted:
                         try:
-                            # Tenta logar e se der certo, força a atualização
-                            res = supabase.auth.sign_in_with_password({"email": email, "password": senha})
-                            if res.user:
-                                st.session_state.user = res.user
-                                st.session_state.is_admin = (res.user.email == "admin@admin.com.br")
-                                st.rerun() # FORÇA O RELOAD IMEDIATO
-                        except Exception as e:
-                            # Se falhar, mostra o erro, mas se for clique duplo, o rerun acima já terá resolvido na segunda vez
-                            st.error(f"Erro: {e}")
+                            # Tenta limpar sessões antigas antes
+                            supabase.auth.sign_out()
+                            u = supabase.auth.sign_in_with_password({"email": email, "password": senha})
+                            if u.user:
+                                st.session_state['user'] = u.user
+                                st.session_state['is_admin'] = (email == "admin@admin.com.br")
+                                st.rerun()
+                        except: st.error("Credenciais inválidas.")
                 
                 st.markdown("<br>", unsafe_allow_html=True)
                 col_reg, col_rec = st.columns(2)
