@@ -13,7 +13,7 @@ import streamlit.components.v1 as components
 # --- 1. CONFIGURAÇÕES GERAIS E ESTADO ---
 st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide", initial_sidebar_state="collapsed")
 
-# Inicializa variáveis de estado imediatamente
+# Inicializa variáveis de estado
 if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
 if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
 if 'view_mode' not in st.session_state: st.session_state.view_mode = 'SEMANA'
@@ -93,17 +93,15 @@ js_fixer = """
 """
 components.html(js_fixer, height=0)
 
-# --- 4. FUNÇÕES AUXILIARES (DADOS) ---
+# --- 4. FUNÇÕES DE DADOS E LÓGICA ---
 
 def check_session_from_url():
-    # Verifica parâmetros de URL para auto-login
     query_params = st.query_params
     if "access_token" in query_params and "refresh_token" in query_params:
         try:
             session = supabase.auth.set_session(query_params["access_token"], query_params["refresh_token"])
             if session:
                 st.session_state.user = session.user
-                # IMPORTANTE: Coloque seu email de admin real aqui
                 st.session_state.is_admin = (session.user.email == "admin@admin.com.br")
                 st.query_params.clear()
                 st.success("Login via link realizado com sucesso!")
@@ -111,7 +109,7 @@ def check_session_from_url():
                 st.rerun()
         except: st.error("Link inválido.")
 
-# Verifica sessão no início da execução
+# Verifica sessão no início (Recupera persistência ou URL)
 if not st.session_state.user:
     try:
         session = supabase.auth.get_session()
@@ -132,7 +130,6 @@ def get_config_precos():
         r = supabase.table("configuracoes").select("*").limit(1).execute()
         if r.data:
             data = r.data[0]
-            # Usa .get com valor default para evitar erro se a coluna não existir ainda
             return {
                 'preco_hora': float(data.get('preco_hora', 32.0)),
                 'preco_manha': float(data.get('preco_manha', 100.0)),
@@ -451,7 +448,7 @@ def tela_admin_master():
 
 # --- 6. EXECUÇÃO ---
 def main():
-    if 'user' not in st.session_state:
+    if not st.session_state.user:
         c1, c2, c3 = st.columns([1, 1.2, 1])
         with c2:
             st.write("") 
@@ -500,6 +497,12 @@ def main():
 
     # LOGADO
     u = st.session_state['user']
+    # Check extra de segurança
+    if u is None: 
+        st.session_state.auth_mode = 'login'
+        st.rerun()
+        return
+
     if st.session_state.get('is_admin'):
         c_adm_title, c_adm_out = st.columns([5,1])
         with c_adm_title: st.markdown(f"<h3 style='color:#0d9488; margin:0'>Painel Administrativo</h3>", unsafe_allow_html=True)
@@ -551,3 +554,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
