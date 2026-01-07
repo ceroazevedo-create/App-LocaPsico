@@ -93,15 +93,17 @@ js_fixer = """
 """
 components.html(js_fixer, height=0)
 
-# --- 4. FUNÇÕES DE DADOS E LÓGICA ---
+# --- 4. FUNÇÕES AUXILIARES (DADOS) ---
 
 def check_session_from_url():
+    # Verifica parâmetros de URL para auto-login
     query_params = st.query_params
     if "access_token" in query_params and "refresh_token" in query_params:
         try:
             session = supabase.auth.set_session(query_params["access_token"], query_params["refresh_token"])
             if session:
                 st.session_state.user = session.user
+                # IMPORTANTE: Coloque seu email de admin real aqui
                 st.session_state.is_admin = (session.user.email == "admin@admin.com.br")
                 st.query_params.clear()
                 st.success("Login via link realizado com sucesso!")
@@ -109,7 +111,7 @@ def check_session_from_url():
                 st.rerun()
         except: st.error("Link inválido.")
 
-# Verifica sessão no início
+# Verifica sessão no início da execução
 if not st.session_state.user:
     try:
         session = supabase.auth.get_session()
@@ -130,6 +132,7 @@ def get_config_precos():
         r = supabase.table("configuracoes").select("*").limit(1).execute()
         if r.data:
             data = r.data[0]
+            # Usa .get com valor default para evitar erro se a coluna não existir ainda
             return {
                 'preco_hora': float(data.get('preco_hora', 32.0)),
                 'preco_manha': float(data.get('preco_manha', 100.0)),
@@ -183,6 +186,8 @@ def navegar(direcao):
     delta = 1 if mode == 'DIA' else (7 if mode == 'SEMANA' else 30)
     if direcao == 'prev': st.session_state.data_ref -= timedelta(days=delta)
     else: st.session_state.data_ref += timedelta(days=delta)
+
+# --- 5. COMPONENTES DE UI ---
 
 @st.dialog("Novo Agendamento")
 def modal_agendamento(sala_padrao, data_sugerida):
@@ -445,7 +450,104 @@ def tela_admin_master():
         except: pass
 
 # --- 6. EXECUÇÃO ---
+def main():
+    if 'user' not in st.session_state:
+        c1, c2, c3 = st.columns([1, 1.2, 1])
+        with c2:
+            st.write("") 
+            if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
+            else: st.markdown("<h1 style='text-align:center; color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
+            if st.session_state.auth_mode == 'login':
+                st.markdown("<h1>Bem-vindo de volta</h1>", unsafe_allow_html=True)
+                email = st.text_input("E-mail profissional", placeholder="seu@email.com")
+                senha = st.text_input("Sua senha", type="password", placeholder="••••••••")
+                if st.button("Entrar na Agenda", type="primary"):
+                    try:
+                        u = supabase.auth.sign_in_with_password({"email": email, "password": senha})
+                        st.session_state['user'] = u.user
+                        st.session_state['is_admin'] = (email == "admin@admin.com.br")
+                        st.rerun()
+                    except: st.error("Credenciais inválidas.")
+                st.markdown("<br>", unsafe_allow_html=True)
+                col_reg, col_rec = st.columns(2)
+                with col_reg:
+                    if st.button("Criar conta", type="secondary", use_container_width=True): st.session_state.auth_mode = 'register'; st.rerun()
+                with col_rec:
+                    if st.button("Esqueci senha", type="secondary", use_container_width=True): st.session_state.auth_mode = 'forgot'; st.rerun()
+            elif st.session_state.auth_mode == 'register':
+                st.markdown("<h1>Criar Nova Conta</h1>", unsafe_allow_html=True)
+                new_nome = st.text_input("Nome Completo")
+                new_email = st.text_input("Seu E-mail")
+                new_pass = st.text_input("Crie uma Senha", type="password")
+                if st.button("Cadastrar", type="primary"):
+                    if len(new_pass) < 6: st.warning("Senha curta.")
+                    else:
+                        try:
+                            supabase.auth.sign_up({"email": new_email, "password": new_pass, "options": {"data": {"nome": new_nome}}})
+                            st.success("Sucesso! Faça login."); st.session_state.auth_mode = 'login'; time.sleep(1.5); st.rerun()
+                        except: st.error("Erro ao cadastrar.")
+                if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'login'; st.rerun()
+            elif st.session_state.auth_mode == 'forgot':
+                st.markdown("<h1>Recuperar Senha</h1>", unsafe_allow_html=True)
+                rec_e = st.text_input("E-mail")
+                if st.button("Enviar Link", type="primary"):
+                    try:
+                        supabase.auth.reset_password_for_email(rec_e, options={"redirect_to": "https://app-locapsico.streamlit.app"})
+                        st.success("Verifique seu e-mail.")
+                    except: st.error("Erro.")
+                if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'login'; st.rerun()
+        return
+
+    # LOGADO
+    u = st.session_state['user']
+    if st.session_state.get('is_admin'):
+        c_adm_title, c_adm_out = st.columns([5,1])
+        with c_adm_title: st.markdown(f"<h3 style='color:#0d9488; margin:0'>Painel Administrativo</h3>", unsafe_allow_html=True)
+        with c_adm_out:
+            if st.button("Sair", key="admin_logout", use_container_width=True): supabase.auth.sign_out(); st.session_state.clear(); st.rerun()
+        st.divider()
+        tela_admin_master()
+    else:
+        nm = resolver_nome(u.email, u.user_metadata.get('nome'))
+        c_head_text, c_head_btn = st.columns([5, 1])
+        with c_head_text: st.markdown(f"<h3 style='color:#0d9488; margin:0'>LocaPsico | <span style='color:#334155'>Olá, {nm}</span></h3>", unsafe_allow_html=True)
+        with c_head_btn:
+            if st.button("Sair", key="logout_btn", use_container_width=True): supabase.auth.sign_out(); st.session_state.clear(); st.rerun()
+        st.divider()
+        tabs = st.tabs(["📅 Agenda", "📊 Painel"])
+        with tabs[0]:
+            sala = st.radio("Sala", ["Sala 1", "Sala 2"], horizontal=True)
+            render_calendar(sala)
+        with tabs[1]:
+            st.markdown("### Meus Agendamentos")
+            agora = datetime.datetime.now()
+            hoje = datetime.date.today()
+            try:
+                res_futuras = supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").gte("data_reserva", str(hoje)).order("data_reserva").order("hora_inicio").execute()
+                df_fut = pd.DataFrame(res_futuras.data)
+                if not df_fut.empty:
+                    for _, row in df_fut.iterrows():
+                        dt_reserva = datetime.datetime.combine(datetime.date.fromisoformat(row['data_reserva']), datetime.datetime.strptime(row['hora_inicio'], "%H:%M:%S").time())
+                        if dt_reserva > agora:
+                            with st.container():
+                                c_info, c_btn = st.columns([3, 1])
+                                c_info.markdown(f"**{row['data_reserva']}** às **{row['hora_inicio'][:5]}** - {row['sala_nome']}")
+                                diff = dt_reserva - agora
+                                if diff > timedelta(hours=24):
+                                    if c_btn.button("Cancelar", key=f"usr_cancel_{row['id']}"):
+                                        supabase.table("reservas").update({"status": "cancelada"}).eq("id", row['id']).execute(); st.toast("Cancelado!", icon="✅"); time.sleep(1); st.rerun()
+                                else: c_btn.caption("🚫 < 24h")
+                                st.divider()
+                else: st.info("Sem agendamentos futuros.")
+                st.markdown("### Financeiro")
+                df_all = pd.DataFrame(supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").execute().data)
+                k1, k2 = st.columns(2)
+                k1.metric("Investido Total", f"R$ {df_all['valor_cobrado'].sum() if not df_all.empty else 0:.0f}")
+                k2.metric("Sessões Totais", len(df_all) if not df_all.empty else 0)
+            except: st.error("Erro ao carregar dados.")
+            with st.expander("Segurança"):
+                p1 = st.text_input("Nova Senha", type="password")
+                if st.button("Alterar Senha"): supabase.auth.update_user({"password": p1}); st.success("Senha atualizada!")
+
 if __name__ == "__main__":
     main()
-
-
