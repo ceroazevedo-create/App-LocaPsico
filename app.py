@@ -45,9 +45,8 @@ st.markdown("""
     p { color: #697386; font-size: 15px; text-align: center; margin-bottom: 24px; }
     .stTextInput input { background-color: #ffffff; border: 1px solid #e3e8ee; border-radius: 10px; padding: 12px; height: 48px; }
     
-    /* --- BOTÕES VERDES --- */
+    /* --- BOTÕES GERAIS (Verdes) --- */
     div[data-testid="stForm"] button, 
-    div[data-testid="stButton"] button,
     button[kind="primary"] {
         background-color: #0d9488 !important;
         border: none !important;
@@ -57,19 +56,33 @@ st.markdown("""
         box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
         color: #ffffff !important;
     }
-    div[data-testid="stForm"] button *, 
-    div[data-testid="stButton"] button *,
-    button[kind="primary"] * {
-        color: #ffffff !important;
-    }
-    div[data-testid="stForm"] button:hover,
-    div[data-testid="stButton"] button:hover,
+    div[data-testid="stForm"] button:hover, 
     button[kind="primary"]:hover {
         background-color: #0f766e !important;
         color: #ffffff !important;
     }
+    div[data-testid="stForm"] button *, button[kind="primary"] * { color: #ffffff !important; }
 
-    /* --- OLHINHO --- */
+    /* --- BOTÕES DO CALENDÁRIO (DIAS) --- */
+    /* Ajuste para ficarem menores e encaixarem na grade */
+    div[data-testid="stButton"] button {
+        background-color: #0d9488 !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 8px !important;
+        font-weight: bold !important;
+        height: auto !important;
+        padding: 5px 10px !important;
+        min-height: 35px !important;
+        width: 100% !important;
+    }
+    div[data-testid="stButton"] button:hover {
+        background-color: #0f766e !important;
+        transform: scale(1.02);
+    }
+    div[data-testid="stButton"] button p { color: white !important; }
+
+    /* --- OLHINHO TRANSPARENTE --- */
     div[data-testid="stTextInput"] button {
         background-color: transparent !important;
         border: none !important;
@@ -77,6 +90,7 @@ st.markdown("""
         height: auto !important;
         margin: 0 !important;
         padding: 0 10px !important;
+        min-height: auto !important;
     }
     div[data-testid="stTextInput"] button * {
         color: #31333F !important;
@@ -90,7 +104,6 @@ st.markdown("""
     }
     button[kind="secondary"] * { color: #64748b !important; }
 
-    /* Botões Perigo */
     button[key="logout_btn"], button[key="admin_logout"], button[help="Excluir Usuário"] { 
         border-color: #fecaca !important; 
         color: #ef4444 !important; 
@@ -182,10 +195,13 @@ def navegar(direcao):
 
 @st.dialog("Novo Agendamento")
 def modal_agendamento(sala_padrao, data_sugerida):
-    st.markdown("### Detalhes da Reserva")
+    st.markdown(f"### Reservar para {data_sugerida.strftime('%d/%m/%Y')}")
     config_precos = get_config_precos()
     modo = st.radio("Tipo de Cobrança", ["Por Hora", "Por Período"], horizontal=True)
-    dt = st.date_input("Data", value=data_sugerida, min_value=datetime.date.today())
+    
+    # Fixa a data no modal para a data clicada
+    dt = data_sugerida 
+    
     horarios_selecionados = []
     valor_final = 0.0
     if modo == "Por Hora":
@@ -295,9 +311,22 @@ def render_calendar(sala, is_admin_mode=False):
                 else:
                     d_obj = datetime.date(ref.year, ref.month, day)
                     d_str = str(d_obj)
-                    bg_color = "white"
-                    if d_obj < datetime.date.today() or d_obj.weekday() == 6: bg_color = "#fef2f2"
-                    elif d_obj == datetime.date.today(): bg_color = "#f0fdf4"
+                    
+                    # Logica de click no dia
+                    with cols[i]:
+                        # Se não for admin, o botão abre o modal
+                        if not is_admin_mode:
+                            # Se for dia passado, desabilita ou mostra erro no click (aqui só desabilita visualmente pelo CSS se quiser)
+                            if st.button(f"{day}", key=f"btn_day_{day}_{mes}_{is_admin_mode}", use_container_width=True):
+                                if d_obj < datetime.date.today():
+                                    st.toast("Data passada não permitida.", icon="🚫")
+                                elif d_obj.weekday() == 6:
+                                    st.toast("Domingos fechados.", icon="🚫")
+                                else:
+                                    modal_agendamento(sala, d_obj)
+                        else:
+                            st.markdown(f"<div style='text-align:center; font-weight:bold; padding:5px'>{day}</div>", unsafe_allow_html=True)
+
                     eventos_html = ""
                     if d_str in mapa:
                         for h in sorted(mapa[d_str].keys()):
@@ -306,7 +335,7 @@ def render_calendar(sala, is_admin_mode=False):
                             else:
                                 nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
                                 eventos_html += f"<div style='background:#ccfbf1; color:#115e59; font-size:9px; padding:2px; border-radius:3px; margin-bottom:2px; white-space:nowrap; overflow:hidden;'>{h[:5]} {nm}</div>"
-                    cols[i].markdown(f"<div style='background:{bg_color}; border:1px solid #e2e8f0; border-radius:8px; min-height:80px; padding:5px; font-size:12px;'><div style='font-weight:bold; color:#1e293b; text-align:right'>{day}</div>{eventos_html}</div>", unsafe_allow_html=True)
+                    cols[i].markdown(f"{eventos_html}", unsafe_allow_html=True)
     else:
         visiveis = [d_start + timedelta(days=i) for i in range(7 if mode == 'SEMANA' else 1)]
         ratio = [0.6] + [1]*len(visiveis)
@@ -315,7 +344,17 @@ def render_calendar(sala, is_admin_mode=False):
         d_n = ["SEG","TER","QUA","QUI","SEX","SÁB","DOM"]
         for i, d in enumerate(visiveis):
             wd = d.weekday()
-            c_h[i+1].markdown(f"<div style='text-align:center; padding-bottom:5px; border-bottom:2px solid #e2e8f0; margin-bottom:5px'><div style='font-size:10px; font-weight:bold; color:#64748b'>{d_n[wd]}</div><div style='font-size:16px; font-weight:bold; color:#1e293b'>{visiveis[i].day}</div></div>", unsafe_allow_html=True)
+            # Botão no cabeçalho da semana
+            with c_h[i+1]:
+                lbl_sem = f"{d_n[wd]} {d.day}"
+                if not is_admin_mode:
+                    if st.button(lbl_sem, key=f"btn_week_{d}_{is_admin_mode}", use_container_width=True):
+                         if d < datetime.date.today(): st.toast("Data passada.", icon="🚫")
+                         elif d.weekday() == 6: st.toast("Domingo fechado.", icon="🚫")
+                         else: modal_agendamento(sala, d)
+                else:
+                    st.markdown(f"<div style='text-align:center; font-weight:bold; color:#1e293b'>{lbl_sem}</div>", unsafe_allow_html=True)
+
         for h in range(7, 22):
             hora = f"{h:02d}:00:00"
             row = st.columns(ratio)
@@ -344,8 +383,7 @@ def render_calendar(sala, is_admin_mode=False):
                 elif is_sunday or is_sat_closed or is_past: cont.markdown("<div class='blocked-slot'></div>", unsafe_allow_html=True)
                 else: cont.markdown("<div style='height:40px; border-left:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
-    if not is_admin_mode:
-        if st.button("➕ Agendar", type="primary", use_container_width=True): modal_agendamento(sala, st.session_state.data_ref)
+    # Removido o botão "+ Agendar" pois agora clica-se no dia
 
 def tela_admin_master():
     tabs = st.tabs(["💰 Config", "📅 Visualizar/Excluir", "🚫 Bloqueios", "📄 Relatórios", "👥 Usuários"])
@@ -702,5 +740,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
