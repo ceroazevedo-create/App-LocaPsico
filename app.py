@@ -739,20 +739,31 @@ def main():
             render_calendar(sala)
             
         with tabs[1]:
-            # Fetch isolado para não conflitar com Rerun
             st.markdown("### Meus Agendamentos")
             agora = datetime.datetime.now()
             hoje = datetime.date.today()
+            inicio_mes = hoje.replace(day=1)
             df_fut = pd.DataFrame()
             try:
-                res_futuras = supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").gte("data_reserva", str(hoje)).order("data_reserva").order("hora_inicio").execute()
-                df_fut = pd.DataFrame(res_futuras.data)
+                # LISTA DESDE INICIO DO MÊS (Histórico + Futuro)
+                res_user = supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").gte("data_reserva", str(inicio_mes)).order("data_reserva").order("hora_inicio").execute()
+                df_fut = pd.DataFrame(res_user.data)
             except: st.error("Erro ao carregar dados.")
 
             if not df_fut.empty:
                 for _, row in df_fut.iterrows():
                     dt_reserva = datetime.datetime.combine(datetime.date.fromisoformat(row['data_reserva']), datetime.datetime.strptime(row['hora_inicio'], "%H:%M:%S").time())
-                    if dt_reserva > agora:
+                    
+                    if dt_reserva < agora:
+                        # PASSADO (CINZA - SEM BOTÃO)
+                        st.markdown(f"""
+                        <div style="background-color: #f8fafc; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; color: #94a3b8; margin-bottom: 10px;">
+                            <strong>✅ Realizado: {row['data_reserva']}</strong> às {row['hora_inicio'][:5]}<br>
+                            <small>{row['sala_nome']}</small>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        # FUTURO (VERDE - COM BOTÃO)
                         with st.container():
                             c_info, c_btn = st.columns([3, 1])
                             c_info.markdown(f"**{row['data_reserva']}** às **{row['hora_inicio'][:5]}** - {row['sala_nome']}")
@@ -767,7 +778,7 @@ def main():
                                     except Exception as e: st.error(f"Erro ao cancelar: {e}")
                             else: c_btn.caption("🚫 < 24h")
                             st.divider()
-            else: st.info("Sem agendamentos futuros.")
+            else: st.info("Sem agendamentos este mês.")
                 
             st.markdown("### Financeiro")
             try:
@@ -792,3 +803,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
