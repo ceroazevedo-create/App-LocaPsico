@@ -31,7 +31,7 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS VISUAL (CORREÇÃO TOTAL DE CORES) ---
+# --- 3. CSS VISUAL ---
 st.markdown("""
 <style>
     .block-container { padding-top: 1rem !important; margin-top: 0rem !important; max-width: 1000px; }
@@ -45,38 +45,31 @@ st.markdown("""
     p { color: #697386; font-size: 15px; text-align: center; margin-bottom: 24px; }
     .stTextInput input { background-color: #ffffff; border: 1px solid #e3e8ee; border-radius: 10px; padding: 12px; height: 48px; }
     
-    /* --- PADRONIZAÇÃO DE BOTÕES VERDES --- */
-    
-    /* 1. Alvo: Botões de Formulário E Botões Primários (dentro do app) */
+    /* --- BOTÕES VERDES --- */
     div[data-testid="stForm"] button, 
     div[data-testid="stButton"] button,
     button[kind="primary"] {
-        background-color: #0d9488 !important; /* Fundo Verde */
+        background-color: #0d9488 !important;
         border: none !important;
         height: 48px !important;
         font-weight: 700 !important;
         border-radius: 10px !important;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-        color: #ffffff !important; /* Texto Branco (Nível 1) */
+        color: #ffffff !important;
     }
-
-    /* 2. FORÇA BRUTA: Garante que qualquer texto (p, span, div) DENTRO do botão seja branco */
     div[data-testid="stForm"] button *, 
     div[data-testid="stButton"] button *,
     button[kind="primary"] * {
-        color: #ffffff !important; /* Texto Branco (Nível 2 - Filhos) */
+        color: #ffffff !important;
     }
-    
-    /* 3. Hover (Passar o mouse) */
     div[data-testid="stForm"] button:hover,
     div[data-testid="stButton"] button:hover,
     button[kind="primary"]:hover {
-        background-color: #0f766e !important; /* Verde um pouco mais escuro */
+        background-color: #0f766e !important;
         color: #ffffff !important;
     }
 
-    /* --- EXCEÇÃO: BOTÃO DE OLHINHO (SENHA) --- */
-    /* Esse botão precisa ser transparente e ter ícone escuro */
+    /* --- OLHINHO --- */
     div[data-testid="stTextInput"] button {
         background-color: transparent !important;
         border: none !important;
@@ -86,10 +79,10 @@ st.markdown("""
         padding: 0 10px !important;
     }
     div[data-testid="stTextInput"] button * {
-        color: #31333F !important; /* Reseta a cor do ícone para cinza escuro */
+        color: #31333F !important;
     }
     
-    /* --- BOTÕES SECUNDÁRIOS (Cinza/Branco) --- */
+    /* Outros */
     button[kind="secondary"] { 
         background-color: #ffffff !important;
         border: 1px solid #e2e8f0 !important; 
@@ -97,7 +90,6 @@ st.markdown("""
     }
     button[kind="secondary"] * { color: #64748b !important; }
 
-    /* --- BOTÕES ESPECIAIS (Logout/Excluir - Vermelho) --- */
     button[key="logout_btn"], button[key="admin_logout"] { 
         border-color: #fecaca !important; 
         color: #ef4444 !important; 
@@ -106,7 +98,6 @@ st.markdown("""
     }
     button[key="logout_btn"] *, button[key="admin_logout"] * { color: #ef4444 !important; }
     
-    /* Agenda e Chips */
     .blocked-slot { background-color: #fef2f2; height: 40px; border-radius: 4px; border: 1px solid #fecaca; opacity: 0.7; }
     .admin-blocked { background-color: #1e293b; color: white; font-size: 10px; padding: 4px; border-radius: 4px; text-align: center; font-weight: bold; margin-bottom: 2px; }
     .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; margin-bottom: 2px; }
@@ -436,18 +427,16 @@ def main():
             if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
             else: st.markdown("<h1 style='text-align:center; color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
             
-            # --- LOGIN FORM (CORRIGIDO) ---
+            # --- LOGIN FORM ---
             if st.session_state.auth_mode == 'login':
                 st.markdown("<h1>Bem-vindo de volta</h1>", unsafe_allow_html=True)
                 with st.form("login_form"):
                     email = st.text_input("E-mail profissional", placeholder="seu@email.com")
                     senha = st.text_input("Sua senha", type="password", placeholder="••••••••")
-                    # Removemos type="primary" daqui pois o CSS já força a cor
-                    submitted = st.form_submit_button("Entrar na Agenda") 
+                    submitted = st.form_submit_button("Entrar na Agenda")
                     
                     if submitted:
                         try:
-                            # Apenas sobrescreve, sem sign_out() prévio para evitar erro
                             u = supabase.auth.sign_in_with_password({"email": email, "password": senha})
                             if u.user:
                                 st.session_state['user'] = u.user
@@ -466,7 +455,7 @@ def main():
                 with col_rec:
                     if st.button("Esqueci senha", type="secondary", use_container_width=True): st.session_state.auth_mode = 'forgot'; st.rerun()
 
-            # --- ESQUECI SENHA (ENVIAR CÓDIGO) ---
+            # --- FORGOT PASSWORD ---
             elif st.session_state.auth_mode == 'forgot':
                 st.markdown("<h1>Recuperar Senha</h1>", unsafe_allow_html=True)
                 st.info("Vamos enviar um CÓDIGO para seu e-mail.")
@@ -480,7 +469,7 @@ def main():
                     except Exception as e: st.error(f"Erro: {e}")
                 if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'login'; st.rerun()
 
-            # --- VERIFICAR CÓDIGO ---
+            # --- VERIFY OTP ---
             elif st.session_state.auth_mode == 'verify_otp':
                 st.markdown("<h1>Verificar Código</h1>", unsafe_allow_html=True)
                 st.info(f"Enviado para: {st.session_state.reset_email}")
@@ -488,7 +477,6 @@ def main():
                 
                 if st.button("Verificar e Redefinir", type="primary"):
                     success = False
-                    # TENTA VALIDAÇÃO (TODOS OS TIPOS)
                     try:
                         res = supabase.auth.verify_otp({"email": st.session_state.reset_email, "token": otp_code, "type": "magiclink"})
                         if res.user: success = True
@@ -518,7 +506,7 @@ def main():
                 
                 if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'forgot'; st.rerun()
 
-            # --- NOVA SENHA ---
+            # --- RESET SCREEN ---
             elif st.session_state.auth_mode == 'reset_screen':
                 st.markdown("<h1>Nova Senha</h1>", unsafe_allow_html=True)
                 new_pass = st.text_input("Digite sua nova senha", type="password")
@@ -571,32 +559,50 @@ def main():
             sala = st.radio("Sala", ["Sala 1", "Sala 2"], horizontal=True)
             render_calendar(sala)
         with tabs[1]:
+            # CORREÇÃO CRÍTICA AQUI: try...except restrito ao fetch
             st.markdown("### Meus Agendamentos")
             agora = datetime.datetime.now()
             hoje = datetime.date.today()
+            
+            # 1. Fetch de dados (Seguro)
             try:
                 res_futuras = supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").gte("data_reserva", str(hoje)).order("data_reserva").order("hora_inicio").execute()
                 df_fut = pd.DataFrame(res_futuras.data)
-                if not df_fut.empty:
-                    for _, row in df_fut.iterrows():
-                        dt_reserva = datetime.datetime.combine(datetime.date.fromisoformat(row['data_reserva']), datetime.datetime.strptime(row['hora_inicio'], "%H:%M:%S").time())
-                        if dt_reserva > agora:
-                            with st.container():
-                                c_info, c_btn = st.columns([3, 1])
-                                c_info.markdown(f"**{row['data_reserva']}** às **{row['hora_inicio'][:5]}** - {row['sala_nome']}")
-                                diff = dt_reserva - agora
-                                if diff > timedelta(hours=24):
-                                    if c_btn.button("Cancelar", key=f"usr_cancel_{row['id']}"):
-                                        supabase.table("reservas").update({"status": "cancelada"}).eq("id", row['id']).execute(); st.toast("Cancelado!", icon="✅"); time.sleep(1); st.rerun()
-                                else: c_btn.caption("🚫 < 24h")
-                                st.divider()
-                else: st.info("Sem agendamentos futuros.")
-                st.markdown("### Financeiro")
+            except: 
+                st.error("Erro ao conectar com banco de dados.")
+                st.stop()
+
+            # 2. Renderização e Ação (Fora do Try de fetch)
+            if not df_fut.empty:
+                for _, row in df_fut.iterrows():
+                    dt_reserva = datetime.datetime.combine(datetime.date.fromisoformat(row['data_reserva']), datetime.datetime.strptime(row['hora_inicio'], "%H:%M:%S").time())
+                    if dt_reserva > agora:
+                        with st.container():
+                            c_info, c_btn = st.columns([3, 1])
+                            c_info.markdown(f"**{row['data_reserva']}** às **{row['hora_inicio'][:5]}** - {row['sala_nome']}")
+                            diff = dt_reserva - agora
+                            if diff > timedelta(hours=24):
+                                if c_btn.button("Cancelar", key=f"usr_cancel_{row['id']}"):
+                                    # Update Isolado (Seguro)
+                                    try:
+                                        supabase.table("reservas").update({"status": "cancelada"}).eq("id", row['id']).execute()
+                                        st.toast("Cancelado!", icon="✅")
+                                        time.sleep(1)
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Erro ao cancelar: {e}")
+                            else: c_btn.caption("🚫 < 24h")
+                            st.divider()
+            else: st.info("Sem agendamentos futuros.")
+            
+            st.markdown("### Financeiro")
+            try:
                 df_all = pd.DataFrame(supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").execute().data)
                 k1, k2 = st.columns(2)
                 k1.metric("Investido Total", f"R$ {df_all['valor_cobrado'].sum() if not df_all.empty else 0:.0f}")
                 k2.metric("Sessões Totais", len(df_all) if not df_all.empty else 0)
-            except: st.error("Erro ao carregar dados.")
+            except: st.error("Erro ao carregar financeiro.")
+            
             with st.expander("Segurança"):
                 p1 = st.text_input("Nova Senha", type="password")
                 if st.button("Alterar Senha"): supabase.auth.update_user({"password": p1}); st.success("Senha atualizada!")
