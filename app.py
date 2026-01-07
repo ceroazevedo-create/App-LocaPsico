@@ -10,21 +10,19 @@ import time
 import os
 import streamlit.components.v1 as components
 
-# --- 1. CONFIGURAÇÕES INICIAIS ---
+# --- 1. CONFIGURAÇÕES E INICIALIZAÇÃO ---
 st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide", initial_sidebar_state="collapsed")
 
-# Inicialização de Variáveis de Estado
+# Inicialização de Estado (Segura)
 if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
 if 'user' not in st.session_state: st.session_state.user = None
 if 'is_admin' not in st.session_state: st.session_state.is_admin = False
 if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
 if 'view_mode' not in st.session_state: st.session_state.view_mode = 'SEMANA'
-# Variável Mestra de Recuperação
-if 'recovery_mode' not in st.session_state: st.session_state.recovery_mode = False
 
-NOME_DO_ARQUIVO_LOGO = "logo.png" 
+NOME_DO_ARQUIVO_LOGO = "logo.png"
 
-# --- 2. CONEXÃO SUPABASE ---
+# --- 2. CONEXÃO ---
 @st.cache_resource
 def init_connection():
     try: return create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
@@ -33,101 +31,84 @@ def init_connection():
 supabase = init_connection()
 
 # --- 3. JAVASCRIPT: PONTE DE URL (HASH -> QUERY) ---
-# Este script roda no navegador. Se ele ver um "#", ele recarrega a página transformando em "?"
-# Isso é obrigatório porque o Streamlit não lê "#" (fragmentos), mas lê "?" (query params).
+# Este script é vital. Ele converte o # do link do email em ? para o Python ler.
 js_bridge = """
 <script>
-    if (window.location.hash) {
-        const hash = window.location.hash.substring(1);
-        const params = new URLSearchParams(hash);
-        if (params.has('access_token')) {
-            // Reconstrói a URL para o formato que o Streamlit entende
-            var newUrl = window.location.origin + window.location.pathname + 
-                         '?access_token=' + params.get('access_token') + 
-                         '&refresh_token=' + params.get('refresh_token') + 
-                         '&type=' + (params.get('type') || 'recovery');
-            // Força o redirecionamento
-            window.location.href = newUrl;
-        }
+    const hash = window.location.hash;
+    if (hash && hash.includes('access_token')) {
+        const params = new URLSearchParams(hash.substring(1));
+        const newUrl = window.location.origin + window.location.pathname + 
+                       '?access_token=' + params.get('access_token') + 
+                       '&refresh_token=' + params.get('refresh_token') + 
+                       '&type=' + (params.get('type') || 'recovery');
+        window.location.href = newUrl;
     }
 </script>
 """
 components.html(js_bridge, height=0)
 
-# --- 4. INTERCEPTADOR DE RECUPERAÇÃO (O CORAÇÃO DA SOLUÇÃO) ---
-def handle_auth_flow():
-    # 1. Verifica se há tokens na URL (Query Params)
+# --- 4. PROCESSADOR DE LOGIN VIA LINK ---
+# Esta função roda no início de TUDO para interceptar o login
+def process_url_login():
     qp = st.query_params
     
+    # Se houver token na URL (vindo do JS acima)
     if "access_token" in qp:
-        # Se encontrou token, tenta validar
         try:
-            token = qp["access_token"]
-            refresh = qp["refresh_token"]
-            
-            # Autentica a sessão com o token recebido
-            session = supabase.auth.set_session(token, refresh)
+            # Tenta autenticar a sessão
+            session = supabase.auth.set_session(qp["access_token"], qp["refresh_token"])
             
             if session and session.user:
                 st.session_state.user = session.user
+                st.session_state.is_admin = (session.user.email == "admin@admin.com.br") # Ajuste seu email
                 
-                # Se for recuperação de senha, ativa a trava
+                # Se for recuperação, FORÇA O MODO RESET
                 if qp.get("type") == "recovery":
-                    st.session_state.recovery_mode = True
-                
-                # Limpa a URL para ficar bonita, mas mantém o estado na memória
-                st.query_params.clear()
-                
-        except Exception as e:
-            st.error(f"Link inválido ou expirado. Erro: {e}")
+                    st.session_state.auth_mode = 'reset_password'
+                else:
+                    # Se for login mágico normal, limpa a URL
+                    st.query_params.clear()
+            
+        except Exception:
+            st.error("O link expirou. Por favor, solicite um novo.")
+            time.sleep(3)
             st.query_params.clear()
+            st.rerun()
 
-    # 2. Se não veio da URL, verifica se já existe sessão salva no navegador
-    elif not st.session_state.user:
-        try:
-            session = supabase.auth.get_session()
-            if session:
-                st.session_state.user = session.user
-                st.session_state.is_admin = (session.user.email == "admin@admin.com.br")
-        except: pass
+# Executa o processador imediatamente
+process_url_login()
 
-# Executa a verificação imediatamente
-handle_auth_flow()
+# Verifica sessão persistente se o usuário estiver vazio
+if not st.session_state.user:
+    try:
+        sess = supabase.auth.get_session()
+        if sess:
+            st.session_state.user = sess.user
+            st.session_state.is_admin = (sess.user.email == "admin@admin.com.br")
+    except: pass
 
 # --- 5. CSS VISUAL ---
 st.markdown("""
 <style>
     .block-container { padding-top: 1rem !important; margin-top: 0rem !important; max-width: 1000px; }
     .stApp { background-color: #f2f4f7; font-family: 'Inter', sans-serif; color: #1a1f36; }
-    
-    div[data-testid="column"]:nth-of-type(2) > div {
-        background-color: #ffffff; padding: 48px 40px; border-radius: 20px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.08); border: 1px solid #eef2f6; margin-top: 2vh;
-    }
+    div[data-testid="column"]:nth-of-type(2) > div { background-color: #ffffff; padding: 48px 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); border: 1px solid #eef2f6; margin-top: 2vh; }
     div[data-testid="stImage"] { display: flex; justify-content: center !important; width: 100%; margin-bottom: 20px; }
     div[data-testid="stImage"] > img { object-fit: contain; width: 90% !important; max-width: 380px; }
-    
     h1 { font-size: 28px; font-weight: 800; color: #1a1f36; margin-bottom: 8px; text-align: center; }
     p { color: #697386; font-size: 15px; text-align: center; margin-bottom: 24px; }
     .stTextInput input { background-color: #ffffff; border: 1px solid #e3e8ee; border-radius: 10px; padding: 12px; height: 48px; }
-    
-    div[data-testid="stVerticalBlock"] button[kind="primary"] {
-        background-color: #0d9488 !important; color: #ffffff !important; border: none; height: 48px; font-weight: 700; border-radius: 10px; margin-top: 10px;
-    }
+    div[data-testid="stVerticalBlock"] button[kind="primary"] { background-color: #0d9488 !important; color: #ffffff !important; border: none; height: 48px; font-weight: 700; border-radius: 10px; margin-top: 10px; }
     div[data-testid="stVerticalBlock"] button[kind="primary"] * { color: #ffffff !important; }
     button[kind="secondary"] { border: 1px solid #e2e8f0; color: #64748b; }
-    
-    button[key="logout_btn"], button[key="admin_logout"] { 
-        border-color: #fecaca !important; color: #ef4444 !important; background: #fef2f2 !important; font-weight: 600; 
-    }
-    
+    button[key="logout_btn"], button[key="admin_logout"] { border-color: #fecaca !important; color: #ef4444 !important; background: #fef2f2 !important; font-weight: 600; }
     .blocked-slot { background-color: #fef2f2; height: 40px; border-radius: 4px; border: 1px solid #fecaca; opacity: 0.7; }
     .admin-blocked { background-color: #1e293b; color: white; font-size: 10px; padding: 4px; border-radius: 4px; text-align: center; font-weight: bold; margin-bottom: 2px; }
     .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; margin-bottom: 2px; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 6. FUNÇÕES DE SUPORTE ---
+# --- 6. FUNÇÕES AUXILIARES ---
 def resolver_nome(email, nome_meta=None, nome_banco=None):
     if not email: return "Visitante"
     if "cesar_unib" in email: return "Cesar"
@@ -198,13 +179,10 @@ def navegar(direcao):
 def modal_agendamento(sala_padrao, data_sugerida):
     st.markdown("### Detalhes da Reserva")
     config_precos = get_config_precos()
-    
     modo = st.radio("Tipo de Cobrança", ["Por Hora", "Por Período"], horizontal=True)
     dt = st.date_input("Data", value=data_sugerida, min_value=datetime.date.today())
-    
     horarios_selecionados = []
     valor_final = 0.0
-    
     if modo == "Por Hora":
         dia_sem = dt.weekday()
         if dia_sem == 6: lista_horas = []; st.error("Domingo: Fechado")
@@ -227,10 +205,8 @@ def modal_agendamento(sala_padrao, data_sugerida):
         for h in range(dados_p['start'], dados_p['end']):
             horarios_selecionados.append((f"{h:02d}:00", f"{h+1:02d}:00"))
         valor_final = dados_p['price']
-
     st.markdown("---")
     is_recurring = st.checkbox("🔄 Repetir nas próximas 4 semanas (Mensal)")
-    
     if st.button("Confirmar Agendamento", type="primary", use_container_width=True):
         if not horarios_selecionados: st.error("Nenhum horário selecionado."); return
         user = st.session_state.user
@@ -249,16 +225,12 @@ def modal_agendamento(sala_padrao, data_sugerida):
                     if d_res.weekday() == 5 and int(h_start[:2]) >= 14: st.error(f"Sábado {d_res} fecha às 14h."); return
                     chk = supabase.table("reservas").select("id").eq("sala_nome", sala_padrao).eq("data_reserva", str(d_res)).eq("hora_inicio", f"{h_start}:00").neq("status", "cancelada").execute()
                     if chk.data: st.error(f"Conflito: {d_res} às {h_start} já está ocupado."); return 
-                    
                     val_to_save = 0.0
                     if (h_start, h_end) == horarios_selecionados[0]: val_to_save = valor_final
                     elif modo == "Por Hora": val_to_save = valor_final 
-
                     inserts.append({
-                        "sala_nome": sala_padrao, "data_reserva": str(d_res),
-                        "hora_inicio": f"{h_start}:00", "hora_fim": f"{h_end}:00",
-                        "user_id": user.id, "email_profissional": user.email, "nome_profissional": nm,
-                        "valor_cobrado": val_to_save, "status": "confirmada"
+                        "sala_nome": sala_padrao, "data_reserva": str(d_res), "hora_inicio": f"{h_start}:00", "hora_fim": f"{h_end}:00",
+                        "user_id": user.id, "email_profissional": user.email, "nome_profissional": nm, "valor_cobrado": val_to_save, "status": "confirmada"
                     })
             if inserts:
                 supabase.table("reservas").insert(inserts).execute()
@@ -350,7 +322,6 @@ def render_calendar(sala, is_admin_mode=False):
                 is_sunday = d.weekday() == 6
                 is_sat_closed = (d.weekday() == 5 and h >= 14)
                 is_past = dt_slot < agora
-                
                 if res:
                     if res['status'] == 'bloqueado':
                         cont.markdown(f"<div class='admin-blocked'>⛔ FECHADO</div>", unsafe_allow_html=True)
@@ -446,40 +417,34 @@ def tela_admin_master():
                     else: st.warning("Sem dados.")
         except: pass
 
-# --- 7. MAIN ---
+# --- 8. MAIN ---
 def main():
-    # A) PRIORIDADE 1: TELA DE MUDANÇA DE SENHA
-    if st.session_state.recovery_mode:
+    # A) MODO RECUPERAÇÃO DE SENHA (PRIORIDADE ABSOLUTA)
+    # Se st.session_state.recovery_mode estiver ativo OU type=recovery na URL
+    if st.session_state.auth_mode == 'reset_password':
         c1, c2, c3 = st.columns([1, 1.5, 1])
         with c2:
             st.write("")
             if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True)
             st.markdown("<h2 style='text-align:center'>🔒 Definir Nova Senha</h2>", unsafe_allow_html=True)
             
-            new_pass = st.text_input("Digite sua nova senha", type="password")
+            new_pass = st.text_input("Nova Senha", type="password")
             
-            c_save, c_cancel = st.columns(2)
-            with c_save:
-                if st.button("Salvar Senha", type="primary", use_container_width=True):
-                    if len(new_pass) >= 6:
-                        try:
-                            supabase.auth.update_user({"password": new_pass})
-                            st.success("Sucesso! Faça login com a nova senha.")
-                            st.session_state.recovery_mode = False
-                            st.session_state.user = None
-                            st.session_state.auth_mode = 'login'
-                            time.sleep(2)
-                            st.rerun()
-                        except Exception as e: st.error(f"Erro: {e}")
-                    else: st.warning("Mínimo 6 caracteres.")
-            with c_cancel:
-                if st.button("Cancelar", type="secondary", use_container_width=True):
-                    st.session_state.recovery_mode = False
-                    st.session_state.user = None
-                    st.rerun()
-        return
+            if st.button("Atualizar Senha", type="primary"):
+                if len(new_pass) >= 6:
+                    try:
+                        supabase.auth.update_user({"password": new_pass})
+                        st.success("Sucesso! Faça login com a nova senha.")
+                        st.session_state.auth_mode = 'login'
+                        st.session_state.user = None 
+                        st.query_params.clear() # Limpa para garantir
+                        time.sleep(2)
+                        st.rerun()
+                    except Exception as e: st.error(f"Erro: {e}")
+                else: st.warning("Mínimo 6 caracteres.")
+        return # Trava a execução aqui
 
-    # B) TELA DE LOGIN
+    # B) TELA DE LOGIN (SE NÃO LOGADO)
     if not st.session_state.user:
         c1, c2, c3 = st.columns([1, 1.2, 1])
         with c2:
@@ -529,10 +494,7 @@ def main():
 
     # C) APP LOGADO
     u = st.session_state['user']
-    if u is None:
-        st.session_state.auth_mode = 'login'
-        st.rerun()
-        return
+    if u is None: st.session_state.auth_mode = 'login'; st.rerun(); return
 
     if st.session_state.get('is_admin'):
         c_adm_title, c_adm_out = st.columns([5,1])
@@ -585,3 +547,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
