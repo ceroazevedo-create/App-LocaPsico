@@ -45,8 +45,9 @@ st.markdown("""
     p { color: #697386; font-size: 15px; text-align: center; margin-bottom: 24px; }
     .stTextInput input { background-color: #ffffff; border: 1px solid #e3e8ee; border-radius: 10px; padding: 12px; height: 48px; }
     
-    /* --- BOTÕES GERAIS (Verdes) --- */
+    /* --- BOTÕES VERDES --- */
     div[data-testid="stForm"] button, 
+    div[data-testid="stButton"] button,
     button[kind="primary"] {
         background-color: #0d9488 !important;
         border: none !important;
@@ -56,19 +57,23 @@ st.markdown("""
         box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
         color: #ffffff !important;
     }
-    div[data-testid="stForm"] button:hover, 
+    div[data-testid="stForm"] button *, 
+    div[data-testid="stButton"] button *,
+    button[kind="primary"] * {
+        color: #ffffff !important;
+    }
+    div[data-testid="stForm"] button:hover,
+    div[data-testid="stButton"] button:hover,
     button[kind="primary"]:hover {
         background-color: #0f766e !important;
         color: #ffffff !important;
     }
-    div[data-testid="stForm"] button *, button[kind="primary"] * { color: #ffffff !important; }
 
     /* --- BOTÕES DE SLOT "LIVRE" --- */
-    /* Estilo específico para o botão que fica dentro da grade */
     div[data-testid="stVerticalBlock"] button[kind="secondary"] {
         border: 1px dashed #cbd5e1 !important;
         background-color: #f8fafc !important;
-        color: #0d9488 !important; /* Texto Verde */
+        color: #0d9488 !important;
         font-size: 11px !important;
         font-weight: 600 !important;
         height: 35px !important;
@@ -77,11 +82,11 @@ st.markdown("""
         width: 100% !important;
     }
     div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover {
-        background-color: #f0fdf4 !important; /* Fundo verde bem clarinho no hover */
+        background-color: #f0fdf4 !important;
         border-color: #0d9488 !important;
     }
     div[data-testid="stVerticalBlock"] button[kind="secondary"] p {
-        color: #0d9488 !important; /* Garante cor do texto */
+        color: #0d9488 !important;
     }
 
     /* --- OLHINHO TRANSPARENTE --- */
@@ -98,8 +103,14 @@ st.markdown("""
         color: #31333F !important;
     }
     
-    /* Botões Perigo */
-    button[help="Excluir Usuário"], button[key="logout_btn"], button[key="admin_logout"] { 
+    /* Outros */
+    button[kind="secondary"] { 
+        background-color: #ffffff !important;
+        border: 1px solid #e2e8f0 !important; 
+        color: #64748b !important; 
+    }
+    
+    button[key="logout_btn"], button[key="admin_logout"], button[help="Excluir Usuário"] { 
         border-color: #fecaca !important; 
         color: #ef4444 !important; 
         background-color: #fef2f2 !important; 
@@ -111,8 +122,8 @@ st.markdown("""
     button[key="logout_btn"] *, button[key="admin_logout"] *, button[help="Excluir Usuário"] * { color: #ef4444 !important; }
     
     .blocked-slot { background-color: #fef2f2; height: 35px; border-radius: 6px; border: 1px solid #fecaca; opacity: 0.7; margin-bottom: 5px; }
-    .admin-blocked { background-color: #1e293b; color: white; font-size: 10px; padding: 4px; border-radius: 4px; text-align: center; font-weight: bold; margin-bottom: 5px; height: 35px; display: flex; align-items: center; justify-content: center; }
-    .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; margin-bottom: 5px; height: 35px; display: flex; align-items: center; }
+    .admin-blocked { background-color: #1e293b; color: white; font-size: 10px; padding: 4px; border-radius: 4px; text-align: center; font-weight: bold; margin-bottom: 2px; }
+    .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; margin-bottom: 2px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -193,19 +204,15 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
     st.markdown(f"### Reservar para {data_sugerida.strftime('%d/%m/%Y')}")
     config_precos = get_config_precos()
     modo = st.radio("Tipo de Cobrança", ["Por Hora", "Por Período"], horizontal=True)
-    
     dt = data_sugerida
-    
     horarios_selecionados = []
     valor_final = 0.0
-    
     if modo == "Por Hora":
         dia_sem = dt.weekday()
         if dia_sem == 6: lista_horas = []; st.error("Domingo: Fechado")
         elif dia_sem == 5: lista_horas = [f"{h:02d}:00" for h in range(7, 14)]; st.info("Sábado: Até 14h")
         else: lista_horas = [f"{h:02d}:00" for h in range(7, 22)]
         
-        # Define index padrão se veio do clique na grade
         idx_padrao = 0
         if hora_sugerida_int:
             str_h = f"{hora_sugerida_int:02d}:00"
@@ -314,7 +321,6 @@ def render_calendar(sala, is_admin_mode=False):
                 else:
                     d_obj = datetime.date(ref.year, ref.month, day)
                     d_str = str(d_obj)
-                    
                     with cols[i]:
                         if not is_admin_mode:
                             if st.button(f"{day}", key=f"btn_day_{day}_{mes}_{is_admin_mode}", use_container_width=True):
@@ -323,7 +329,6 @@ def render_calendar(sala, is_admin_mode=False):
                                 else: modal_agendamento(sala, d_obj)
                         else:
                             st.markdown(f"<div style='text-align:center; font-weight:bold; padding:5px'>{day}</div>", unsafe_allow_html=True)
-
                     eventos_html = ""
                     if d_str in mapa:
                         for h in sorted(mapa[d_str].keys()):
@@ -341,7 +346,15 @@ def render_calendar(sala, is_admin_mode=False):
         d_n = ["SEG","TER","QUA","QUI","SEX","SÁB","DOM"]
         for i, d in enumerate(visiveis):
             wd = d.weekday()
-            c_h[i+1].markdown(f"<div style='text-align:center; padding-bottom:5px; border-bottom:2px solid #e2e8f0; margin-bottom:5px'><div style='font-size:10px; font-weight:bold; color:#64748b'>{d_n[wd]}</div><div style='font-size:16px; font-weight:bold; color:#1e293b'>{visiveis[i].day}</div></div>", unsafe_allow_html=True)
+            with c_h[i+1]:
+                lbl_sem = f"{d_n[wd]} {d.day}"
+                if not is_admin_mode:
+                    if st.button(lbl_sem, key=f"btn_week_{d}_{is_admin_mode}", use_container_width=True):
+                         if d < datetime.date.today(): st.toast("Data passada.", icon="🚫")
+                         elif d.weekday() == 6: st.toast("Domingo fechado.", icon="🚫")
+                         else: modal_agendamento(sala, d)
+                else:
+                    st.markdown(f"<div style='text-align:center; font-weight:bold; color:#1e293b'>{lbl_sem}</div>", unsafe_allow_html=True)
         for h in range(7, 22):
             hora = f"{h:02d}:00:00"
             row = st.columns(ratio)
@@ -369,7 +382,6 @@ def render_calendar(sala, is_admin_mode=False):
                         else: cont.markdown(f"<div class='evt-chip'>{nm}</div>", unsafe_allow_html=True)
                 elif is_sunday or is_sat_closed or is_past: cont.markdown("<div class='blocked-slot'></div>", unsafe_allow_html=True)
                 else: 
-                    # SLOT VAZIO -> BOTÃO DE AGENDAR
                     if not is_admin_mode:
                         if cont.button("🟢 Livre", key=f"free_{d_s}_{h}", type="secondary", use_container_width=True):
                             modal_agendamento(sala, d, h)
@@ -457,50 +469,37 @@ def tela_admin_master():
         except: pass
     with tabs[4]:
         st.markdown("### Gerenciar Usuários")
-        
         service_key = st.secrets.get("SUPABASE_SERVICE_KEY")
         if service_key:
             st.success("🟢 Modo Super Admin: Exclusão total ativada.")
         else:
             st.warning("🟡 Modo Limitado: Histórico apagado, login mantido. Configure SUPABASE_SERVICE_KEY para apagar tudo.")
-
         df_users = pd.DataFrame()
-
         if service_key:
             try:
                 adm_client = create_client(st.secrets["SUPABASE_URL"], service_key)
                 auth_users = adm_client.auth.admin.list_users()
                 users_list = []
                 for u in auth_users:
-                    users_list.append({
-                        "user_id": u.id,
-                        "email_profissional": u.email,
-                        "nome_profissional": u.user_metadata.get('nome', 'Sem Nome')
-                    })
+                    users_list.append({"user_id": u.id, "email_profissional": u.email, "nome_profissional": u.user_metadata.get('nome', 'Sem Nome')})
                 df_users = pd.DataFrame(users_list)
             except Exception as e: pass
-
         if df_users.empty:
             try:
                 users_data = supabase.table("reservas").select("user_id, email_profissional, nome_profissional").execute().data
                 if users_data:
                     df_users = pd.DataFrame(users_data).drop_duplicates(subset=['user_id'])
             except: pass
-
         if not df_users.empty:
             for _, row in df_users.iterrows():
                 if st.session_state.user.id == row['user_id']: continue
-
                 with st.container():
                     c1, c2, c3 = st.columns([3, 3, 2])
-                    
                     raw_name = row.get('nome_profissional')
                     raw_email = row.get('email_profissional')
                     nm_show = resolver_nome(raw_email, nome_banco=raw_name)
-                    
                     c1.write(f"**{nm_show}**")
                     c2.write(f"_{raw_email}_")
-                    
                     if c3.button("🗑️ Remover", key=f"rm_user_{row['user_id']}", help="Excluir Usuário"):
                         if service_key:
                             try:
@@ -542,7 +541,6 @@ def main():
                     email = st.text_input("E-mail profissional", placeholder="seu@email.com")
                     senha = st.text_input("Sua senha", type="password", placeholder="••••••••")
                     submitted = st.form_submit_button("Entrar na Agenda")
-                    
                     if submitted:
                         try:
                             u = supabase.auth.sign_in_with_password({"email": email, "password": senha})
@@ -551,11 +549,8 @@ def main():
                                 st.session_state['is_admin'] = (email == "admin@admin.com.br")
                                 st.rerun()
                         except Exception as e:
-                            if "Invalid login credentials" in str(e):
-                                st.error("E-mail ou senha incorretos.")
-                            else:
-                                st.error(f"Erro ao entrar: {e}")
-                
+                            if "Invalid login credentials" in str(e): st.error("E-mail ou senha incorretos.")
+                            else: st.error(f"Erro ao entrar: {e}")
                 st.markdown("<br>", unsafe_allow_html=True)
                 col_reg, col_rec = st.columns(2)
                 with col_reg:
@@ -580,26 +575,22 @@ def main():
                 st.markdown("<h1>Verificar Código</h1>", unsafe_allow_html=True)
                 st.info(f"Enviado para: {st.session_state.reset_email}")
                 otp_code = st.text_input("Digite o CÓDIGO do e-mail")
-                
                 if st.button("Verificar e Redefinir", type="primary"):
                     success = False
                     try:
                         res = supabase.auth.verify_otp({"email": st.session_state.reset_email, "token": otp_code, "type": "magiclink"})
                         if res.user: success = True
                     except: pass
-                    
                     if not success:
                         try:
                             res = supabase.auth.verify_otp({"email": st.session_state.reset_email, "token": otp_code, "type": "recovery"})
                             if res.user: success = True
                         except: pass
-                    
                     if not success:
                         try:
                             res = supabase.auth.verify_otp({"email": st.session_state.reset_email, "token": otp_code, "type": "email"})
                             if res.user: success = True
                         except: pass
-
                     if success:
                         curr_session = supabase.auth.get_session()
                         if curr_session:
@@ -607,9 +598,7 @@ def main():
                             st.session_state.is_admin = (curr_session.user.email == "admin@admin.com.br")
                             st.session_state.auth_mode = 'reset_screen'
                             st.rerun()
-                    else:
-                        st.error("Código inválido.")
-                
+                    else: st.error("Código inválido.")
                 if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'forgot'; st.rerun()
 
             elif st.session_state.auth_mode == 'reset_screen':
@@ -639,9 +628,7 @@ def main():
                             time.sleep(1.5)
                             st.session_state.auth_mode = 'login'
                             st.rerun()
-                        except Exception as e:
-                            st.error(f"Erro ao cadastrar: {e}")
-                            
+                        except Exception as e: st.error(f"Erro ao cadastrar: {e}")
                 if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'login'; st.rerun()
         return
 
@@ -688,12 +675,10 @@ def main():
                                             st.toast("Cancelado!", icon="✅")
                                             time.sleep(1)
                                             st.rerun()
-                                        except Exception as e:
-                                            st.error(f"Erro ao cancelar: {e}")
+                                        except Exception as e: st.error(f"Erro ao cancelar: {e}")
                                 else: c_btn.caption("🚫 < 24h")
                                 st.divider()
                 else: st.info("Sem agendamentos futuros.")
-                
                 st.markdown("### Financeiro")
                 df_all = pd.DataFrame(supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").execute().data)
                 k1, k2 = st.columns(2)
@@ -702,7 +687,13 @@ def main():
             except: st.error("Erro ao carregar dados.")
             with st.expander("Segurança"):
                 p1 = st.text_input("Nova Senha", type="password")
-                if st.button("Alterar Senha"): supabase.auth.update_user({"password": p1}); st.success("Senha atualizada!")
+                if st.button("Alterar Senha"):
+                    if len(p1) < 6: st.warning("A senha deve ter pelo menos 6 caracteres.")
+                    else:
+                        try:
+                            supabase.auth.update_user({"password": p1})
+                            st.success("Senha atualizada com sucesso!")
+                        except Exception as e: st.error(f"Erro ao atualizar senha: {e}")
 
 if __name__ == "__main__":
     main()
