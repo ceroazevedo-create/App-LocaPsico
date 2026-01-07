@@ -31,28 +31,42 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS VISUAL ---
+# --- 3. CSS VISUAL (CORRIGIDO PARA O VERDE) ---
 st.markdown("""
 <style>
     .block-container { padding-top: 1rem !important; margin-top: 0rem !important; max-width: 1000px; }
     .stApp { background-color: #f2f4f7; font-family: 'Inter', sans-serif; color: #1a1f36; }
+    
     div[data-testid="column"]:nth-of-type(2) > div { background-color: #ffffff; padding: 48px 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); border: 1px solid #eef2f6; margin-top: 2vh; }
     div[data-testid="stImage"] { display: flex; justify-content: center !important; width: 100%; margin-bottom: 20px; }
     div[data-testid="stImage"] > img { object-fit: contain; width: 90% !important; max-width: 380px; }
+    
     h1 { font-size: 28px; font-weight: 800; color: #1a1f36; margin-bottom: 8px; text-align: center; }
     p { color: #697386; font-size: 15px; text-align: center; margin-bottom: 24px; }
     .stTextInput input { background-color: #ffffff; border: 1px solid #e3e8ee; border-radius: 10px; padding: 12px; height: 48px; }
     
-    /* Botões dentro de Form */
-    div[data-testid="stForm"] button[kind="primary"] {
-        background-color: #0d9488 !important; color: #ffffff !important; border: none; height: 48px; font-weight: 700; border-radius: 10px; margin-top: 10px; width: 100%;
+    /* FORÇA A COR VERDE NO BOTÃO DO FORMULÁRIO */
+    div[data-testid="stForm"] button[kind="primary"], 
+    div[data-testid="stVerticalBlock"] button[kind="primary"] {
+        background-color: #0d9488 !important; 
+        color: #ffffff !important; 
+        border: none; 
+        height: 48px; 
+        font-weight: 700; 
+        border-radius: 10px; 
+        margin-top: 10px;
+        width: 100%;
     }
-    div[data-testid="stVerticalBlock"] button[kind="primary"] { background-color: #0d9488 !important; color: #ffffff !important; }
     
     button[kind="secondary"] { border: 1px solid #e2e8f0; color: #64748b; }
-    .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; margin-bottom: 2px; }
+    
+    button[key="logout_btn"], button[key="admin_logout"] { 
+        border-color: #fecaca !important; color: #ef4444 !important; background: #fef2f2 !important; font-weight: 600; 
+    }
+    
     .blocked-slot { background-color: #fef2f2; height: 40px; border-radius: 4px; border: 1px solid #fecaca; opacity: 0.7; }
     .admin-blocked { background-color: #1e293b; color: white; font-size: 10px; padding: 4px; border-radius: 4px; text-align: center; font-weight: bold; margin-bottom: 2px; }
+    .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; margin-bottom: 2px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -379,7 +393,7 @@ def main():
             if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
             else: st.markdown("<h1 style='text-align:center; color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
             
-            # --- LOGIN FORM (CORREÇÃO DE DUPLO CLIQUE) ---
+            # --- LOGIN FORM (CORRIGIDO CLIQUE DUPLO) ---
             if st.session_state.auth_mode == 'login':
                 st.markdown("<h1>Bem-vindo de volta</h1>", unsafe_allow_html=True)
                 with st.form("login_form"):
@@ -389,13 +403,15 @@ def main():
                     
                     if submitted:
                         try:
-                            # Tenta limpar sessões antigas antes
-                            supabase.auth.sign_out()
-                            u = supabase.auth.sign_in_with_password({"email": email, "password": senha})
-                            st.session_state['user'] = u.user
-                            st.session_state['is_admin'] = (email == "admin@admin.com.br")
-                            st.rerun()
-                        except: st.error("Credenciais inválidas.")
+                            # Tenta logar e se der certo, força a atualização
+                            res = supabase.auth.sign_in_with_password({"email": email, "password": senha})
+                            if res.user:
+                                st.session_state.user = res.user
+                                st.session_state.is_admin = (res.user.email == "admin@admin.com.br")
+                                st.rerun() # FORÇA O RELOAD IMEDIATO
+                        except Exception as e:
+                            # Se falhar, mostra o erro, mas se for clique duplo, o rerun acima já terá resolvido na segunda vez
+                            st.error(f"Erro: {e}")
                 
                 st.markdown("<br>", unsafe_allow_html=True)
                 col_reg, col_rec = st.columns(2)
@@ -404,7 +420,7 @@ def main():
                 with col_rec:
                     if st.button("Esqueci senha", type="secondary", use_container_width=True): st.session_state.auth_mode = 'forgot'; st.rerun()
 
-            # --- OUTRAS TELAS MANTIDAS IGUAIS ---
+            # --- ESQUECI SENHA (ENVIAR CÓDIGO) ---
             elif st.session_state.auth_mode == 'forgot':
                 st.markdown("<h1>Recuperar Senha</h1>", unsafe_allow_html=True)
                 st.info("Vamos enviar um CÓDIGO para seu e-mail.")
@@ -418,6 +434,7 @@ def main():
                     except Exception as e: st.error(f"Erro: {e}")
                 if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'login'; st.rerun()
 
+            # --- VERIFICAR CÓDIGO ---
             elif st.session_state.auth_mode == 'verify_otp':
                 st.markdown("<h1>Verificar Código</h1>", unsafe_allow_html=True)
                 st.info(f"Enviado para: {st.session_state.reset_email}")
@@ -425,6 +442,7 @@ def main():
                 
                 if st.button("Verificar e Redefinir", type="primary"):
                     success = False
+                    # TENTA VALIDAÇÃO (TODOS OS TIPOS)
                     try:
                         res = supabase.auth.verify_otp({"email": st.session_state.reset_email, "token": otp_code, "type": "magiclink"})
                         if res.user: success = True
@@ -454,6 +472,7 @@ def main():
                 
                 if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'forgot'; st.rerun()
 
+            # --- NOVA SENHA ---
             elif st.session_state.auth_mode == 'reset_screen':
                 st.markdown("<h1>Nova Senha</h1>", unsafe_allow_html=True)
                 new_pass = st.text_input("Digite sua nova senha", type="password")
@@ -467,6 +486,7 @@ def main():
                         st.rerun()
                     else: st.warning("Senha curta.")
 
+            # --- REGISTER ---
             elif st.session_state.auth_mode == 'register':
                 st.markdown("<h1>Criar Nova Conta</h1>", unsafe_allow_html=True)
                 new_nome = st.text_input("Nome Completo")
