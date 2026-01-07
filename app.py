@@ -69,7 +69,7 @@ st.markdown("""
         color: #ffffff !important;
     }
 
-    /* --- OLHINHO --- */
+    /* --- OLHINHO TRANSPARENTE --- */
     div[data-testid="stTextInput"] button {
         background-color: transparent !important;
         border: none !important;
@@ -90,13 +90,17 @@ st.markdown("""
     }
     button[kind="secondary"] * { color: #64748b !important; }
 
-    button[key="logout_btn"], button[key="admin_logout"], button[help="Excluir Usuário"] { 
+    /* Botões de Perigo */
+    button[help="Excluir Usuário"], button[key="logout_btn"], button[key="admin_logout"] { 
         border-color: #fecaca !important; 
         color: #ef4444 !important; 
         background-color: #fef2f2 !important; 
         font-weight: 600; 
     }
-    button[key="logout_btn"] *, button[key="admin_logout"] * { color: #ef4444 !important; }
+    button[help="Excluir Usuário"]:hover, button[key="logout_btn"]:hover {
+        background-color: #fee2e2 !important;
+    }
+    button[help="Excluir Usuário"] * { color: #ef4444 !important; }
     
     .blocked-slot { background-color: #fef2f2; height: 40px; border-radius: 4px; border: 1px solid #fecaca; opacity: 0.7; }
     .admin-blocked { background-color: #1e293b; color: white; font-size: 10px; padding: 4px; border-radius: 4px; text-align: center; font-weight: bold; margin-bottom: 2px; }
@@ -113,7 +117,8 @@ def resolver_nome(email, nome_meta=None, nome_banco=None):
     if "cesar_unib" in email: return "Cesar"
     if "thascaranalle" in email: return "Thays"
     nome_completo = nome_banco or nome_meta or email.split('@')[0]
-    return nome_completo.strip().split(' ')[0].title()
+    if nome_completo is None: return "Usuário"
+    return str(nome_completo).strip().split(' ')[0].title()
 
 def get_config_precos():
     defaults = {'preco_hora': 32.0, 'preco_manha': 100.0, 'preco_tarde': 100.0, 'preco_noite': 80.0, 'preco_diaria': 250.0}
@@ -422,7 +427,14 @@ def tela_admin_master():
         except: pass
     with tabs[4]:
         st.markdown("### Gerenciar Usuários")
-        st.caption("Aqui você pode remover o histórico de um usuário. Para remover o login, é necessário a chave de serviço.")
+        
+        # Verifica se a chave de serviço está configurada
+        service_key = st.secrets.get("SUPABASE_SERVICE_KEY")
+        if service_key:
+            st.success("🟢 Modo Super Admin: Exclusão total ativada.")
+        else:
+            st.warning("🟡 Modo Histórico: A exclusão apenas oculta os agendamentos. Para excluir o login, configure SUPABASE_SERVICE_KEY.")
+
         try:
             users_data = supabase.table("reservas").select("user_id, email_profissional, nome_profissional").execute().data
             if users_data:
@@ -430,27 +442,32 @@ def tela_admin_master():
                 for _, row in df_users.iterrows():
                     with st.container():
                         c1, c2, c3 = st.columns([3, 3, 2])
-                        c1.write(f"**{row.get('nome_profissional', 'Sem Nome')}**")
+                        nm_show = resolver_nome(row.get('email_profissional'), nome_banco=row.get('nome_profissional'))
+                        c1.write(f"**{nm_show}**")
                         c2.write(f"_{row.get('email_profissional')}_")
+                        
                         if c3.button("🗑️ Remover", key=f"rm_user_{row['user_id']}", help="Excluir Usuário"):
-                            # 1. Deleta Historico
-                            supabase.table("reservas").delete().eq("user_id", row['user_id']).execute()
-                            # 2. Tenta Deletar Auth
+                            # 1. Apaga histórico (Sempre funciona)
                             try:
-                                key = st.secrets.get("SUPABASE_SERVICE_KEY")
-                                if key:
-                                    adm = create_client(st.secrets["SUPABASE_URL"], key)
+                                supabase.table("reservas").delete().eq("user_id", row['user_id']).execute()
+                            except: pass
+                            
+                            # 2. Tenta apagar login (Só funciona com a chave)
+                            if service_key:
+                                try:
+                                    adm = create_client(st.secrets["SUPABASE_URL"], service_key)
                                     adm.auth.admin.delete_user(row['user_id'])
-                                    st.success("Usuário deletado completamente!")
-                                else:
-                                    st.warning("Histórico apagado. Adicione SUPABASE_SERVICE_KEY para apagar login.")
-                            except:
-                                st.warning("Histórico apagado.")
-                            time.sleep(1)
+                                    st.toast("Usuário excluído completamente!", icon="✅")
+                                except Exception as e:
+                                    st.error(f"Erro ao excluir login: {e}")
+                            else:
+                                st.toast("Histórico limpo (Login mantido).", icon="⚠️")
+                            
+                            time.sleep(1.5)
                             st.rerun()
                         st.divider()
-            else: st.info("Nenhum usuário encontrado no histórico.")
-        except: st.error("Erro ao carregar usuários.")
+            else: st.info("Nenhum usuário encontrado.")
+        except: pass
 
 # --- 7. MAIN ---
 def main():
@@ -601,44 +618,37 @@ def main():
             try:
                 res_futuras = supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").gte("data_reserva", str(hoje)).order("data_reserva").order("hora_inicio").execute()
                 df_fut = pd.DataFrame(res_futuras.data)
-            except: 
-                st.error("Erro ao conectar com banco de dados.")
-                st.stop()
-
-            if not df_fut.empty:
-                for _, row in df_fut.iterrows():
-                    dt_reserva = datetime.datetime.combine(datetime.date.fromisoformat(row['data_reserva']), datetime.datetime.strptime(row['hora_inicio'], "%H:%M:%S").time())
-                    if dt_reserva > agora:
-                        with st.container():
-                            c_info, c_btn = st.columns([3, 1])
-                            c_info.markdown(f"**{row['data_reserva']}** às **{row['hora_inicio'][:5]}** - {row['sala_nome']}")
-                            diff = dt_reserva - agora
-                            if diff > timedelta(hours=24):
-                                if c_btn.button("Cancelar", key=f"usr_cancel_{row['id']}"):
-                                    try:
-                                        supabase.table("reservas").update({"status": "cancelada"}).eq("id", row['id']).execute()
-                                        st.toast("Cancelado!", icon="✅")
-                                        time.sleep(1)
-                                        st.rerun()
-                                    except Exception as e:
-                                        st.error(f"Erro ao cancelar: {e}")
-                            else: c_btn.caption("🚫 < 24h")
-                            st.divider()
-            else: st.info("Sem agendamentos futuros.")
-            
-            st.markdown("### Financeiro")
-            try:
+                if not df_fut.empty:
+                    for _, row in df_fut.iterrows():
+                        dt_reserva = datetime.datetime.combine(datetime.date.fromisoformat(row['data_reserva']), datetime.datetime.strptime(row['hora_inicio'], "%H:%M:%S").time())
+                        if dt_reserva > agora:
+                            with st.container():
+                                c_info, c_btn = st.columns([3, 1])
+                                c_info.markdown(f"**{row['data_reserva']}** às **{row['hora_inicio'][:5]}** - {row['sala_nome']}")
+                                diff = dt_reserva - agora
+                                if diff > timedelta(hours=24):
+                                    if c_btn.button("Cancelar", key=f"usr_cancel_{row['id']}"):
+                                        try:
+                                            supabase.table("reservas").update({"status": "cancelada"}).eq("id", row['id']).execute()
+                                            st.toast("Cancelado!", icon="✅")
+                                            time.sleep(1)
+                                            st.rerun()
+                                        except Exception as e:
+                                            st.error(f"Erro ao cancelar: {e}")
+                                else: c_btn.caption("🚫 < 24h")
+                                st.divider()
+                else: st.info("Sem agendamentos futuros.")
+                
+                st.markdown("### Financeiro")
                 df_all = pd.DataFrame(supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").execute().data)
                 k1, k2 = st.columns(2)
                 k1.metric("Investido Total", f"R$ {df_all['valor_cobrado'].sum() if not df_all.empty else 0:.0f}")
                 k2.metric("Sessões Totais", len(df_all) if not df_all.empty else 0)
-            except: st.error("Erro ao carregar financeiro.")
-            
+            except: st.error("Erro ao carregar dados.")
             with st.expander("Segurança"):
                 p1 = st.text_input("Nova Senha", type="password")
                 if st.button("Alterar Senha"): supabase.auth.update_user({"password": p1}); st.success("Senha atualizada!")
 
 if __name__ == "__main__":
     main()
-
 
