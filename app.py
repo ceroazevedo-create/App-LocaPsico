@@ -31,7 +31,7 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS VISUAL (PADRONIZAÇÃO TOTAL) ---
+# --- 3. CSS VISUAL (BOTÃO VERDE + CORREÇÃO DE LOGIN) ---
 st.markdown("""
 <style>
     .block-container { padding-top: 1rem !important; margin-top: 0rem !important; max-width: 1000px; }
@@ -45,38 +45,29 @@ st.markdown("""
     p { color: #697386; font-size: 15px; text-align: center; margin-bottom: 24px; }
     .stTextInput input { background-color: #ffffff; border: 1px solid #e3e8ee; border-radius: 10px; padding: 12px; height: 48px; }
     
-    /* --- PADRONIZAÇÃO DE BOTÕES (VERDE + BRANCO) --- */
-    
-    /* 1. Botões de Formulário e Botões Primários */
-    div[data-testid="stForm"] button,
-    div[data-testid="stButton"] button {
-        background-color: #0d9488 !important; /* Verde */
-        color: #ffffff !important;             /* Branco Puro */
+    /* --- BOTÃO VERDE PERFEITO --- */
+    div[data-testid="stForm"] button {
+        background-color: #0d9488 !important;
         border: none !important;
         height: 48px !important;
-        font-weight: 700 !important;
         border-radius: 10px !important;
-        font-size: 16px !important;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1) !important;
-        transition: all 0.2s !important;
+        margin-top: 10px !important;
+        width: 100% !important;
+        box-shadow: none !important;
     }
     
-    /* Efeito Hover */
-    div[data-testid="stForm"] button:hover,
-    div[data-testid="stButton"] button:hover {
-        background-color: #0f766e !important; /* Verde mais escuro */
+    /* FORÇA TEXTO BRANCO DENTRO DO BOTÃO */
+    div[data-testid="stForm"] button * {
         color: #ffffff !important;
-        transform: translateY(-1px);
+        font-weight: 700 !important;
     }
     
-    /* Garantia extra para o texto dentro do botão */
-    div[data-testid="stForm"] button p,
-    div[data-testid="stButton"] button p {
-        color: #ffffff !important;
+    /* Hover */
+    div[data-testid="stForm"] button:hover {
+        background-color: #0f766e !important;
     }
 
-    /* --- PROTEÇÃO DO BOTÃO DE OLHINHO (SENHA) --- */
-    /* Isso impede que o botão de ver senha fique verde */
+    /* --- CORREÇÃO DO OLHINHO --- */
     div[data-testid="stTextInput"] button {
         background-color: transparent !important;
         color: #31333F !important;
@@ -85,25 +76,15 @@ st.markdown("""
         height: auto !important;
         margin: 0 !important;
     }
-    div[data-testid="stTextInput"] button:hover {
-        background-color: transparent !important;
-        color: #0d9488 !important; /* Fica verde apenas o ícone ao passar o mouse */
-    }
-
-    /* Botões Secundários (Voltar, Cancelar) */
-    button[kind="secondary"] { 
-        background-color: white !important;
-        border: 1px solid #e2e8f0 !important; 
-        color: #64748b !important; 
+    /* Ícone do olhinho */
+    div[data-testid="stTextInput"] button * {
+        color: inherit !important; 
     }
     
-    /* Botões Especiais (Logout/Excluir) */
-    button[key="logout_btn"], button[key="admin_logout"] { 
-        background-color: #fef2f2 !important; 
-        color: #ef4444 !important; 
-        border: 1px solid #fecaca !important; 
-    }
-    
+    /* Botões fora do form */
+    div[data-testid="stVerticalBlock"] button[kind="primary"] { background-color: #0d9488 !important; color: white !important; font-weight: 700 !important; }
+    button[kind="secondary"] { border: 1px solid #e2e8f0; color: #64748b; }
+    button[key="logout_btn"], button[key="admin_logout"] { border-color: #fecaca !important; color: #ef4444 !important; background: #fef2f2 !important; font-weight: 600; }
     .blocked-slot { background-color: #fef2f2; height: 40px; border-radius: 4px; border: 1px solid #fecaca; opacity: 0.7; }
     .admin-blocked { background-color: #1e293b; color: white; font-size: 10px; padding: 4px; border-radius: 4px; text-align: center; font-weight: bold; margin-bottom: 2px; }
     .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; margin-bottom: 2px; }
@@ -433,25 +414,27 @@ def main():
             if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
             else: st.markdown("<h1 style='text-align:center; color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
             
-            # --- LOGIN FORM (CORRIGIDO CLIQUE DUPLO) ---
+            # --- LOGIN FORM (CORRIGIDO) ---
             if st.session_state.auth_mode == 'login':
                 st.markdown("<h1>Bem-vindo de volta</h1>", unsafe_allow_html=True)
                 with st.form("login_form"):
                     email = st.text_input("E-mail profissional", placeholder="seu@email.com")
                     senha = st.text_input("Sua senha", type="password", placeholder="••••••••")
-                    # Removemos type="primary" daqui pois o CSS já força a cor
-                    submitted = st.form_submit_button("Entrar na Agenda", type="primary")
+                    submitted = st.form_submit_button("Entrar na Agenda") # Removido type="primary" daqui
                     
                     if submitted:
                         try:
-                            # Tenta limpar sessões antigas antes
-                            supabase.auth.sign_out()
                             u = supabase.auth.sign_in_with_password({"email": email, "password": senha})
                             if u.user:
                                 st.session_state['user'] = u.user
                                 st.session_state['is_admin'] = (email == "admin@admin.com.br")
                                 st.rerun()
-                        except: st.error("Credenciais inválidas.")
+                        except Exception as e:
+                            # Filtra mensagem técnica se for erro de senha
+                            if "Invalid login credentials" in str(e):
+                                st.error("E-mail ou senha incorretos.")
+                            else:
+                                st.error(f"Erro ao entrar: {e}")
                 
                 st.markdown("<br>", unsafe_allow_html=True)
                 col_reg, col_rec = st.columns(2)
@@ -597,5 +580,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
