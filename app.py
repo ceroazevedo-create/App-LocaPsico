@@ -10,10 +10,10 @@ import time
 import os
 import streamlit.components.v1 as components
 
-# --- 1. CONFIGURAÇÕES E INICIALIZAÇÃO ---
+# --- 1. CONFIGURAÇÕES E ESTADO ---
 st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide", initial_sidebar_state="collapsed")
 
-# Inicialização de Estado (Segura)
+# Inicializa variáveis de estado SEGURO
 if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
 if 'user' not in st.session_state: st.session_state.user = None
 if 'is_admin' not in st.session_state: st.session_state.is_admin = False
@@ -30,55 +30,50 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. JAVASCRIPT: PONTE DE URL (HASH -> QUERY) ---
-# Este script é vital. Ele converte o # do link do email em ? para o Python ler.
+# --- 3. JAVASCRIPT: PONTE DE URL (ESSENCIAL) ---
+# Converte o fragmento # (hash) em parâmetro ? (query) para o Python ler
 js_bridge = """
 <script>
-    const hash = window.location.hash;
-    if (hash && hash.includes('access_token')) {
-        const params = new URLSearchParams(hash.substring(1));
-        const newUrl = window.location.origin + window.location.pathname + 
-                       '?access_token=' + params.get('access_token') + 
-                       '&refresh_token=' + params.get('refresh_token') + 
-                       '&type=' + (params.get('type') || 'recovery');
-        window.location.href = newUrl;
+    if (window.location.hash) {
+        const params = new URLSearchParams(window.location.hash.substring(1));
+        if (params.has('access_token') && params.has('refresh_token')) {
+            const newUrl = window.location.origin + window.location.pathname + 
+                           '?access_token=' + params.get('access_token') + 
+                           '&refresh_token=' + params.get('refresh_token') + 
+                           '&type=' + (params.get('type') || 'recovery');
+            window.location.href = newUrl;
+        }
     }
 </script>
 """
 components.html(js_bridge, height=0)
 
-# --- 4. PROCESSADOR DE LOGIN VIA LINK ---
-# Esta função roda no início de TUDO para interceptar o login
-def process_url_login():
-    qp = st.query_params
-    
-    # Se houver token na URL (vindo do JS acima)
-    if "access_token" in qp:
-        try:
-            # Tenta autenticar a sessão
-            session = supabase.auth.set_session(qp["access_token"], qp["refresh_token"])
+# --- 4. INTERCEPTADOR DE SESSÃO (CORAÇÃO DO FIX) ---
+# Verifica se há tokens na URL ANTES de qualquer coisa
+qp = st.query_params
+if "access_token" in qp:
+    try:
+        # Tenta logar com os dados da URL
+        session = supabase.auth.set_session(qp["access_token"], qp["refresh_token"])
+        if session and session.user:
+            # SUCESSO: Define usuário e estado
+            st.session_state.user = session.user
+            st.session_state.is_admin = (session.user.email == "admin@admin.com.br") # Mude para seu email
             
-            if session and session.user:
-                st.session_state.user = session.user
-                st.session_state.is_admin = (session.user.email == "admin@admin.com.br") # Ajuste seu email
-                
-                # Se for recuperação, FORÇA O MODO RESET
-                if qp.get("type") == "recovery":
-                    st.session_state.auth_mode = 'reset_password'
-                else:
-                    # Se for login mágico normal, limpa a URL
-                    st.query_params.clear()
+            # Se for recuperação, FORÇA a tela de reset
+            if qp.get("type") == "recovery":
+                st.session_state.auth_mode = 'reset_password'
+                st.toast("Modo de recuperação detectado!", icon="🔒")
             
-        except Exception:
-            st.error("O link expirou. Por favor, solicite um novo.")
-            time.sleep(3)
+            # Limpa URL e recarrega para aplicar o estado
             st.query_params.clear()
             st.rerun()
+            
+    except Exception as e:
+        st.error(f"Link inválido ou expirado. Erro: {e}")
+        st.query_params.clear()
 
-# Executa o processador imediatamente
-process_url_login()
-
-# Verifica sessão persistente se o usuário estiver vazio
+# Recuperação de sessão persistente (se não veio da URL)
 if not st.session_state.user:
     try:
         sess = supabase.auth.get_session()
@@ -179,10 +174,13 @@ def navegar(direcao):
 def modal_agendamento(sala_padrao, data_sugerida):
     st.markdown("### Detalhes da Reserva")
     config_precos = get_config_precos()
+    
     modo = st.radio("Tipo de Cobrança", ["Por Hora", "Por Período"], horizontal=True)
     dt = st.date_input("Data", value=data_sugerida, min_value=datetime.date.today())
+    
     horarios_selecionados = []
     valor_final = 0.0
+    
     if modo == "Por Hora":
         dia_sem = dt.weekday()
         if dia_sem == 6: lista_horas = []; st.error("Domingo: Fechado")
@@ -205,8 +203,10 @@ def modal_agendamento(sala_padrao, data_sugerida):
         for h in range(dados_p['start'], dados_p['end']):
             horarios_selecionados.append((f"{h:02d}:00", f"{h+1:02d}:00"))
         valor_final = dados_p['price']
+
     st.markdown("---")
     is_recurring = st.checkbox("🔄 Repetir nas próximas 4 semanas (Mensal)")
+    
     if st.button("Confirmar Agendamento", type="primary", use_container_width=True):
         if not horarios_selecionados: st.error("Nenhum horário selecionado."); return
         user = st.session_state.user
@@ -229,8 +229,10 @@ def modal_agendamento(sala_padrao, data_sugerida):
                     if (h_start, h_end) == horarios_selecionados[0]: val_to_save = valor_final
                     elif modo == "Por Hora": val_to_save = valor_final 
                     inserts.append({
-                        "sala_nome": sala_padrao, "data_reserva": str(d_res), "hora_inicio": f"{h_start}:00", "hora_fim": f"{h_end}:00",
-                        "user_id": user.id, "email_profissional": user.email, "nome_profissional": nm, "valor_cobrado": val_to_save, "status": "confirmada"
+                        "sala_nome": sala_padrao, "data_reserva": str(d_res),
+                        "hora_inicio": f"{h_start}:00", "hora_fim": f"{h_end}:00",
+                        "user_id": user.id, "email_profissional": user.email, "nome_profissional": nm,
+                        "valor_cobrado": val_to_save, "status": "confirmada"
                     })
             if inserts:
                 supabase.table("reservas").insert(inserts).execute()
@@ -322,6 +324,7 @@ def render_calendar(sala, is_admin_mode=False):
                 is_sunday = d.weekday() == 6
                 is_sat_closed = (d.weekday() == 5 and h >= 14)
                 is_past = dt_slot < agora
+                
                 if res:
                     if res['status'] == 'bloqueado':
                         cont.markdown(f"<div class='admin-blocked'>⛔ FECHADO</div>", unsafe_allow_html=True)
@@ -417,10 +420,9 @@ def tela_admin_master():
                     else: st.warning("Sem dados.")
         except: pass
 
-# --- 8. MAIN ---
+# --- 7. MAIN ---
 def main():
-    # A) MODO RECUPERAÇÃO DE SENHA (PRIORIDADE ABSOLUTA)
-    # Se st.session_state.recovery_mode estiver ativo OU type=recovery na URL
+    # A) MODO DE RECUPERAÇÃO DE SENHA (PRIORIDADE ALTA)
     if st.session_state.auth_mode == 'reset_password':
         c1, c2, c3 = st.columns([1, 1.5, 1])
         with c2:
@@ -434,15 +436,18 @@ def main():
                 if len(new_pass) >= 6:
                     try:
                         supabase.auth.update_user({"password": new_pass})
-                        st.success("Sucesso! Faça login com a nova senha.")
+                        st.success("Sucesso! Senha atualizada.")
+                        # Limpa tudo para forçar novo login
+                        st.session_state.user = None
                         st.session_state.auth_mode = 'login'
-                        st.session_state.user = None 
-                        st.query_params.clear() # Limpa para garantir
+                        st.session_state.is_admin = False
+                        st.query_params.clear()
                         time.sleep(2)
                         st.rerun()
                     except Exception as e: st.error(f"Erro: {e}")
-                else: st.warning("Mínimo 6 caracteres.")
-        return # Trava a execução aqui
+                else:
+                    st.warning("Mínimo 6 caracteres.")
+        return # Para execução aqui
 
     # B) TELA DE LOGIN (SE NÃO LOGADO)
     if not st.session_state.user:
@@ -451,6 +456,7 @@ def main():
             st.write("") 
             if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
             else: st.markdown("<h1 style='text-align:center; color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
+            
             if st.session_state.auth_mode == 'login':
                 st.markdown("<h1>Bem-vindo de volta</h1>", unsafe_allow_html=True)
                 email = st.text_input("E-mail profissional", placeholder="seu@email.com")
@@ -468,6 +474,7 @@ def main():
                     if st.button("Criar conta", type="secondary", use_container_width=True): st.session_state.auth_mode = 'register'; st.rerun()
                 with col_rec:
                     if st.button("Esqueci senha", type="secondary", use_container_width=True): st.session_state.auth_mode = 'forgot'; st.rerun()
+
             elif st.session_state.auth_mode == 'register':
                 st.markdown("<h1>Criar Nova Conta</h1>", unsafe_allow_html=True)
                 new_nome = st.text_input("Nome Completo")
@@ -481,6 +488,7 @@ def main():
                             st.success("Sucesso! Faça login."); st.session_state.auth_mode = 'login'; time.sleep(1.5); st.rerun()
                         except: st.error("Erro ao cadastrar.")
                 if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'login'; st.rerun()
+
             elif st.session_state.auth_mode == 'forgot':
                 st.markdown("<h1>Recuperar Senha</h1>", unsafe_allow_html=True)
                 rec_e = st.text_input("E-mail")
@@ -494,7 +502,10 @@ def main():
 
     # C) APP LOGADO
     u = st.session_state['user']
-    if u is None: st.session_state.auth_mode = 'login'; st.rerun(); return
+    if u is None:
+        st.session_state.auth_mode = 'login'
+        st.rerun()
+        return
 
     if st.session_state.get('is_admin'):
         c_adm_title, c_adm_out = st.columns([5,1])
