@@ -10,21 +10,20 @@ import time
 import os
 import streamlit.components.v1 as components
 
-# --- 1. CONFIGURAÇÕES E ESTADO (CRUDO) ---
+# --- 1. CONFIGURAÇÕES INICIAIS ---
 st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide", initial_sidebar_state="collapsed")
 
-# Inicialização de Variáveis (Com trava de recuperação)
+# --- 2. VARIAVEIS DE ESTADO (Inicialização Segura) ---
 if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
 if 'user' not in st.session_state: st.session_state.user = None
 if 'is_admin' not in st.session_state: st.session_state.is_admin = False
 if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
 if 'view_mode' not in st.session_state: st.session_state.view_mode = 'SEMANA'
-# NOVA VARIÁVEL CRÍTICA:
-if 'recovery_flow' not in st.session_state: st.session_state.recovery_flow = False
+if 'recovery_mode' not in st.session_state: st.session_state.recovery_mode = False
 
 NOME_DO_ARQUIVO_LOGO = "logo.png" 
 
-# --- 2. CONEXÃO ---
+# --- 3. CONEXÃO SUPABASE ---
 @st.cache_resource
 def init_connection():
     try: return create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
@@ -32,85 +31,90 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. JAVASCRIPT: PONTE DE URL ---
-# Converte o hash #access_token em query params ?access_token
-js_bridge = """
+# --- 4. INTERCEPTADOR DE URL (O SEGREDO DA CORREÇÃO) ---
+# Este bloco roda ANTES de qualquer desenho na tela.
+# Se ele achar o token na URL (query params), ele loga o usuário e ativa o modo recuperação.
+
+def intercept_recovery_token():
+    qp = st.query_params
+    # Se existirem tokens na URL (vindos do JS abaixo)
+    if "access_token" in qp and "refresh_token" in qp:
+        try:
+            # 1. Tenta criar a sessão com o token
+            session = supabase.auth.set_session(qp["access_token"], qp["refresh_token"])
+            
+            if session and session.user:
+                # 2. Sucesso! Define usuário e ATIVA MODO RECUPERAÇÃO
+                st.session_state.user = session.user
+                st.session_state.is_admin = (session.user.email == "admin@admin.com.br") # Ajuste seu email
+                st.session_state.recovery_mode = True 
+                
+                # 3. Limpa a URL para não processar de novo num refresh futuro
+                st.query_params.clear()
+        except Exception as e:
+            st.error(f"Token expirado ou inválido. Peça nova recuperação.")
+            st.query_params.clear()
+
+# Chama a interceptação imediatamente
+intercept_recovery_token()
+
+# --- 5. JAVASCRIPT: CONVERSOR DE HASH ---
+# Transforma o link do email (que usa #) em um link que o Streamlit entende (que usa ?)
+js_hash_fix = """
 <script>
+    // Verifica se há um hash (#access_token=...) na URL
     if (window.location.hash) {
-        const params = new URLSearchParams(window.location.hash.substring(1));
-        if (params.has('access_token') && params.has('refresh_token')) {
+        const hash = window.location.hash.substring(1);
+        const params = new URLSearchParams(hash);
+        
+        if (params.has('access_token')) {
+            // Constroi nova URL trocando # por ?
             const newUrl = window.location.origin + window.location.pathname + 
                            '?access_token=' + params.get('access_token') + 
                            '&refresh_token=' + params.get('refresh_token') + 
-                           '&type=' + (params.get('type') || 'recovery');
-            window.history.replaceState({}, document.title, newUrl);
-            window.location.reload();
+                           '&type=recovery';
+            // Força o navegador a ir para a nova URL imediatamente
+            window.location.href = newUrl;
         }
     }
 </script>
 """
-components.html(js_bridge, height=0)
+components.html(js_hash_fix, height=0)
 
-# --- 4. LÓGICA DE CAPTURA DE SESSÃO (PRIORIDADE MÁXIMA) ---
-def capture_session_from_url():
-    qp = st.query_params
-    if "access_token" in qp and "refresh_token" in qp:
-        try:
-            # Tenta autenticar
-            session = supabase.auth.set_session(qp["access_token"], qp["refresh_token"])
-            if session and session.user:
-                st.session_state.user = session.user
-                st.session_state.is_admin = (session.user.email == "admin@admin.com.br")
-                
-                # Se for recuperação, ATIVA A TRAVA
-                if qp.get("type") == "recovery":
-                    st.session_state.recovery_flow = True
-                    st.toast("Modo de recuperação ativado!", icon="🔒")
-                
-                # Limpa a URL imediatamente
-                st.query_params.clear()
-                time.sleep(0.5)
-                st.rerun()
-        except Exception as e:
-            st.error(f"Link inválido ou expirado: {e}")
-            time.sleep(3)
-            st.query_params.clear()
-            st.rerun()
-
-# Executa a captura
-capture_session_from_url()
-
-# Verifica sessão persistente se não houver user
-if not st.session_state.user:
-    try:
-        session = supabase.auth.get_session()
-        if session:
-            st.session_state.user = session.user
-            st.session_state.is_admin = (session.user.email == "admin@admin.com.br")
-    except: pass
-
-# --- 5. CSS ---
+# --- 6. CSS ---
 st.markdown("""
 <style>
     .block-container { padding-top: 1rem !important; margin-top: 0rem !important; max-width: 1000px; }
     .stApp { background-color: #f2f4f7; font-family: 'Inter', sans-serif; color: #1a1f36; }
-    div[data-testid="column"]:nth-of-type(2) > div { background-color: #ffffff; padding: 48px 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); border: 1px solid #eef2f6; margin-top: 2vh; }
+    
+    div[data-testid="column"]:nth-of-type(2) > div {
+        background-color: #ffffff; padding: 48px 40px; border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08); border: 1px solid #eef2f6; margin-top: 2vh;
+    }
     div[data-testid="stImage"] { display: flex; justify-content: center !important; width: 100%; margin-bottom: 20px; }
     div[data-testid="stImage"] > img { object-fit: contain; width: 90% !important; max-width: 380px; }
+    
     h1 { font-size: 28px; font-weight: 800; color: #1a1f36; margin-bottom: 8px; text-align: center; }
     p { color: #697386; font-size: 15px; text-align: center; margin-bottom: 24px; }
     .stTextInput input { background-color: #ffffff; border: 1px solid #e3e8ee; border-radius: 10px; padding: 12px; height: 48px; }
-    div[data-testid="stVerticalBlock"] button[kind="primary"] { background-color: #0d9488 !important; color: #ffffff !important; border: none; height: 48px; font-weight: 700; border-radius: 10px; margin-top: 10px; }
+    
+    div[data-testid="stVerticalBlock"] button[kind="primary"] {
+        background-color: #0d9488 !important; color: #ffffff !important; border: none; height: 48px; font-weight: 700; border-radius: 10px; margin-top: 10px;
+    }
     div[data-testid="stVerticalBlock"] button[kind="primary"] * { color: #ffffff !important; }
     button[kind="secondary"] { border: 1px solid #e2e8f0; color: #64748b; }
-    button[key="logout_btn"], button[key="admin_logout"] { border-color: #fecaca !important; color: #ef4444 !important; background: #fef2f2 !important; font-weight: 600; }
+    
+    button[key="logout_btn"], button[key="admin_logout"] { 
+        border-color: #fecaca !important; color: #ef4444 !important; background: #fef2f2 !important; font-weight: 600; 
+    }
+    
     .blocked-slot { background-color: #fef2f2; height: 40px; border-radius: 4px; border: 1px solid #fecaca; opacity: 0.7; }
     .admin-blocked { background-color: #1e293b; color: white; font-size: 10px; padding: 4px; border-radius: 4px; text-align: center; font-weight: bold; margin-bottom: 2px; }
     .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; margin-bottom: 2px; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 6. FUNÇÕES DE NEGÓCIO ---
+# --- 7. FUNÇÕES DE SUPORTE ---
 def resolver_nome(email, nome_meta=None, nome_banco=None):
     if not email: return "Visitante"
     if "cesar_unib" in email: return "Cesar"
@@ -232,12 +236,16 @@ def modal_agendamento(sala_padrao, data_sugerida):
                     if d_res.weekday() == 5 and int(h_start[:2]) >= 14: st.error(f"Sábado {d_res} fecha às 14h."); return
                     chk = supabase.table("reservas").select("id").eq("sala_nome", sala_padrao).eq("data_reserva", str(d_res)).eq("hora_inicio", f"{h_start}:00").neq("status", "cancelada").execute()
                     if chk.data: st.error(f"Conflito: {d_res} às {h_start} já está ocupado."); return 
+                    
                     val_to_save = 0.0
                     if (h_start, h_end) == horarios_selecionados[0]: val_to_save = valor_final
                     elif modo == "Por Hora": val_to_save = valor_final 
+
                     inserts.append({
-                        "sala_nome": sala_padrao, "data_reserva": str(d_res), "hora_inicio": f"{h_start}:00", "hora_fim": f"{h_end}:00",
-                        "user_id": user.id, "email_profissional": user.email, "nome_profissional": nm, "valor_cobrado": val_to_save, "status": "confirmada"
+                        "sala_nome": sala_padrao, "data_reserva": str(d_res),
+                        "hora_inicio": f"{h_start}:00", "hora_fim": f"{h_end}:00",
+                        "user_id": user.id, "email_profissional": user.email, "nome_profissional": nm,
+                        "valor_cobrado": val_to_save, "status": "confirmada"
                     })
             if inserts:
                 supabase.table("reservas").insert(inserts).execute()
@@ -425,41 +433,39 @@ def tela_admin_master():
                     else: st.warning("Sem dados.")
         except: pass
 
-# --- 7. MAIN ---
+# --- 8. EXECUÇÃO ---
 def main():
-    # A) VERIFICAÇÃO DE MODO DE RECUPERAÇÃO (PRIORIDADE TOTAL)
-    if st.session_state.recovery_flow:
+    # A) MODO RECUPERAÇÃO (BLOQUEIO TOTAL)
+    if st.session_state.recovery_mode:
         c1, c2, c3 = st.columns([1, 1.5, 1])
         with c2:
             st.write("")
             if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True)
-            st.markdown("<h2 style='text-align:center'>🔒 Definir Nova Senha</h2>", unsafe_allow_html=True)
-            st.info("Digite sua nova senha abaixo.")
+            st.markdown("<h2 style='text-align:center'>🔒 Nova Senha</h2>", unsafe_allow_html=True)
+            new_pass = st.text_input("Digite sua nova senha", type="password")
             
-            new_pass = st.text_input("Nova Senha", type="password")
-            confirm_pass = st.text_input("Confirme a Senha", type="password")
-            
-            c_up, c_cancel = st.columns(2)
-            with c_up:
-                if st.button("Atualizar Senha", type="primary", use_container_width=True):
-                    if new_pass == confirm_pass and len(new_pass) >= 6:
+            c_save, c_cancel = st.columns(2)
+            with c_save:
+                if st.button("Salvar Senha", type="primary", use_container_width=True):
+                    if len(new_pass) >= 6:
                         try:
                             supabase.auth.update_user({"password": new_pass})
-                            st.success("Senha atualizada! Redirecionando...")
-                            st.session_state.recovery_flow = False # Destrava
+                            st.success("Sucesso! Faça login com a nova senha.")
+                            st.session_state.recovery_mode = False
+                            st.session_state.user = None # Desloga para forçar login novo
                             st.session_state.auth_mode = 'login'
                             time.sleep(2)
                             st.rerun()
                         except Exception as e: st.error(f"Erro: {e}")
-                    else:
-                        st.warning("Senhas não conferem ou curta.")
+                    else: st.warning("Mínimo 6 caracteres.")
             with c_cancel:
                 if st.button("Cancelar", type="secondary", use_container_width=True):
-                    st.session_state.recovery_flow = False
+                    st.session_state.recovery_mode = False
+                    st.session_state.user = None
                     st.rerun()
-        return # Para a execução aqui.
+        return
 
-    # B) SE NÃO ESTÁ EM RECUPERAÇÃO, SEGUE FLUXO NORMAL
+    # B) TELA DE LOGIN (SE NÃO LOGADO)
     if not st.session_state.user:
         c1, c2, c3 = st.columns([1, 1.2, 1])
         with c2:
@@ -506,13 +512,13 @@ def main():
                     try:
                         supabase.auth.reset_password_for_email(rec_e, options={"redirect_to": "https://app-locapsico.streamlit.app"})
                         st.success("Verifique seu e-mail.")
-                    except: st.error("Erro.")
+                    except: st.error("Erro ao enviar.")
                 if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'login'; st.rerun()
         return
 
     # C) APP LOGADO
     u = st.session_state['user']
-    if u is None:
+    if u is None: # Safety check
         st.session_state.auth_mode = 'login'
         st.rerun()
         return
