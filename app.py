@@ -19,6 +19,7 @@ if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date
 if 'view_mode' not in st.session_state: st.session_state.view_mode = 'SEMANA'
 if 'user' not in st.session_state: st.session_state.user = None
 if 'is_admin' not in st.session_state: st.session_state.is_admin = False
+if 'force_pass_reset' not in st.session_state: st.session_state.force_pass_reset = False
 
 NOME_DO_ARQUIVO_LOGO = "logo.png" 
 
@@ -30,17 +31,42 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS E JS ---
+# --- 3. JAVASCRIPT MÁGICO (RECUPERAÇÃO DE LINK) ---
+# Este script pega o token do link (ex: #access_token=...) e recarrega a página entregando para o Python
+js_fixer = """
+<script>
+    // 1. Limpa a interface visual do Streamlit
+    try {
+        const doc = window.parent.document;
+        const style = doc.createElement('style');
+        style.innerHTML = `header, footer, .stApp > header { display: none !important; } [data-testid="stToolbar"] { display: none !important; } .viewerBadge_container__1QSob { display: none !important; }`;
+        doc.head.appendChild(style);
+    } catch (e) {}
+    
+    // 2. Detecta Token de Recuperação na URL (Hash)
+    if (window.location.hash) {
+        const params = new URLSearchParams(window.location.hash.substring(1));
+        // Se tiver token de acesso, recarrega a página transformando em Query Param
+        if (params.has('access_token') && params.has('refresh_token')) {
+            const newUrl = window.location.origin + window.location.pathname + 
+                           '?access_token=' + params.get('access_token') + 
+                           '&refresh_token=' + params.get('refresh_token') +
+                           '&type=' + (params.get('type') || 'recovery');
+            window.location.href = newUrl;
+        }
+    }
+</script>
+"""
+components.html(js_fixer, height=0)
+
+# --- 4. CSS VISUAL ---
 st.markdown("""
     <style>
-        header, footer, #MainMenu, [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"] {
-            visibility: hidden !important; display: none !important; height: 0px !important;
-        }
-        a[href*="streamlit.app"] { display: none !important; }
-        .viewerBadge_container__1QSob { display: none !important; }
+        /* CSS GERAL */
         .block-container { padding-top: 1rem !important; margin-top: 0rem !important; max-width: 1000px; }
         .stApp { background-color: #f2f4f7; font-family: 'Inter', sans-serif; color: #1a1f36; }
         
+        /* CARD CENTRALIZADO */
         div[data-testid="column"]:nth-of-type(2) > div {
             background-color: #ffffff; padding: 48px 40px; border-radius: 20px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.08); border: 1px solid #eef2f6; margin-top: 2vh;
@@ -59,10 +85,11 @@ st.markdown("""
         div[data-testid="stVerticalBlock"] button[kind="primary"] * { color: #ffffff !important; }
         button[kind="secondary"] { border: 1px solid #e2e8f0; color: #64748b; }
         
-        button[key="logout_btn"], button[key="admin_logout"], button[kind="secondary"][help="Excluir"] { 
+        button[key="logout_btn"], button[key="admin_logout"] { 
             border-color: #fecaca !important; color: #ef4444 !important; background: #fef2f2 !important; font-weight: 600; 
         }
         
+        /* AGENDA */
         .blocked-slot { 
             background-color: #fef2f2; 
             background-image: repeating-linear-gradient(45deg, #fee2e2 25%, transparent 25%, transparent 50%, #fee2e2 50%, #fee2e2 75%, transparent 75%, transparent);
@@ -73,43 +100,29 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-js_fixer = """
-<script>
-    try {
-        const doc = window.parent.document;
-        const style = doc.createElement('style');
-        style.innerHTML = `header, footer, .stApp > header { display: none !important; } [data-testid="stToolbar"] { display: none !important; } .viewerBadge_container__1QSob { display: none !important; }`;
-        doc.head.appendChild(style);
-    } catch (e) {}
-    
-    if (window.location.hash) {
-        const params = new URLSearchParams(window.location.hash.substring(1));
-        if (params.has('access_token') && params.has('refresh_token')) {
-            const newUrl = window.location.origin + window.location.pathname + '?access_token=' + params.get('access_token') + '&refresh_token=' + params.get('refresh_token');
-            window.location.href = newUrl;
-        }
-    }
-</script>
-"""
-components.html(js_fixer, height=0)
-
-# --- 4. FUNÇÕES DE DADOS E LÓGICA ---
+# --- 5. LÓGICA DE LOGIN E SESSÃO ---
 
 def check_session_from_url():
-    query_params = st.query_params
-    if "access_token" in query_params and "refresh_token" in query_params:
+    # Verifica se o JS converteu o hash em query params
+    qp = st.query_params
+    if "access_token" in qp and "refresh_token" in qp:
         try:
-            session = supabase.auth.set_session(query_params["access_token"], query_params["refresh_token"])
+            # Faz login com o token da URL
+            session = supabase.auth.set_session(qp["access_token"], qp["refresh_token"])
             if session:
                 st.session_state.user = session.user
                 st.session_state.is_admin = (session.user.email == "admin@admin.com.br")
-                st.query_params.clear()
-                st.success("Login via link realizado com sucesso!")
-                time.sleep(1.5)
+                
+                # Se for recuperação, ativa modo de reset
+                if qp.get("type") == "recovery":
+                    st.session_state.force_pass_reset = True
+                
+                st.query_params.clear() # Limpa a URL
                 st.rerun()
-        except: st.error("Link inválido.")
+        except: 
+            st.error("O link de recuperação expirou ou é inválido.")
 
-# Verifica sessão no início (Recupera persistência ou URL)
+# Verifica sessão
 if not st.session_state.user:
     try:
         session = supabase.auth.get_session()
@@ -184,7 +197,7 @@ def navegar(direcao):
     if direcao == 'prev': st.session_state.data_ref -= timedelta(days=delta)
     else: st.session_state.data_ref += timedelta(days=delta)
 
-# --- 5. COMPONENTES DE UI ---
+# --- 6. COMPONENTES DE UI ---
 
 @st.dialog("Novo Agendamento")
 def modal_agendamento(sala_padrao, data_sugerida):
@@ -231,7 +244,6 @@ def modal_agendamento(sala_padrao, data_sugerida):
         datas_to_book = [dt]
         if is_recurring:
             for i in range(1, 4): datas_to_book.append(dt + timedelta(days=7*i))
-        
         try:
             inserts = []
             for d_res in datas_to_book:
@@ -240,7 +252,6 @@ def modal_agendamento(sala_padrao, data_sugerida):
                     dt_check = datetime.datetime.combine(d_res, datetime.datetime.strptime(h_start, "%H:%M").time())
                     if dt_check < agora: st.error(f"Horário {h_start} em {d_res} já passou."); return
                     if d_res.weekday() == 5 and int(h_start[:2]) >= 14: st.error(f"Sábado {d_res} fecha às 14h."); return
-                    
                     chk = supabase.table("reservas").select("id").eq("sala_nome", sala_padrao).eq("data_reserva", str(d_res)).eq("hora_inicio", f"{h_start}:00").neq("status", "cancelada").execute()
                     if chk.data: st.error(f"Conflito: {d_res} às {h_start} já está ocupado."); return 
                     
@@ -446,14 +457,42 @@ def tela_admin_master():
                     else: st.warning("Sem dados.")
         except: pass
 
-# --- 6. EXECUÇÃO ---
+# --- 7. TELA PRINCIPAL (CONTROLE DE FLUXO) ---
 def main():
+    # 1. Se veio de link de recuperação (Flag ativa), mostra APENAS a troca de senha
+    if st.session_state.force_pass_reset:
+        c1, c2, c3 = st.columns([1, 1.5, 1])
+        with c2:
+            st.write("")
+            if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True)
+            st.markdown("<h2 style='text-align:center'>🔒 Definir Nova Senha</h2>", unsafe_allow_html=True)
+            st.info("Você acessou via link de recuperação. Por favor, defina sua nova senha abaixo.")
+            
+            new_pass = st.text_input("Nova Senha", type="password")
+            confirm_pass = st.text_input("Confirme a Senha", type="password")
+            
+            if st.button("Atualizar Senha", type="primary"):
+                if new_pass == confirm_pass and len(new_pass) >= 6:
+                    try:
+                        supabase.auth.update_user({"password": new_pass})
+                        st.success("Senha atualizada com sucesso! Redirecionando...")
+                        st.session_state.force_pass_reset = False
+                        st.session_state.auth_mode = 'login'
+                        time.sleep(2)
+                        st.rerun()
+                    except Exception as e: st.error(f"Erro: {e}")
+                else:
+                    st.warning("Senhas não conferem ou são muito curtas.")
+        return # Para a execução aqui para não mostrar o resto
+
+    # 2. Se não está logado, mostra Login/Cadastro
     if not st.session_state.user:
         c1, c2, c3 = st.columns([1, 1.2, 1])
         with c2:
             st.write("") 
             if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
             else: st.markdown("<h1 style='text-align:center; color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
+            
             if st.session_state.auth_mode == 'login':
                 st.markdown("<h1>Bem-vindo de volta</h1>", unsafe_allow_html=True)
                 email = st.text_input("E-mail profissional", placeholder="seu@email.com")
@@ -471,6 +510,7 @@ def main():
                     if st.button("Criar conta", type="secondary", use_container_width=True): st.session_state.auth_mode = 'register'; st.rerun()
                 with col_rec:
                     if st.button("Esqueci senha", type="secondary", use_container_width=True): st.session_state.auth_mode = 'forgot'; st.rerun()
+
             elif st.session_state.auth_mode == 'register':
                 st.markdown("<h1>Criar Nova Conta</h1>", unsafe_allow_html=True)
                 new_nome = st.text_input("Nome Completo")
@@ -484,6 +524,7 @@ def main():
                             st.success("Sucesso! Faça login."); st.session_state.auth_mode = 'login'; time.sleep(1.5); st.rerun()
                         except: st.error("Erro ao cadastrar.")
                 if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'login'; st.rerun()
+
             elif st.session_state.auth_mode == 'forgot':
                 st.markdown("<h1>Recuperar Senha</h1>", unsafe_allow_html=True)
                 rec_e = st.text_input("E-mail")
@@ -495,14 +536,8 @@ def main():
                 if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'login'; st.rerun()
         return
 
-    # LOGADO
+    # 3. Se logado, mostra App Principal
     u = st.session_state['user']
-    # Check extra de segurança
-    if u is None: 
-        st.session_state.auth_mode = 'login'
-        st.rerun()
-        return
-
     if st.session_state.get('is_admin'):
         c_adm_title, c_adm_out = st.columns([5,1])
         with c_adm_title: st.markdown(f"<h3 style='color:#0d9488; margin:0'>Painel Administrativo</h3>", unsafe_allow_html=True)
