@@ -31,7 +31,7 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS VISUAL (CORREÇÃO CIRÚRGICA DOS BOTÕES) ---
+# --- 3. CSS VISUAL (PADRONIZAÇÃO TOTAL) ---
 st.markdown("""
 <style>
     .block-container { padding-top: 1rem !important; margin-top: 0rem !important; max-width: 1000px; }
@@ -45,48 +45,65 @@ st.markdown("""
     p { color: #697386; font-size: 15px; text-align: center; margin-bottom: 24px; }
     .stTextInput input { background-color: #ffffff; border: 1px solid #e3e8ee; border-radius: 10px; padding: 12px; height: 48px; }
     
-    /* --- CORREÇÃO DO BOTÃO VERDE PRINCIPAL --- */
-    /* 1. Aplica o fundo verde ao botão do formulário */
-    div[data-testid="stForm"] button {
-        background-color: #0d9488 !important;
+    /* --- PADRONIZAÇÃO DE BOTÕES (VERDE + BRANCO) --- */
+    
+    /* 1. Botões de Formulário e Botões Primários */
+    div[data-testid="stForm"] button,
+    div[data-testid="stButton"] button {
+        background-color: #0d9488 !important; /* Verde */
+        color: #ffffff !important;             /* Branco Puro */
         border: none !important;
         height: 48px !important;
-        border-radius: 10px !important;
-        margin-top: 10px !important;
-        width: 100% !important;
-        box-shadow: none !important;
-    }
-    /* 2. FORÇA O TEXTO DENTRO DO BOTÃO A FICAR BRANCO (Corrige Issue 1) */
-    div[data-testid="stForm"] button * {
-        color: #ffffff !important;
         font-weight: 700 !important;
+        border-radius: 10px !important;
+        font-size: 16px !important;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1) !important;
+        transition: all 0.2s !important;
     }
     
-    /* Efeito Hover no botão principal */
-    div[data-testid="stForm"] button:hover {
-        background-color: #0f766e !important;
+    /* Efeito Hover */
+    div[data-testid="stForm"] button:hover,
+    div[data-testid="stButton"] button:hover {
+        background-color: #0f766e !important; /* Verde mais escuro */
+        color: #ffffff !important;
+        transform: translateY(-1px);
+    }
+    
+    /* Garantia extra para o texto dentro do botão */
+    div[data-testid="stForm"] button p,
+    div[data-testid="stButton"] button p {
+        color: #ffffff !important;
     }
 
-    /* --- CORREÇÃO DO BOTÃO DE OLHINHO (SENHA) --- */
-    /* 3. Reseta o botão que fica DENTRO do input de senha para transparente (Corrige Issue 2) */
+    /* --- PROTEÇÃO DO BOTÃO DE OLHINHO (SENHA) --- */
+    /* Isso impede que o botão de ver senha fique verde */
     div[data-testid="stTextInput"] button {
         background-color: transparent !important;
+        color: #31333F !important;
         border: none !important;
-        margin: 0 !important;
-        padding: 0 10px !important; /* Ajuste fino de espaçamento */
-        height: auto !important;
-        width: auto !important;
         box-shadow: none !important;
+        height: auto !important;
+        margin: 0 !important;
     }
-    /* Garante que o ícone do olhinho use a cor padrão (escura) */
-    div[data-testid="stTextInput"] button * {
-        color: inherit !important;
+    div[data-testid="stTextInput"] button:hover {
+        background-color: transparent !important;
+        color: #0d9488 !important; /* Fica verde apenas o ícone ao passar o mouse */
+    }
+
+    /* Botões Secundários (Voltar, Cancelar) */
+    button[kind="secondary"] { 
+        background-color: white !important;
+        border: 1px solid #e2e8f0 !important; 
+        color: #64748b !important; 
     }
     
-    /* Outros estilos */
-    div[data-testid="stVerticalBlock"] button[kind="primary"] { background-color: #0d9488 !important; color: white !important; font-weight: 700 !important; }
-    button[kind="secondary"] { border: 1px solid #e2e8f0; color: #64748b; }
-    button[key="logout_btn"], button[key="admin_logout"] { border-color: #fecaca !important; color: #ef4444 !important; background: #fef2f2 !important; font-weight: 600; }
+    /* Botões Especiais (Logout/Excluir) */
+    button[key="logout_btn"], button[key="admin_logout"] { 
+        background-color: #fef2f2 !important; 
+        color: #ef4444 !important; 
+        border: 1px solid #fecaca !important; 
+    }
+    
     .blocked-slot { background-color: #fef2f2; height: 40px; border-radius: 4px; border: 1px solid #fecaca; opacity: 0.7; }
     .admin-blocked { background-color: #1e293b; color: white; font-size: 10px; padding: 4px; border-radius: 4px; text-align: center; font-weight: bold; margin-bottom: 2px; }
     .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; margin-bottom: 2px; }
@@ -580,4 +597,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
