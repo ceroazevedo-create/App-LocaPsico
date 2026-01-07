@@ -16,7 +16,7 @@ st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide", initia
 # NOME DA LOGO
 NOME_DO_ARQUIVO_LOGO = "logo.png" 
 
-# --- HACK DE LIMPEZA (MANTIDO) ---
+# --- HACK DE LIMPEZA VISUAL (MANTIDO) ---
 st.markdown("""
     <style>
         header, footer, #MainMenu, [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"] {
@@ -24,7 +24,7 @@ st.markdown("""
         }
         a[href*="streamlit.app"] { display: none !important; }
         .viewerBadge_container__1QSob { display: none !important; }
-        .block-container { padding-top: 0rem !important; margin-top: 1rem !important; max-width: 1000px; }
+        .block-container { padding-top: 1rem !important; margin-top: 0rem !important; max-width: 1000px; }
         .stApp { background-color: #f2f4f7; font-family: 'Inter', sans-serif; color: #1a1f36; }
     </style>
 """, unsafe_allow_html=True)
@@ -41,34 +41,35 @@ js_cleaner = """
 """
 components.html(js_cleaner, height=0)
 
-# --- CSS VISUAL (MANTIDO) ---
+# --- CSS VISUAL (ATUALIZADO) ---
 st.markdown("""
 <style>
-    /* Card Login */
+    /* Card Login/Cadastro */
     div[data-testid="column"]:nth-of-type(2) > div {
         background-color: #ffffff; padding: 48px 40px; border-radius: 20px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.08); border: 1px solid #eef2f6; margin-top: 5vh;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08); border: 1px solid #eef2f6; margin-top: 2vh;
     }
     /* Logo */
     div[data-testid="stImage"] { display: flex; justify-content: center !important; width: 100%; margin-bottom: 20px; }
     div[data-testid="stImage"] > img { object-fit: contain; width: 90% !important; max-width: 380px; }
-    /* Tipografia e Inputs */
-    h1 { font-size: 32px; font-weight: 800; color: #1a1f36; margin-bottom: 8px; text-align: center; }
-    p { color: #697386; font-size: 16px; text-align: center; margin-bottom: 32px; }
-    .stTextInput input { background-color: #ffffff; border: 1px solid #e3e8ee; border-radius: 10px; padding: 12px; height: 50px; }
-    /* Botões */
+    /* Tipografia */
+    h1 { font-size: 28px; font-weight: 800; color: #1a1f36; margin-bottom: 8px; text-align: center; }
+    p { color: #697386; font-size: 15px; text-align: center; margin-bottom: 24px; }
+    /* Inputs */
+    .stTextInput input { background-color: #ffffff; border: 1px solid #e3e8ee; border-radius: 10px; padding: 12px; height: 48px; }
+    /* Botões Principais */
     div[data-testid="stVerticalBlock"] button[kind="primary"] {
-        background-color: #0d9488 !important; color: #ffffff !important; border: none; height: 50px; font-weight: 700; border-radius: 10px; margin-top: 10px;
+        background-color: #0d9488 !important; color: #ffffff !important; border: none; height: 48px; font-weight: 700; border-radius: 10px; margin-top: 10px;
     }
     div[data-testid="stVerticalBlock"] button[kind="primary"] * { color: #ffffff !important; }
-    /* Links */
-    .forgot-btn button { background: none !important; border: none !important; color: #697386 !important; font-size: 14px !important; }
-    /* Agenda */
-    .app-header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 30px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-    .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; margin-bottom: 2px; }
-    .blocked-slot { background: repeating-linear-gradient(45deg, #fef2f2, #fef2f2 10px, #fee2e2 10px, #fee2e2 20px); height: 40px; border-radius: 4px; opacity: 0.5; }
-    /* Card Agendamento User */
-    .user-res-card { background: white; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+    /* Botões Secundários */
+    button[kind="secondary"] { border: 1px solid #e2e8f0; color: #64748b; }
+    /* Botão Sair (Vermelho) */
+    button[key="logout_btn"] { border-color: #fecaca !important; color: #ef4444 !important; background: #fef2f2 !important; font-weight: 600; }
+    /* Header Interno */
+    .app-header-box { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.03); display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .header-user { font-size: 18px; font-weight: 700; color: #1e293b; }
+    .header-brand { color: #0d9488; font-weight: 800; font-size: 20px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -80,8 +81,13 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. LÓGICA ---
+# --- 3. LÓGICA DE DADOS (ATUALIZADA) ---
 def resolver_nome(email, nome_meta=None, nome_banco=None):
+    # 1. Correções Específicas Solicitadas
+    if email and "cesar_unib" in email: return "Cesar"
+    if email and "thascaranalle" in email: return "Thays"
+    
+    # 2. Lógica Padrão: Nome Banco > Nome Cadastro > Email
     return nome_banco or nome_meta or email.split('@')[0].title()
 
 def get_preco():
@@ -149,6 +155,7 @@ def modal_agendamento(sala_padrao, data_sugerida):
             if chk.data: st.error("Ocupado!")
             else:
                 user = st.session_state['user']
+                # Passa o nome cadastrado no metadata
                 nm = resolver_nome(user.email, user.user_metadata.get('nome'))
                 supabase.table("reservas").insert({
                     "sala_nome": sala_padrao, "data_reserva": str(dt), "hora_inicio": hr, "hora_fim": f"{int(hr[:2])+1:02d}:00",
@@ -177,7 +184,6 @@ def render_calendar(sala):
 
     ref = st.session_state.data_ref
     mes_str = ref.strftime("%B").capitalize()
-    lbl = f"{mes_str} {ref.year}"
     
     if mode == 'MÊS':
         ano, mes = ref.year, ref.month
@@ -224,6 +230,7 @@ def render_calendar(sala):
                     if d_str in mapa:
                         for h in sorted(mapa[d_str].keys()):
                             res = mapa[d_str][h]
+                            # Usa a função corrigida
                             nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
                             eventos_html += f"<div style='background:#ccfbf1; color:#115e59; font-size:9px; padding:2px; border-radius:3px; margin-bottom:2px; white-space:nowrap; overflow:hidden;'>{h[:5]} {nm}</div>"
                     
@@ -262,7 +269,7 @@ def render_calendar(sala):
     if st.button("➕ Agendar", type="primary", use_container_width=True):
         modal_agendamento(sala, st.session_state.data_ref)
 
-# --- 5. APP PRINCIPAL ---
+# --- 5. TELA DE AUTENTICAÇÃO ---
 if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
 
 def main():
@@ -273,21 +280,63 @@ def main():
             if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
             else: st.markdown("<h1 style='text-align:center; color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
             
+            # --- TELA DE LOGIN ---
             if st.session_state.auth_mode == 'login':
                 st.markdown("<h1>Bem-vindo de volta</h1>", unsafe_allow_html=True)
                 st.markdown("<p>Acesse sua agenda profissional</p>", unsafe_allow_html=True)
                 email = st.text_input("E-mail profissional", placeholder="seu@email.com")
                 senha = st.text_input("Sua senha", type="password", placeholder="••••••••")
+                
                 if st.button("Entrar na Agenda", type="primary"):
                     try:
                         u = supabase.auth.sign_in_with_password({"email": email, "password": senha})
                         st.session_state['user'] = u.user
                         st.session_state['is_admin'] = (email == "admin@admin.com.br")
                         st.rerun()
-                    except: st.error("Credenciais inválidas.")
-                st.markdown('<div class="forgot-container"><div class="forgot-btn">', unsafe_allow_html=True)
-                if st.button("Esqueci minha senha"): st.session_state.auth_mode = 'forgot'; st.rerun()
-                st.markdown('</div></div>', unsafe_allow_html=True)
+                    except: st.error("Email ou senha inválidos.")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                # Botões de Rodapé Login
+                col_reg, col_rec = st.columns(2)
+                with col_reg:
+                    if st.button("Criar conta", type="secondary", use_container_width=True):
+                        st.session_state.auth_mode = 'register'; st.rerun()
+                with col_rec:
+                    # Simula link com botão secundário
+                    if st.button("Esqueci senha", type="secondary", use_container_width=True):
+                        st.session_state.auth_mode = 'forgot'; st.rerun()
+
+            # --- TELA DE CADASTRO ---
+            elif st.session_state.auth_mode == 'register':
+                st.markdown("<h1>Criar Nova Conta</h1>", unsafe_allow_html=True)
+                st.markdown("<p>Preencha seus dados para começar</p>", unsafe_allow_html=True)
+                
+                new_nome = st.text_input("Nome Completo")
+                new_email = st.text_input("Seu E-mail")
+                new_pass = st.text_input("Crie uma Senha", type="password")
+                
+                if st.button("Cadastrar", type="primary"):
+                    if len(new_pass) < 6:
+                        st.warning("A senha deve ter pelo menos 6 caracteres.")
+                    else:
+                        try:
+                            # Envia metadados (Nome) para o Supabase
+                            supabase.auth.sign_up({
+                                "email": new_email, 
+                                "password": new_pass, 
+                                "options": {"data": {"nome": new_nome}}
+                            })
+                            st.success("Cadastro realizado! Faça login.")
+                            st.session_state.auth_mode = 'login'
+                            time.sleep(1.5)
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Erro ao cadastrar: {e}")
+                
+                if st.button("Voltar ao Login", type="secondary"):
+                    st.session_state.auth_mode = 'login'; st.rerun()
+
+            # --- TELA DE RECUPERAÇÃO ---
             elif st.session_state.auth_mode == 'forgot':
                 st.markdown("<h1>Recuperar Senha</h1>", unsafe_allow_html=True)
                 st.markdown("<p>Informe seu e-mail cadastrado</p>", unsafe_allow_html=True)
@@ -297,13 +346,13 @@ def main():
                         supabase.auth.reset_password_for_email(rec_e, options={"redirect_to": "https://locapsico.streamlit.app"})
                         st.success("Verifique seu e-mail.")
                     except: st.error("Erro ao enviar.")
-                st.markdown('<div class="forgot-container"><div class="forgot-btn">', unsafe_allow_html=True)
-                if st.button("Voltar ao Login"): st.session_state.auth_mode = 'login'; st.rerun()
-                st.markdown('</div></div>', unsafe_allow_html=True)
+                if st.button("Voltar", type="secondary"):
+                    st.session_state.auth_mode = 'login'; st.rerun()
         return
 
-    # LOGADO
+    # --- APP LOGADO (INTERFACE PRINCIPAL) ---
     u = st.session_state['user']
+    
     if st.session_state.get('is_admin'):
         with st.sidebar:
             if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, width=100)
@@ -311,60 +360,55 @@ def main():
             if st.button("Sair"): supabase.auth.sign_out(); st.session_state.clear(); st.rerun()
         tela_admin_master()
     else:
+        # Recupera nome do usuário
         nm = resolver_nome(u.email, u.user_metadata.get('nome'))
-        st.markdown(f"<div class='app-header'><div style='color:#0d9488;font-weight:bold'>LocaPsico</div><div>Olá, <b>{nm}</b></div></div>", unsafe_allow_html=True)
+        
+        # CABEÇALHO PERSONALIZADO COM BOTÃO DE SAIR
+        # Usamos colunas para alinhar: Texto à esquerda, Botão Sair à direita
+        c_head_text, c_head_btn = st.columns([5, 1])
+        with c_head_text:
+            st.markdown(f"<h3 style='color:#0d9488; margin:0'>LocaPsico | <span style='color:#334155'>Olá, {nm}</span></h3>", unsafe_allow_html=True)
+        with c_head_btn:
+            if st.button("Sair", key="logout_btn", use_container_width=True):
+                supabase.auth.sign_out()
+                st.session_state.clear()
+                st.rerun()
+        
+        st.divider() # Linha separadora elegante
+
         tabs = st.tabs(["📅 Agenda", "📊 Painel"])
         with tabs[0]:
             sala = st.radio("Sala", ["Sala 1", "Sala 2"], horizontal=True)
             render_calendar(sala)
         with tabs[1]:
-            # --- ÁREA DO USUÁRIO (Painel e Cancelamentos) ---
             st.markdown("### Meus Agendamentos")
-            # Busca agendamentos futuros
             agora = datetime.datetime.now()
             hoje = datetime.date.today()
             try:
-                # Busca tudo que é de hoje em diante
                 res_futuras = supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").gte("data_reserva", str(hoje)).order("data_reserva").order("hora_inicio").execute()
                 df_fut = pd.DataFrame(res_futuras.data)
-                
                 if not df_fut.empty:
                     for _, row in df_fut.iterrows():
-                        # Constrói o datetime do agendamento
-                        dt_reserva = datetime.datetime.combine(
-                            datetime.date.fromisoformat(row['data_reserva']),
-                            datetime.datetime.strptime(row['hora_inicio'], "%H:%M:%S").time()
-                        )
-                        
-                        # Mostra apenas se for no futuro real (data+hora > agora)
+                        dt_reserva = datetime.datetime.combine(datetime.date.fromisoformat(row['data_reserva']), datetime.datetime.strptime(row['hora_inicio'], "%H:%M:%S").time())
                         if dt_reserva > agora:
                             with st.container():
                                 c_info, c_btn = st.columns([3, 1])
                                 c_info.markdown(f"**{row['data_reserva']}** às **{row['hora_inicio'][:5]}** - {row['sala_nome']}")
-                                
-                                # Lógica de 24 horas
                                 diff = dt_reserva - agora
                                 if diff > timedelta(hours=24):
                                     if c_btn.button("Cancelar", key=f"usr_cancel_{row['id']}"):
                                         supabase.table("reservas").update({"status": "cancelada"}).eq("id", row['id']).execute()
-                                        st.toast("Agendamento cancelado!", icon="✅")
-                                        time.sleep(1)
-                                        st.rerun()
-                                else:
-                                    c_btn.caption("🚫 < 24h")
+                                        st.toast("Cancelado!", icon="✅"); time.sleep(1); st.rerun()
+                                else: c_btn.caption("🚫 < 24h")
                                 st.divider()
-                else:
-                    st.info("Nenhum agendamento futuro encontrado.")
-                    
-                st.markdown("### Resumo Financeiro")
-                # Busca tudo para estatística
+                else: st.info("Sem agendamentos futuros.")
+                
+                st.markdown("### Financeiro")
                 df_all = pd.DataFrame(supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").execute().data)
                 k1, k2 = st.columns(2)
                 k1.metric("Investido Total", f"R$ {df_all['valor_cobrado'].sum() if not df_all.empty else 0:.0f}")
                 k2.metric("Sessões Totais", len(df_all) if not df_all.empty else 0)
-                
-            except Exception as e:
-                st.error(f"Erro ao carregar painel: {e}")
+            except: st.error("Erro ao carregar dados.")
 
             with st.expander("Segurança"):
                 p1 = st.text_input("Nova Senha", type="password")
@@ -372,23 +416,18 @@ def main():
                     supabase.auth.update_user({"password": p1})
                     st.success("Senha atualizada!")
 
-        with st.sidebar:
-            if st.button("Sair"): supabase.auth.sign_out(); st.session_state.clear(); st.rerun()
-
-# --- ADMIN ---
+# --- ADMIN (MANTIDO) ---
 def tela_admin_master():
     st.markdown("<div style='background:#0f172a; padding:20px; border-radius:12px; color:white; margin-bottom:20px'><h2 style='margin:0'>⚙️ Painel Admin</h2></div>", unsafe_allow_html=True)
     tabs = st.tabs(["💰 Config", "❌ Gerenciar", "📄 Relatórios"])
     with tabs[0]:
         c1, c2 = st.columns([1, 2])
         preco_atual = get_preco()
-        with c1:
-            novo_preco = st.number_input("Valor da Hora (R$)", value=preco_atual, step=1.0)
-        with c2:
+        with c1: novo_preco = st.number_input("Valor da Hora (R$)", value=preco_atual, step=1.0)
+        with c2: 
             st.write("<br>", unsafe_allow_html=True)
             if st.button("💾 Salvar Preço", type="primary"):
-                supabase.table("configuracoes").update({"preco_hora": novo_preco}).gt("id", 0).execute()
-                st.success("Atualizado!")
+                supabase.table("configuracoes").update({"preco_hora": novo_preco}).gt("id", 0).execute(); st.success("OK!")
     with tabs[1]:
         search = st.text_input("Buscar Nome/Email")
         try:
@@ -405,8 +444,7 @@ def tela_admin_master():
                         c_sl.write(f"{row['sala_nome']} ({row['hora_inicio'][:5]})")
                         c_nm.write(f"👤 {nm}")
                         if c_bt.button("❌ Cancelar", key=f"da_{row['id']}"):
-                            supabase.table("reservas").update({"status": "cancelada"}).eq("id", row['id']).execute()
-                            st.rerun()
+                            supabase.table("reservas").update({"status": "cancelada"}).eq("id", row['id']).execute(); st.rerun()
                         st.divider()
             else: st.info("Vazio.")
         except: pass
@@ -440,5 +478,4 @@ def tela_admin_master():
 
 if __name__ == "__main__":
     main()
-
 
