@@ -69,7 +69,7 @@ st.markdown("""
         color: #ffffff !important;
     }
 
-    /* --- OLHINHO TRANSPARENTE --- */
+    /* --- OLHINHO --- */
     div[data-testid="stTextInput"] button {
         background-color: transparent !important;
         border: none !important;
@@ -90,8 +90,7 @@ st.markdown("""
     }
     button[kind="secondary"] * { color: #64748b !important; }
 
-    /* Botões de Perigo */
-    button[help="Excluir Usuário"], button[key="logout_btn"], button[key="admin_logout"] { 
+    button[key="logout_btn"], button[key="admin_logout"], button[help="Excluir Usuário"] { 
         border-color: #fecaca !important; 
         color: #ef4444 !important; 
         background-color: #fef2f2 !important; 
@@ -100,7 +99,7 @@ st.markdown("""
     button[help="Excluir Usuário"]:hover, button[key="logout_btn"]:hover {
         background-color: #fee2e2 !important;
     }
-    button[help="Excluir Usuário"] * { color: #ef4444 !important; }
+    button[key="logout_btn"] *, button[key="admin_logout"] *, button[help="Excluir Usuário"] * { color: #ef4444 !important; }
     
     .blocked-slot { background-color: #fef2f2; height: 40px; border-radius: 4px; border: 1px solid #fecaca; opacity: 0.7; }
     .admin-blocked { background-color: #1e293b; color: white; font-size: 10px; padding: 4px; border-radius: 4px; text-align: center; font-weight: bold; margin-bottom: 2px; }
@@ -428,7 +427,6 @@ def tela_admin_master():
     with tabs[4]:
         st.markdown("### Gerenciar Usuários")
         
-        # Verifica se a chave de serviço está configurada
         service_key = st.secrets.get("SUPABASE_SERVICE_KEY")
         if service_key:
             st.success("🟢 Modo Super Admin: Exclusão total ativada.")
@@ -447,12 +445,10 @@ def tela_admin_master():
                         c2.write(f"_{row.get('email_profissional')}_")
                         
                         if c3.button("🗑️ Remover", key=f"rm_user_{row['user_id']}", help="Excluir Usuário"):
-                            # 1. Apaga histórico (Sempre funciona)
                             try:
                                 supabase.table("reservas").delete().eq("user_id", row['user_id']).execute()
                             except: pass
                             
-                            # 2. Tenta apagar login (Só funciona com a chave)
                             if service_key:
                                 try:
                                     adm = create_client(st.secrets["SUPABASE_URL"], service_key)
@@ -478,7 +474,6 @@ def main():
             if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
             else: st.markdown("<h1 style='text-align:center; color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
             
-            # --- LOGIN FORM ---
             if st.session_state.auth_mode == 'login':
                 st.markdown("<h1>Bem-vindo de volta</h1>", unsafe_allow_html=True)
                 with st.form("login_form"):
@@ -488,7 +483,6 @@ def main():
                     
                     if submitted:
                         try:
-                            # Apenas sobrescreve, sem sign_out() prévio
                             u = supabase.auth.sign_in_with_password({"email": email, "password": senha})
                             if u.user:
                                 st.session_state['user'] = u.user
@@ -507,7 +501,6 @@ def main():
                 with col_rec:
                     if st.button("Esqueci senha", type="secondary", use_container_width=True): st.session_state.auth_mode = 'forgot'; st.rerun()
 
-            # --- ESQUECI SENHA (ENVIAR CÓDIGO) ---
             elif st.session_state.auth_mode == 'forgot':
                 st.markdown("<h1>Recuperar Senha</h1>", unsafe_allow_html=True)
                 st.info("Vamos enviar um CÓDIGO para seu e-mail.")
@@ -521,7 +514,6 @@ def main():
                     except Exception as e: st.error(f"Erro: {e}")
                 if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'login'; st.rerun()
 
-            # --- VERIFICAR CÓDIGO ---
             elif st.session_state.auth_mode == 'verify_otp':
                 st.markdown("<h1>Verificar Código</h1>", unsafe_allow_html=True)
                 st.info(f"Enviado para: {st.session_state.reset_email}")
@@ -529,7 +521,6 @@ def main():
                 
                 if st.button("Verificar e Redefinir", type="primary"):
                     success = False
-                    # TENTA VALIDAÇÃO (TODOS OS TIPOS)
                     try:
                         res = supabase.auth.verify_otp({"email": st.session_state.reset_email, "token": otp_code, "type": "magiclink"})
                         if res.user: success = True
@@ -559,7 +550,6 @@ def main():
                 
                 if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'forgot'; st.rerun()
 
-            # --- NOVA SENHA ---
             elif st.session_state.auth_mode == 'reset_screen':
                 st.markdown("<h1>Nova Senha</h1>", unsafe_allow_html=True)
                 new_pass = st.text_input("Digite sua nova senha", type="password")
@@ -573,7 +563,6 @@ def main():
                         st.rerun()
                     else: st.warning("Senha curta.")
 
-            # --- REGISTER ---
             elif st.session_state.auth_mode == 'register':
                 st.markdown("<h1>Criar Nova Conta</h1>", unsafe_allow_html=True)
                 new_nome = st.text_input("Nome Completo")
@@ -584,12 +573,20 @@ def main():
                     else:
                         try:
                             supabase.auth.sign_up({"email": new_email, "password": new_pass, "options": {"data": {"nome": new_nome}}})
-                            st.success("Sucesso! Faça login."); st.session_state.auth_mode = 'login'; time.sleep(1.5); st.rerun()
-                        except: st.error("Erro ao cadastrar.")
+                            st.success("Sucesso! Faça login.")
+                            should_rerun = True
+                        except Exception as e:
+                            st.error(f"Erro: {e}")
+                            should_rerun = False
+                        
+                        if should_rerun:
+                            st.session_state.auth_mode = 'login'
+                            time.sleep(1.5)
+                            st.rerun()
+                            
                 if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'login'; st.rerun()
         return
 
-    # LOGADO
     u = st.session_state['user']
     if u is None: st.session_state.auth_mode = 'login'; st.rerun(); return
 
@@ -638,7 +635,6 @@ def main():
                                 else: c_btn.caption("🚫 < 24h")
                                 st.divider()
                 else: st.info("Sem agendamentos futuros.")
-                
                 st.markdown("### Financeiro")
                 df_all = pd.DataFrame(supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").execute().data)
                 k1, k2 = st.columns(2)
@@ -651,4 +647,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
