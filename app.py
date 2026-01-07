@@ -45,38 +45,31 @@ st.markdown("""
     p { color: #697386; font-size: 15px; text-align: center; margin-bottom: 24px; }
     .stTextInput input { background-color: #ffffff; border: 1px solid #e3e8ee; border-radius: 10px; padding: 12px; height: 48px; }
     
-    /* --- PADRONIZAÇÃO DE BOTÕES VERDES --- */
-    
-    /* 1. Alvo: Botões de Formulário E Botões Primários (dentro do app) */
+    /* --- BOTÕES VERDES --- */
     div[data-testid="stForm"] button, 
     div[data-testid="stButton"] button,
     button[kind="primary"] {
-        background-color: #0d9488 !important; /* Fundo Verde */
+        background-color: #0d9488 !important;
         border: none !important;
         height: 48px !important;
         font-weight: 700 !important;
         border-radius: 10px !important;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-        color: #ffffff !important; /* Texto Branco (Nível 1) */
+        color: #ffffff !important;
     }
-
-    /* 2. FORÇA BRUTA: Garante que qualquer texto (p, span, div) DENTRO do botão seja branco */
     div[data-testid="stForm"] button *, 
     div[data-testid="stButton"] button *,
     button[kind="primary"] * {
-        color: #ffffff !important; /* Texto Branco (Nível 2 - Filhos) */
+        color: #ffffff !important;
     }
-    
-    /* 3. Hover (Passar o mouse) */
     div[data-testid="stForm"] button:hover,
     div[data-testid="stButton"] button:hover,
     button[kind="primary"]:hover {
-        background-color: #0f766e !important; /* Verde um pouco mais escuro */
+        background-color: #0f766e !important;
         color: #ffffff !important;
     }
 
-    /* --- EXCEÇÃO: BOTÃO DE OLHINHO (SENHA) --- */
-    /* Esse botão precisa ser transparente e ter ícone escuro */
+    /* --- OLHINHO --- */
     div[data-testid="stTextInput"] button {
         background-color: transparent !important;
         border: none !important;
@@ -86,10 +79,10 @@ st.markdown("""
         padding: 0 10px !important;
     }
     div[data-testid="stTextInput"] button * {
-        color: #31333F !important; /* Reseta a cor do ícone para cinza escuro */
+        color: #31333F !important;
     }
     
-    /* --- BOTÕES SECUNDÁRIOS (Cinza/Branco) --- */
+    /* Outros */
     button[kind="secondary"] { 
         background-color: #ffffff !important;
         border: 1px solid #e2e8f0 !important; 
@@ -97,7 +90,6 @@ st.markdown("""
     }
     button[kind="secondary"] * { color: #64748b !important; }
 
-    /* --- BOTÕES ESPECIAIS (Logout/Excluir - Vermelho) --- */
     button[key="logout_btn"], button[key="admin_logout"] { 
         border-color: #fecaca !important; 
         color: #ef4444 !important; 
@@ -106,7 +98,6 @@ st.markdown("""
     }
     button[key="logout_btn"] *, button[key="admin_logout"] * { color: #ef4444 !important; }
     
-    /* Agenda e Chips */
     .blocked-slot { background-color: #fef2f2; height: 40px; border-radius: 4px; border: 1px solid #fecaca; opacity: 0.7; }
     .admin-blocked { background-color: #1e293b; color: white; font-size: 10px; padding: 4px; border-radius: 4px; text-align: center; font-weight: bold; margin-bottom: 2px; }
     .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; margin-bottom: 2px; }
@@ -362,7 +353,7 @@ def tela_admin_master():
             pt = st.number_input("Valor Tarde (13-18h)", value=cf['preco_tarde'], step=1.0)
         with c2:
             pn = st.number_input("Valor Noite (18-22h)", value=cf['preco_noite'], step=1.0)
-            pdia = number_input("Valor Diária (07-22h)", value=cf['preco_diaria'], step=1.0)
+            pdia = st.number_input("Valor Diária (07-22h)", value=cf['preco_diaria'], step=1.0)
             st.write("")
             if st.button("💾 Salvar Tabela de Preços", type="primary"):
                 supabase.table("configuracoes").update({
@@ -607,4 +598,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
