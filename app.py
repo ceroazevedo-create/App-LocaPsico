@@ -90,7 +90,7 @@ st.markdown("""
     }
     button[kind="secondary"] * { color: #64748b !important; }
 
-    button[key="logout_btn"], button[key="admin_logout"] { 
+    button[key="logout_btn"], button[key="admin_logout"], button[help="Excluir Usuário"] { 
         border-color: #fecaca !important; 
         color: #ef4444 !important; 
         background-color: #fef2f2 !important; 
@@ -107,17 +107,12 @@ st.markdown("""
 # Javascript Cleaner
 components.html("""<script>try{const doc=window.parent.document;const style=doc.createElement('style');style.innerHTML=`header, footer, .stApp > header { display: none !important; } [data-testid="stToolbar"] { display: none !important; } .viewerBadge_container__1QSob { display: none !important; }`;doc.head.appendChild(style);}catch(e){}</script>""", height=0)
 
-# --- 4. FUNÇÕES DE SUPORTE (MODIFICADA PARA PRIMEIRO NOME) ---
+# --- 4. FUNÇÕES DE SUPORTE ---
 def resolver_nome(email, nome_meta=None, nome_banco=None):
     if not email: return "Visitante"
-    # Overrides manuais (se quiser manter)
     if "cesar_unib" in email: return "Cesar"
     if "thascaranalle" in email: return "Thays"
-    
-    # 1. Pega o nome completo disponível
     nome_completo = nome_banco or nome_meta or email.split('@')[0]
-    
-    # 2. Pega só a primeira palavra e coloca a 1ª letra maiúscula
     return nome_completo.strip().split(' ')[0].title()
 
 def get_config_precos():
@@ -348,7 +343,7 @@ def render_calendar(sala, is_admin_mode=False):
         if st.button("➕ Agendar", type="primary", use_container_width=True): modal_agendamento(sala, st.session_state.data_ref)
 
 def tela_admin_master():
-    tabs = st.tabs(["💰 Config", "📅 Visualizar/Excluir", "🚫 Bloqueios", "📄 Relatórios"])
+    tabs = st.tabs(["💰 Config", "📅 Visualizar/Excluir", "🚫 Bloqueios", "📄 Relatórios", "👥 Usuários"])
     with tabs[0]: 
         cf = get_config_precos()
         st.markdown("### Configuração de Preços")
@@ -379,11 +374,8 @@ def tela_admin_master():
         if c_bt_b.button("🔒 Bloquear Data", type="primary"):
             salas_to_block = ["Sala 1", "Sala 2"] if sala_block == "Ambas" else [sala_block]
             try:
-                # 1. CANCELA AGENDAMENTOS EXISTENTES (CORREÇÃO DE COBRANÇA INDEVIDA)
                 for s in salas_to_block:
                     supabase.table("reservas").update({"status": "cancelada"}).eq("sala_nome", s).eq("data_reserva", str(dt_block)).neq("status", "cancelada").execute()
-                
-                # 2. INSERE OS BLOQUEIOS
                 inserts = []
                 for s in salas_to_block:
                     for h in range(7, 22):
@@ -393,7 +385,7 @@ def tela_admin_master():
                             "valor_cobrado": 0, "status": "bloqueado"
                         })
                 supabase.table("reservas").insert(inserts).execute()
-                st.success(f"Dia {dt_block} bloqueado e agendamentos cancelados!")
+                st.success(f"Dia {dt_block} bloqueado!")
             except Exception as e: st.error(f"Erro: {e}")
     with tabs[3]:
         col_m, col_u = st.columns(2)
@@ -428,6 +420,37 @@ def tela_admin_master():
                         else: st.warning("Sem dados.")
                     else: st.warning("Sem dados.")
         except: pass
+    with tabs[4]:
+        st.markdown("### Gerenciar Usuários")
+        st.caption("Aqui você pode remover o histórico de um usuário. Para remover o login, é necessário a chave de serviço.")
+        try:
+            users_data = supabase.table("reservas").select("user_id, email_profissional, nome_profissional").execute().data
+            if users_data:
+                df_users = pd.DataFrame(users_data).drop_duplicates(subset=['user_id'])
+                for _, row in df_users.iterrows():
+                    with st.container():
+                        c1, c2, c3 = st.columns([3, 3, 2])
+                        c1.write(f"**{row.get('nome_profissional', 'Sem Nome')}**")
+                        c2.write(f"_{row.get('email_profissional')}_")
+                        if c3.button("🗑️ Remover", key=f"rm_user_{row['user_id']}", help="Excluir Usuário"):
+                            # 1. Deleta Historico
+                            supabase.table("reservas").delete().eq("user_id", row['user_id']).execute()
+                            # 2. Tenta Deletar Auth
+                            try:
+                                key = st.secrets.get("SUPABASE_SERVICE_KEY")
+                                if key:
+                                    adm = create_client(st.secrets["SUPABASE_URL"], key)
+                                    adm.auth.admin.delete_user(row['user_id'])
+                                    st.success("Usuário deletado completamente!")
+                                else:
+                                    st.warning("Histórico apagado. Adicione SUPABASE_SERVICE_KEY para apagar login.")
+                            except:
+                                st.warning("Histórico apagado.")
+                            time.sleep(1)
+                            st.rerun()
+                        st.divider()
+            else: st.info("Nenhum usuário encontrado no histórico.")
+        except: st.error("Erro ao carregar usuários.")
 
 # --- 7. MAIN ---
 def main():
@@ -572,7 +595,6 @@ def main():
             sala = st.radio("Sala", ["Sala 1", "Sala 2"], horizontal=True)
             render_calendar(sala)
         with tabs[1]:
-            # Fetch de dados (Seguro)
             st.markdown("### Meus Agendamentos")
             agora = datetime.datetime.now()
             hoje = datetime.date.today()
