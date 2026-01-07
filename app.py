@@ -65,7 +65,7 @@ st.markdown("""
     button[kind="secondary"] { border: 1px solid #e2e8f0; color: #64748b; }
     
     /* Botões de Ação (Logout e Excluir) */
-    button[key="logout_btn"], button[kind="secondary"][help="Excluir"] { 
+    button[key="logout_btn"], button[key="admin_logout"], button[kind="secondary"][help="Excluir"] { 
         border-color: #fecaca !important; color: #ef4444 !important; background: #fef2f2 !important; font-weight: 600; 
     }
     
@@ -103,9 +103,7 @@ def get_preco():
     except: return 32.00
 
 def gerar_pdf_fatura(df, nome_usuario, mes_referencia):
-    # Ordena Cronologicamente
     df = df.sort_values(by=['data_reserva', 'hora_inicio'])
-    
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
@@ -117,8 +115,6 @@ def gerar_pdf_fatura(df, nome_usuario, mes_referencia):
     pdf.cell(0, 10, f"Profissional: {nome_usuario}", ln=True)
     pdf.cell(0, 10, f"Referencia: {mes_referencia}", ln=True)
     pdf.ln(10)
-    
-    # Cabeçalho da Tabela
     pdf.set_fill_color(240, 253, 250)
     pdf.set_font("Arial", "B", 10)
     pdf.cell(30, 10, "Data", 1, 0, 'C', True)
@@ -126,23 +122,19 @@ def gerar_pdf_fatura(df, nome_usuario, mes_referencia):
     pdf.cell(30, 10, "Horario", 1, 0, 'C', True)
     pdf.cell(40, 10, "Sala", 1, 0, 'C', True)
     pdf.cell(30, 10, "Valor", 1, 1, 'C', True)
-    
     pdf.set_font("Arial", "", 10)
     total = 0
     dias_sem = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sab", "Dom"]
-    
     for _, row in df.iterrows():
         total += float(row['valor_cobrado'])
         dt_obj = pd.to_datetime(row['data_reserva'])
         dt_str = dt_obj.strftime('%d/%m/%Y')
         dia_sem_str = dias_sem[dt_obj.weekday()]
-        
         pdf.cell(30, 10, dt_str, 1, 0, 'C')
         pdf.cell(30, 10, dia_sem_str, 1, 0, 'C')
         pdf.cell(30, 10, str(row['hora_inicio'])[:5], 1, 0, 'C')
         pdf.cell(40, 10, str(row['sala_nome']), 1, 0, 'C')
         pdf.cell(30, 10, f"R$ {row['valor_cobrado']:.2f}", 1, 1, 'R')
-        
     pdf.ln(5)
     pdf.set_font("Arial", "B", 14)
     pdf.cell(0, 10, f"TOTAL: R$ {total:.2f}", ln=True, align="R")
@@ -163,33 +155,22 @@ def modal_agendamento(sala_padrao, data_sugerida):
     st.write("Confirmar Reserva")
     dt = st.date_input("Data", value=data_sugerida, min_value=datetime.date.today())
     dia_sem = dt.weekday()
-    
     if dia_sem == 6: 
         lista_horas = []; st.error("Domingo: Fechado")
     elif dia_sem == 5: 
         lista_horas = [f"{h:02d}:00" for h in range(7, 14)]; st.info("Sábado: Até 14h")
     else:
         lista_horas = [f"{h:02d}:00" for h in range(7, 22)]
-        
     hr = st.selectbox("Horário", lista_horas, disabled=(len(lista_horas)==0))
-    
     if st.button("Confirmar", type="primary", use_container_width=True, disabled=(len(lista_horas)==0)):
         agora = datetime.datetime.now()
         dt_check = datetime.datetime.combine(dt, datetime.time(int(hr[:2]), 0))
-        
         if dt_check < agora: st.error("Passado."); return
         if dt.weekday() == 6: st.error("Fechado."); return
         if dt.weekday() == 5 and int(hr[:2]) >= 14: st.error("Sábado fecha às 14h."); return
-
         try:
-            # Verifica colisão (Incluindo bloqueios do admin)
-            # O filtro checka status 'confirmada' OU 'bloqueado' (usando lógica OR no Supabase ou filtro python)
-            # Como supabase-py OR é complexo, vamos pegar tudo daquele dia/hora/sala
-            chk = supabase.table("reservas").select("*").eq("sala_nome", sala_padrao).eq("data_reserva", str(dt)).eq("hora_inicio", hr).neq("status", "cancelada").execute()
-            
-            if chk.data: 
-                # Se tem registro e não é cancelado, está ocupado (seja por user ou admin)
-                st.error("Horário indisponível!")
+            chk = supabase.table("reservas").select("id").eq("sala_nome", sala_padrao).eq("data_reserva", str(dt)).eq("hora_inicio", hr).neq("status", "cancelada").execute()
+            if chk.data: st.error("Horário indisponível!")
             else:
                 user = st.session_state['user']
                 nm = resolver_nome(user.email, user.user_metadata.get('nome'))
@@ -200,16 +181,13 @@ def modal_agendamento(sala_padrao, data_sugerida):
                 st.toast("Agendado!", icon="✅"); st.rerun()
         except Exception as e: st.error(f"Erro: {e}")
 
-# --- RENDERIZAÇÃO DO CALENDÁRIO (USER E ADMIN) ---
 def render_calendar(sala, is_admin_mode=False):
-    # Navegação
     c_L, c_R = st.columns([1, 1])
     with c_L: 
         if st.button("◀ Anterior", use_container_width=True, key=f"nav_prev_{is_admin_mode}"): navegar('prev'); st.rerun()
     with c_R: 
         if st.button("Próximo ▶", use_container_width=True, key=f"nav_next_{is_admin_mode}"): navegar('next'); st.rerun()
     
-    # Modos de Visão
     mode = st.session_state.view_mode
     def set_mode(m): st.session_state.view_mode = m
     bt_sty = lambda m: "primary" if mode == m else "secondary"
@@ -223,8 +201,6 @@ def render_calendar(sala, is_admin_mode=False):
 
     ref = st.session_state.data_ref
     mes_str = ref.strftime("%B").capitalize()
-    
-    # Definição de datas para busca
     if mode == 'MÊS':
         ano, mes = ref.year, ref.month
         last_day = calendar.monthrange(ano, mes)[1]
@@ -240,10 +216,8 @@ def render_calendar(sala, is_admin_mode=False):
 
     st.markdown(f"<div style='text-align:center; font-weight:800; color:#334155; margin:10px 0'>{lbl}</div>", unsafe_allow_html=True)
 
-    # Busca no banco
     reservas = []
     try:
-        # Busca confirmados e bloqueados (para admin ver bloqueios tb, e users verem ocupado)
         r = supabase.table("reservas").select("*").eq("sala_nome", sala).neq("status", "cancelada").gte("data_reserva", str(d_start)).lte("data_reserva", str(d_end)).execute()
         reservas = r.data
     except: pass
@@ -254,7 +228,6 @@ def render_calendar(sala, is_admin_mode=False):
         if d not in mapa: mapa[d] = {}
         mapa[d][x['hora_inicio']] = x
 
-    # --- RENDER MENSAL ---
     if mode == 'MÊS':
         cols = st.columns(7)
         dias = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
@@ -269,15 +242,11 @@ def render_calendar(sala, is_admin_mode=False):
                 else:
                     d_obj = datetime.date(ref.year, ref.month, day)
                     d_str = str(d_obj)
-                    eventos_html = ""
                     bg_color = "white"
-                    
-                    # Bloqueio Visual (Passado ou Domingo)
-                    if d_obj < datetime.date.today() or d_obj.weekday() == 6:
-                        bg_color = "#fef2f2"
-                    elif d_obj == datetime.date.today():
-                        bg_color = "#f0fdf4"
+                    if d_obj < datetime.date.today() or d_obj.weekday() == 6: bg_color = "#fef2f2"
+                    elif d_obj == datetime.date.today(): bg_color = "#f0fdf4"
 
+                    eventos_html = ""
                     if d_str in mapa:
                         for h in sorted(mapa[d_str].keys()):
                             res = mapa[d_str][h]
@@ -289,7 +258,6 @@ def render_calendar(sala, is_admin_mode=False):
                     
                     cols[i].markdown(f"<div style='background:{bg_color}; border:1px solid #e2e8f0; border-radius:8px; min-height:80px; padding:5px; font-size:12px;'><div style='font-weight:bold; color:#1e293b; text-align:right'>{day}</div>{eventos_html}</div>", unsafe_allow_html=True)
 
-    # --- RENDER SEMANAL/DIÁRIA (COM EXCLUSÃO PARA ADMIN) ---
     else:
         visiveis = [d_start + timedelta(days=i) for i in range(7 if mode == 'SEMANA' else 1)]
         ratio = [0.6] + [1]*len(visiveis)
@@ -308,8 +276,6 @@ def render_calendar(sala, is_admin_mode=False):
                 d_s = str(d)
                 res = mapa.get(d_s, {}).get(hora)
                 cont = row[i+1].container()
-                
-                # Regras de bloqueio visual
                 dt_slot = datetime.datetime.combine(d, datetime.time(h, 0))
                 agora = datetime.datetime.now()
                 is_sunday = d.weekday() == 6
@@ -317,32 +283,23 @@ def render_calendar(sala, is_admin_mode=False):
                 is_past = dt_slot < agora
                 
                 if res:
-                    # Slot Ocupado (Reserva ou Bloqueio)
                     if res['status'] == 'bloqueado':
                         cont.markdown(f"<div class='admin-blocked'>⛔ FECHADO</div>", unsafe_allow_html=True)
                         if is_admin_mode:
                              if cont.button("🗑️", key=f"del_blk_{res['id']}"):
-                                supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute()
-                                st.rerun()
+                                supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
                     else:
                         nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
-                        
                         if is_admin_mode:
-                            # ADMIN: Vê nome + Botão Excluir
                             c_chip, c_del = cont.columns([3,1])
                             c_chip.markdown(f"<div class='evt-chip'>{nm}</div>", unsafe_allow_html=True)
-                            if c_del.button("🗑️", key=f"del_res_{res['id']}", help="Excluir agendamento"):
-                                supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute()
-                                st.rerun()
+                            if c_del.button("🗑️", key=f"del_res_{res['id']}", help="Excluir"):
+                                supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
                         else:
-                            # USER: Vê apenas o chip
                             cont.markdown(f"<div class='evt-chip'>{nm}</div>", unsafe_allow_html=True)
-
                 elif is_sunday or is_sat_closed or is_past:
-                    # Slot indisponível visualmente
                     cont.markdown("<div class='blocked-slot'></div>", unsafe_allow_html=True)
                 else:
-                    # Slot livre
                     cont.markdown("<div style='height:40px; border-left:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
@@ -350,7 +307,7 @@ def render_calendar(sala, is_admin_mode=False):
         if st.button("➕ Agendar", type="primary", use_container_width=True):
             modal_agendamento(sala, st.session_state.data_ref)
 
-# --- 5. TELA DE AUTENTICAÇÃO ---
+# --- 5. APP ---
 if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
 
 def main():
@@ -408,12 +365,16 @@ def main():
     # LOGADO
     u = st.session_state['user']
     if st.session_state.get('is_admin'):
-        with st.sidebar:
-            if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, width=100)
-            st.write("ADMIN")
-            if st.button("Sair"): supabase.auth.sign_out(); st.session_state.clear(); st.rerun()
+        # ADMIN: Header com Botão de Sair
+        c_adm_title, c_adm_out = st.columns([5,1])
+        with c_adm_title: st.markdown(f"<h3 style='color:#0d9488; margin:0'>Painel Administrativo</h3>", unsafe_allow_html=True)
+        with c_adm_out:
+            if st.button("Sair", key="admin_logout", use_container_width=True):
+                supabase.auth.sign_out(); st.session_state.clear(); st.rerun()
+        st.divider()
         tela_admin_master()
     else:
+        # USER: Header com Botão de Sair
         nm = resolver_nome(u.email, u.user_metadata.get('nome'))
         c_head_text, c_head_btn = st.columns([5, 1])
         with c_head_text: st.markdown(f"<h3 style='color:#0d9488; margin:0'>LocaPsico | <span style='color:#334155'>Olá, {nm}</span></h3>", unsafe_allow_html=True)
@@ -463,10 +424,9 @@ def main():
 
 # --- ADMIN ---
 def tela_admin_master():
-    st.markdown("<div style='background:#0f172a; padding:20px; border-radius:12px; color:white; margin-bottom:20px'><h2 style='margin:0'>⚙️ Painel Admin</h2></div>", unsafe_allow_html=True)
     tabs = st.tabs(["💰 Config", "📅 Visualizar/Excluir", "🚫 Bloqueios", "📄 Relatórios"])
     
-    with tabs[0]: # CONFIG
+    with tabs[0]: 
         c1, c2 = st.columns([1, 2])
         preco_atual = get_preco()
         with c1: novo_preco = st.number_input("Valor da Hora (R$)", value=preco_atual, step=1.0)
@@ -475,12 +435,12 @@ def tela_admin_master():
             if st.button("💾 Salvar Preço", type="primary"):
                 supabase.table("configuracoes").update({"preco_hora": novo_preco}).gt("id", 0).execute(); st.success("OK!")
     
-    with tabs[1]: # VISUALIZAR / EXCLUIR NO CALENDÁRIO
+    with tabs[1]:
         st.info("Selecione a sala para visualizar e use o botão 🗑️ para excluir agendamentos.")
         sala_adm = st.radio("Selecione Sala:", ["Sala 1", "Sala 2"], horizontal=True, key="sala_adm_view")
         render_calendar(sala_adm, is_admin_mode=True)
 
-    with tabs[2]: # BLOQUEIOS
+    with tabs[2]:
         st.write("Bloquear dias inteiros (Feriados/Manutenção)")
         c_dt_b, c_sl_b, c_bt_b = st.columns([2, 2, 2])
         dt_block = c_dt_b.date_input("Data para Bloquear")
@@ -488,59 +448,46 @@ def tela_admin_master():
         
         if c_bt_b.button("🔒 Bloquear Data", type="primary"):
             salas_to_block = ["Sala 1", "Sala 2"] if sala_block == "Ambas" else [sala_block]
-            
-            # Insere bloqueios para cada hora (Brute Force para garantir compatibilidade visual)
             try:
                 inserts = []
                 for s in salas_to_block:
                     for h in range(7, 22):
                         inserts.append({
-                            "sala_nome": s,
-                            "data_reserva": str(dt_block),
-                            "hora_inicio": f"{h:02d}:00",
-                            "hora_fim": f"{h+1:02d}:00",
-                            "user_id": "admin_block",
-                            "email_profissional": "admin@locapsico.com",
-                            "nome_profissional": "BLOQUEIO ADM",
-                            "valor_cobrado": 0,
-                            "status": "bloqueado"
+                            "sala_nome": s, "data_reserva": str(dt_block), "hora_inicio": f"{h:02d}:00", "hora_fim": f"{h+1:02d}:00",
+                            "user_id": "admin_block", "email_profissional": "admin@locapsico.com", "nome_profissional": "BLOQUEIO ADM",
+                            "valor_cobrado": 0, "status": "bloqueado"
                         })
                 supabase.table("reservas").insert(inserts).execute()
                 st.success(f"Dia {dt_block} bloqueado com sucesso!")
-            except Exception as e: st.error(f"Erro ao bloquear: {e}")
+            except Exception as e: st.error(f"Erro: {e}")
 
-    with tabs[3]: # RELATÓRIOS
+    with tabs[3]:
         col_m, col_u = st.columns(2)
         mes_sel = col_m.selectbox("Mês", ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"])
         try:
-            # Pega usuários distintos que têm reservas
             all_res = supabase.table("reservas").select("email_profissional, nome_profissional").execute()
             df_u = pd.DataFrame(all_res.data)
             if not df_u.empty:
                 df_u['display'] = df_u.apply(lambda x: resolver_nome(x['email_profissional'], nome_banco=x['nome_profissional']), axis=1)
                 lista_users = df_u['display'].unique()
                 user_sel = col_u.selectbox("Profissional", lista_users)
-                
                 if st.button("🔍 Gerar Extrato PDF", type="primary", use_container_width=True):
                     ano, mes = map(int, mes_sel.split('-'))
                     ult_dia = calendar.monthrange(ano, mes)[1]
                     d_ini, d_fim = f"{ano}-{mes:02d}-01", f"{ano}-{mes:02d}-{ult_dia}"
-                    
                     r_fin = supabase.table("reservas").select("*").eq("status", "confirmada").gte("data_reserva", d_ini).lte("data_reserva", d_fim).execute()
                     df_fin = pd.DataFrame(r_fin.data)
-                    
                     if not df_fin.empty:
                         df_fin['nm'] = df_fin.apply(lambda x: resolver_nome(x['email_profissional'], nome_banco=x['nome_profissional']), axis=1)
                         df_final = df_fin[df_fin['nm'] == user_sel]
-                        
                         if not df_final.empty:
                             total = df_final['valor_cobrado'].sum()
                             st.success(f"Total: R$ {total:.2f}")
                             pdf_data = gerar_pdf_fatura(df_final, user_sel, mes_sel)
                             b64 = base64.b64encode(pdf_data).decode()
                             st.markdown(f'<a href="data:application/octet-stream;base64,{b64}" download="Extrato_{user_sel}_{mes_sel}.pdf" style="text-decoration:none; background:#0d9488; color:white; padding:10px; border-radius:8px; display:block; text-align:center;">📥 BAIXAR PDF DETALHADO</a>', unsafe_allow_html=True)
-                        else: st.warning("Sem agendamentos para este usuário neste mês.")
-                    else: st.warning("Sem dados no período.")
+                        else: st.warning("Sem dados.")
+                    else: st.warning("Sem dados.")
         except: pass
 
 if __name__ == "__main__":
