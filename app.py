@@ -17,15 +17,13 @@ st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide", initia
 if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
 if 'user' not in st.session_state: st.session_state.user = None
 if 'is_admin' not in st.session_state: st.session_state.is_admin = False
+if 'reset_email' not in st.session_state: st.session_state.reset_email = ""
 if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
 if 'view_mode' not in st.session_state: st.session_state.view_mode = 'SEMANA'
-# Variáveis para o fluxo de Código (OTP)
-if 'reset_email' not in st.session_state: st.session_state.reset_email = ""
-if 'force_pass_reset' not in st.session_state: st.session_state.force_pass_reset = False
 
 NOME_DO_ARQUIVO_LOGO = "logo.png"
 
-# --- 2. CONEXÃO SUPABASE ---
+# --- 2. CONEXÃO ---
 @st.cache_resource
 def init_connection():
     try: return create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
@@ -47,25 +45,14 @@ st.markdown("""
     div[data-testid="stVerticalBlock"] button[kind="primary"] { background-color: #0d9488 !important; color: #ffffff !important; border: none; height: 48px; font-weight: 700; border-radius: 10px; margin-top: 10px; }
     div[data-testid="stVerticalBlock"] button[kind="primary"] * { color: #ffffff !important; }
     button[kind="secondary"] { border: 1px solid #e2e8f0; color: #64748b; }
-    button[key="logout_btn"], button[key="admin_logout"] { border-color: #fecaca !important; color: #ef4444 !important; background: #fef2f2 !important; font-weight: 600; }
+    .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; margin-bottom: 2px; }
     .blocked-slot { background-color: #fef2f2; height: 40px; border-radius: 4px; border: 1px solid #fecaca; opacity: 0.7; }
     .admin-blocked { background-color: #1e293b; color: white; font-size: 10px; padding: 4px; border-radius: 4px; text-align: center; font-weight: bold; margin-bottom: 2px; }
-    .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; margin-bottom: 2px; }
 </style>
 """, unsafe_allow_html=True)
 
-# Javascript Cleaner
-js_cleaner = """
-<script>
-    try {
-        const doc = window.parent.document;
-        const style = doc.createElement('style');
-        style.innerHTML = `header, footer, .stApp > header { display: none !important; } [data-testid="stToolbar"] { display: none !important; } .viewerBadge_container__1QSob { display: none !important; }`;
-        doc.head.appendChild(style);
-    } catch (e) {}
-</script>
-"""
-components.html(js_cleaner, height=0)
+# Javascript Cleaner (Remove cabeçalhos padrão)
+components.html("""<script>try{const doc=window.parent.document;const style=doc.createElement('style');style.innerHTML=`header, footer, .stApp > header { display: none !important; } [data-testid="stToolbar"] { display: none !important; } .viewerBadge_container__1QSob { display: none !important; }`;doc.head.appendChild(style);}catch(e){}</script>""", height=0)
 
 # --- 4. FUNÇÕES DE SUPORTE ---
 def resolver_nome(email, nome_meta=None, nome_banco=None):
@@ -138,13 +125,10 @@ def navegar(direcao):
 def modal_agendamento(sala_padrao, data_sugerida):
     st.markdown("### Detalhes da Reserva")
     config_precos = get_config_precos()
-    
     modo = st.radio("Tipo de Cobrança", ["Por Hora", "Por Período"], horizontal=True)
     dt = st.date_input("Data", value=data_sugerida, min_value=datetime.date.today())
-    
     horarios_selecionados = []
     valor_final = 0.0
-    
     if modo == "Por Hora":
         dia_sem = dt.weekday()
         if dia_sem == 6: lista_horas = []; st.error("Domingo: Fechado")
@@ -167,10 +151,8 @@ def modal_agendamento(sala_padrao, data_sugerida):
         for h in range(dados_p['start'], dados_p['end']):
             horarios_selecionados.append((f"{h:02d}:00", f"{h+1:02d}:00"))
         valor_final = dados_p['price']
-
     st.markdown("---")
     is_recurring = st.checkbox("🔄 Repetir nas próximas 4 semanas (Mensal)")
-    
     if st.button("Confirmar Agendamento", type="primary", use_container_width=True):
         if not horarios_selecionados: st.error("Nenhum horário selecionado."); return
         user = st.session_state.user
@@ -286,7 +268,6 @@ def render_calendar(sala, is_admin_mode=False):
                 is_sunday = d.weekday() == 6
                 is_sat_closed = (d.weekday() == 5 and h >= 14)
                 is_past = dt_slot < agora
-                
                 if res:
                     if res['status'] == 'bloqueado':
                         cont.markdown(f"<div class='admin-blocked'>⛔ FECHADO</div>", unsafe_allow_html=True)
@@ -384,42 +365,12 @@ def tela_admin_master():
 
 # --- 7. MAIN ---
 def main():
-    # 1. VERIFICA MODO DE RECUPERAÇÃO DE SENHA (PRIORIDADE ALTA)
-    if st.session_state.force_pass_reset:
-        c1, c2, c3 = st.columns([1, 1.5, 1])
-        with c2:
-            st.write("")
-            if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True)
-            st.markdown("<h2 style='text-align:center'>🔒 Definir Nova Senha</h2>", unsafe_allow_html=True)
-            
-            new_pass = st.text_input("Nova Senha", type="password")
-            confirm_pass = st.text_input("Confirme a Senha", type="password")
-            
-            if st.button("Atualizar Senha", type="primary"):
-                if new_pass == confirm_pass and len(new_pass) >= 6:
-                    try:
-                        supabase.auth.update_user({"password": new_pass})
-                        st.success("Senha atualizada! Redirecionando...")
-                        st.session_state.force_pass_reset = False
-                        st.session_state.auth_mode = 'login'
-                        st.session_state.user = None
-                        st.session_state.reset_email = "" # Limpa email
-                        time.sleep(2)
-                        st.rerun()
-                    except Exception as e: st.error(f"Erro: {e}")
-                else:
-                    st.warning("Senhas não conferem ou curta.")
-        return 
-
-    # 2. SE NÃO LOGADO
     if not st.session_state.user:
         c1, c2, c3 = st.columns([1, 1.2, 1])
         with c2:
             st.write("") 
             if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
             else: st.markdown("<h1 style='text-align:center; color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
-            
-            # --- TELA 1: LOGIN ---
             if st.session_state.auth_mode == 'login':
                 st.markdown("<h1>Bem-vindo de volta</h1>", unsafe_allow_html=True)
                 email = st.text_input("E-mail profissional", placeholder="seu@email.com")
@@ -437,48 +388,6 @@ def main():
                     if st.button("Criar conta", type="secondary", use_container_width=True): st.session_state.auth_mode = 'register'; st.rerun()
                 with col_rec:
                     if st.button("Esqueci senha", type="secondary", use_container_width=True): st.session_state.auth_mode = 'forgot'; st.rerun()
-
-            # --- TELA 2: ESQUECI SENHA (ENVIAR CÓDIGO) ---
-            elif st.session_state.auth_mode == 'forgot':
-                st.markdown("<h1>Recuperar Senha</h1>", unsafe_allow_html=True)
-                st.info("Vamos enviar um CÓDIGO para seu e-mail.")
-                reset_email = st.text_input("E-mail", value=st.session_state.reset_email)
-                if st.button("Enviar Código", type="primary"):
-                    try:
-                        st.session_state.reset_email = reset_email # Salva e-mail
-                        # ENVIA CÓDIGO OTP (Números)
-                        supabase.auth.sign_in_with_otp({"email": reset_email})
-                        st.session_state.auth_mode = 'verify_otp' # Muda tela
-                        st.rerun()
-                    except Exception as e: st.error(f"Erro: {e}")
-                if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'login'; st.rerun()
-
-            # --- TELA 3: VERIFICAR CÓDIGO ---
-            elif st.session_state.auth_mode == 'verify_otp':
-                st.markdown("<h1>Verificar Código</h1>", unsafe_allow_html=True)
-                st.info(f"Código enviado para: {st.session_state.reset_email}")
-                st.caption("Verifique se o email contém um código ou clique no link 'Magic Link' se não houver código.")
-                otp_code = st.text_input("Digite o código ou Token")
-                
-                if st.button("Verificar e Redefinir", type="primary"):
-                    try:
-                        # Tenta validar o código
-                        res = supabase.auth.verify_otp({
-                            "email": st.session_state.reset_email, 
-                            "token": otp_code, 
-                            "type": "email"
-                        })
-                        if res.user:
-                            st.session_state.user = res.user
-                            st.session_state.is_admin = (res.user.email == "admin@admin.com.br")
-                            st.session_state.force_pass_reset = True # Ativa tela de nova senha
-                            st.rerun()
-                    except Exception as e: 
-                        st.error(f"Código inválido: {e}")
-                
-                if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'forgot'; st.rerun()
-
-            # --- TELA 4: CADASTRO ---
             elif st.session_state.auth_mode == 'register':
                 st.markdown("<h1>Criar Nova Conta</h1>", unsafe_allow_html=True)
                 new_nome = st.text_input("Nome Completo")
@@ -492,15 +401,52 @@ def main():
                             st.success("Sucesso! Faça login."); st.session_state.auth_mode = 'login'; time.sleep(1.5); st.rerun()
                         except: st.error("Erro ao cadastrar.")
                 if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'login'; st.rerun()
+            
+            # --- FLUXO DE RECUPERAÇÃO DE SENHA MANUAL (CÓDIGO) ---
+            elif st.session_state.auth_mode == 'forgot':
+                st.markdown("<h1>Recuperar Senha</h1>", unsafe_allow_html=True)
+                st.info("Vamos enviar um CÓDIGO para seu e-mail.")
+                reset_email = st.text_input("E-mail", value=st.session_state.reset_email)
+                if st.button("Enviar Código", type="primary"):
+                    try:
+                        st.session_state.reset_email = reset_email
+                        supabase.auth.sign_in_with_otp({"email": reset_email})
+                        st.session_state.auth_mode = 'verify_otp'
+                        st.rerun()
+                    except Exception as e: st.error(f"Erro: {e}")
+                if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'login'; st.rerun()
+
+            elif st.session_state.auth_mode == 'verify_otp':
+                st.markdown("<h1>Verificar Código</h1>", unsafe_allow_html=True)
+                st.info(f"Enviado para: {st.session_state.reset_email}")
+                otp_code = st.text_input("Digite o CÓDIGO do e-mail")
+                if st.button("Verificar e Redefinir", type="primary"):
+                    try:
+                        res = supabase.auth.verify_otp({"email": st.session_state.reset_email, "token": otp_code, "type": "email"})
+                        if res.user:
+                            st.session_state.user = res.user
+                            st.session_state.is_admin = (res.user.email == "admin@admin.com.br")
+                            st.session_state.auth_mode = 'reset_screen' # Tela exclusiva de reset
+                            st.rerun()
+                    except: st.error("Código inválido.")
+                if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'forgot'; st.rerun()
+
+            elif st.session_state.auth_mode == 'reset_screen':
+                st.markdown("<h1>Nova Senha</h1>", unsafe_allow_html=True)
+                new_pass = st.text_input("Digite sua nova senha", type="password")
+                if st.button("Salvar Senha", type="primary"):
+                    if len(new_pass) >= 6:
+                        supabase.auth.update_user({"password": new_pass})
+                        st.success("Senha alterada! Faça login.")
+                        st.session_state.auth_mode = 'login'
+                        st.session_state.user = None
+                        time.sleep(2)
+                        st.rerun()
+                    else: st.warning("Senha curta.")
         return
 
-    # C) APP LOGADO
+    # LOGADO
     u = st.session_state['user']
-    if u is None:
-        st.session_state.auth_mode = 'login'
-        st.rerun()
-        return
-
     if st.session_state.get('is_admin'):
         c_adm_title, c_adm_out = st.columns([5,1])
         with c_adm_title: st.markdown(f"<h3 style='color:#0d9488; margin:0'>Painel Administrativo</h3>", unsafe_allow_html=True)
