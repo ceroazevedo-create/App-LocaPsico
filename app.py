@@ -90,6 +90,7 @@ st.markdown("""
     }
     button[kind="secondary"] * { color: #64748b !important; }
 
+    /* Botões Perigo */
     button[key="logout_btn"], button[key="admin_logout"], button[help="Excluir Usuário"] { 
         border-color: #fecaca !important; 
         color: #ef4444 !important; 
@@ -431,7 +432,7 @@ def tela_admin_master():
         if service_key:
             st.success("🟢 Modo Super Admin: Exclusão total ativada.")
         else:
-            st.warning("🟡 Modo Limitado: Mostrando apenas usuários com histórico de agendamento (configure a service_key para ver todos).")
+            st.warning("🟡 Modo Limitado: Histórico apagado, login mantido. Configure SUPABASE_SERVICE_KEY para apagar tudo.")
 
         df_users = pd.DataFrame()
 
@@ -476,30 +477,41 @@ def tela_admin_master():
                     if c3.button("🗑️ Remover", key=f"rm_user_{row['user_id']}", help="Excluir Usuário"):
                         if service_key:
                             try:
-                                # LIMPEZA FORTE: Usa o cliente ADMIN para apagar reservas (Burlando RLS se necessário)
+                                # CLIENTE ADMIN (Bypass total)
                                 adm_client = create_client(st.secrets["SUPABASE_URL"], service_key)
                                 
-                                # 1. Apaga por ID
-                                adm_client.table("reservas").delete().eq("user_id", row['user_id']).execute()
+                                # 1. Apaga reservas (Tenta apagar mesmo se o banco reclamar)
+                                try: adm_client.table("reservas").delete().eq("user_id", row['user_id']).execute()
+                                except: pass
                                 
-                                # 2. Apaga por Email (Garante redundância)
-                                adm_client.table("reservas").delete().eq("email_profissional", row['email_profissional']).execute()
-                                
-                                # 3. Apaga o Login (Agora deve funcionar)
+                                # 2. Tenta apagar perfil (caso exista tabela 'profiles' oculta)
+                                try: adm_client.table("profiles").delete().eq("id", row['user_id']).execute()
+                                except: pass
+
+                                # 3. AGORA Apaga o Login (Se o Passo 1 no SQL foi feito, isso deve funcionar)
                                 adm_client.auth.admin.delete_user(row['user_id'])
                                 st.toast("Usuário excluído completamente!", icon="✅")
+                                time.sleep(1.5)
+                                st.rerun()
                             except Exception as e:
-                                st.error(f"Erro ao excluir login: {e}")
-                                st.info("Dica: Se o erro persistir, vá no Supabase > SQL Editor e rode o comando abaixo para corrigir o banco de dados:")
-                                st.code("alter table public.reservas drop constraint if exists reservas_user_id_fkey, add constraint reservas_user_id_fkey foreign key (user_id) references auth.users(id) on delete cascade;")
+                                st.error(f"Erro ao excluir: {e}")
+                                st.warning("⚠️ IMPORTANTE: Você rodou o comando SQL no Supabase? Se não, a exclusão será bloqueada pelo banco.")
+                                st.code("""
+                                -- Rode isto no SQL Editor do Supabase:
+                                alter table public.reservas
+                                drop constraint if exists reservas_user_id_fkey,
+                                add constraint reservas_user_id_fkey
+                                foreign key (user_id)
+                                references auth.users(id)
+                                on delete cascade;
+                                """)
                         else:
                             try:
                                 supabase.table("reservas").delete().eq("user_id", row['user_id']).execute()
                                 st.toast("Histórico limpo (Login mantido).", icon="⚠️")
                             except: pass
-                        
-                        time.sleep(2)
-                        st.rerun()
+                            time.sleep(1.5)
+                            st.rerun()
                     st.divider()
         else:
             st.info("Nenhum usuário encontrado.")
@@ -523,6 +535,7 @@ def main():
                     
                     if submitted:
                         try:
+                            # Apenas sobrescreve, sem sign_out() prévio
                             u = supabase.auth.sign_in_with_password({"email": email, "password": senha})
                             if u.user:
                                 st.session_state['user'] = u.user
@@ -563,6 +576,7 @@ def main():
                 
                 if st.button("Verificar e Redefinir", type="primary"):
                     success = False
+                    # TENTA VALIDAÇÃO (TODOS OS TIPOS)
                     try:
                         res = supabase.auth.verify_otp({"email": st.session_state.reset_email, "token": otp_code, "type": "magiclink"})
                         if res.user: success = True
