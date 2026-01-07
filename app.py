@@ -96,14 +96,13 @@ def resolver_nome(email, nome_meta=None, nome_banco=None):
     if email and "thascaranalle" in email: return "Thays"
     return nome_banco or nome_meta or email.split('@')[0].title()
 
-def get_preco():
+def get_preco_hora():
     try:
         r = supabase.table("configuracoes").select("preco_hora").limit(1).execute()
         return float(r.data[0]['preco_hora']) if r.data else 32.00
     except: return 32.00
 
 def gerar_pdf_fatura(df, nome_usuario, mes_referencia):
-    # Ordenação garantida no PDF também
     df = df.sort_values(by=['data_reserva', 'hora_inicio'])
     pdf = FPDF()
     pdf.add_page()
@@ -175,9 +174,11 @@ def modal_agendamento(sala_padrao, data_sugerida):
             else:
                 user = st.session_state['user']
                 nm = resolver_nome(user.email, user.user_metadata.get('nome'))
+                # Usa o valor da hora atual para o agendamento
+                val_hora = get_preco_hora()
                 supabase.table("reservas").insert({
                     "sala_nome": sala_padrao, "data_reserva": str(dt), "hora_inicio": hr, "hora_fim": f"{int(hr[:2])+1:02d}:00",
-                    "user_id": user.id, "email_profissional": user.email, "nome_profissional": nm, "valor_cobrado": get_preco(), "status": "confirmada"
+                    "user_id": user.id, "email_profissional": user.email, "nome_profissional": nm, "valor_cobrado": val_hora, "status": "confirmada"
                 }).execute()
                 st.toast("Agendado!", icon="✅"); st.rerun()
         except Exception as e: st.error(f"Erro: {e}")
@@ -234,6 +235,7 @@ def render_calendar(sala, is_admin_mode=False):
         dias = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
         for i, d in enumerate(dias):
             cols[i].markdown(f"<div style='text-align:center; font-weight:bold; color:#64748b; font-size:12px; margin-bottom:5px'>{d}</div>", unsafe_allow_html=True)
+        
         cal_matrix = calendar.monthcalendar(ref.year, ref.month)
         for week in cal_matrix:
             cols = st.columns(7)
@@ -422,13 +424,25 @@ def tela_admin_master():
     tabs = st.tabs(["💰 Config", "📅 Visualizar/Excluir", "🚫 Bloqueios", "📄 Relatórios"])
     
     with tabs[0]: 
-        c1, c2 = st.columns([1, 2])
-        preco_atual = get_preco()
-        with c1: novo_preco = st.number_input("Valor da Hora (R$)", value=preco_atual, step=1.0)
-        with c2: 
+        # Busca todas as configurações
+        r_conf = supabase.table("configuracoes").select("*").limit(1).execute()
+        current_conf = r_conf.data[0] if r_conf.data else {'preco_hora': 32.0, 'preco_periodo': 0.0}
+        
+        # Pega valores com fallback caso a coluna nova ainda não exista
+        val_h = current_conf.get('preco_hora', 32.0)
+        val_p = current_conf.get('preco_periodo', 0.0)
+
+        c1, c2, c3 = st.columns([1, 1, 1])
+        with c1: novo_preco_h = st.number_input("Valor da Hora (R$)", value=float(val_h), step=1.0)
+        with c2: novo_preco_p = st.number_input("Valor do Período (R$)", value=float(val_p), step=10.0)
+        with c3: 
             st.write("<br>", unsafe_allow_html=True)
-            if st.button("💾 Salvar Preço", type="primary"):
-                supabase.table("configuracoes").update({"preco_hora": novo_preco}).gt("id", 0).execute(); st.success("OK!")
+            if st.button("💾 Salvar Configurações", type="primary"):
+                supabase.table("configuracoes").update({
+                    "preco_hora": novo_preco_h,
+                    "preco_periodo": novo_preco_p
+                }).gt("id", 0).execute()
+                st.success("Configurações atualizadas!")
     
     with tabs[1]:
         st.info("Selecione a sala para visualizar e use o botão 🗑️ para excluir agendamentos.")
@@ -466,14 +480,14 @@ def tela_admin_master():
                 df_u['display'] = df_u.apply(lambda x: resolver_nome(x['email_profissional'], nome_banco=x['nome_profissional']), axis=1)
                 lista_users = df_u['display'].unique()
                 user_sel = col_u.selectbox("Profissional", lista_users)
-                if st.button("🔍 Gerar Extrato PDF", type="primary", use_container_width=True):
+                if st.button("🔍 Gerar Extrato Completo", type="primary", use_container_width=True):
                     ano, mes = map(int, mes_sel.split('-'))
                     ult_dia = calendar.monthrange(ano, mes)[1]
                     d_ini, d_fim = f"{ano}-{mes:02d}-01", f"{ano}-{mes:02d}-{ult_dia}"
                     r_fin = supabase.table("reservas").select("*").eq("status", "confirmada").gte("data_reserva", d_ini).lte("data_reserva", d_fim).execute()
                     df_fin = pd.DataFrame(r_fin.data)
                     if not df_fin.empty:
-                        # Ordena Cronologicamente para o Display
+                        # Ordena
                         df_fin = df_fin.sort_values(by=['data_reserva', 'hora_inicio'])
                         
                         df_fin['nm'] = df_fin.apply(lambda x: resolver_nome(x['email_profissional'], nome_banco=x['nome_profissional']), axis=1)
@@ -483,14 +497,13 @@ def tela_admin_master():
                             total = df_final['valor_cobrado'].sum()
                             st.success(f"Total a Receber: R$ {total:.2f}")
                             
-                            # --- MOSTRAR TABELA NA TELA ---
-                            st.markdown("### Detalhamento dos Agendamentos")
-                            # Cria DataFrame limpo para exibição
-                            df_display = df_final[['data_reserva', 'hora_inicio', 'sala_nome', 'valor_cobrado']].copy()
-                            df_display.columns = ['Data', 'Horário', 'Sala', 'Valor (R$)']
-                            # Exibe a tabela sem índice numérico
-                            st.dataframe(df_display, use_container_width=True, hide_index=True)
+                            # --- EXIBIR TABELA NA TELA ---
+                            st.markdown("### Detalhamento")
+                            df_table = df_final[['data_reserva', 'hora_inicio', 'sala_nome', 'valor_cobrado']].copy()
+                            df_table.columns = ['Data', 'Horário', 'Sala', 'Valor (R$)']
+                            st.dataframe(df_table, use_container_width=True, hide_index=True)
                             
+                            # --- PDF ---
                             pdf_data = gerar_pdf_fatura(df_final, user_sel, mes_sel)
                             b64 = base64.b64encode(pdf_data).decode()
                             st.markdown(f'<a href="data:application/octet-stream;base64,{b64}" download="Extrato_{user_sel}_{mes_sel}.pdf" style="text-decoration:none; background:#0d9488; color:white; padding:10px; border-radius:8px; display:block; text-align:center;">📥 BAIXAR PDF DETALHADO</a>', unsafe_allow_html=True)
@@ -500,5 +513,4 @@ def tela_admin_master():
 
 if __name__ == "__main__":
     main()
-
 
