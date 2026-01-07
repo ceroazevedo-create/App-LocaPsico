@@ -42,8 +42,13 @@ st.markdown("""
     h1 { font-size: 28px; font-weight: 800; color: #1a1f36; margin-bottom: 8px; text-align: center; }
     p { color: #697386; font-size: 15px; text-align: center; margin-bottom: 24px; }
     .stTextInput input { background-color: #ffffff; border: 1px solid #e3e8ee; border-radius: 10px; padding: 12px; height: 48px; }
-    div[data-testid="stVerticalBlock"] button[kind="primary"] { background-color: #0d9488 !important; color: #ffffff !important; border: none; height: 48px; font-weight: 700; border-radius: 10px; margin-top: 10px; }
-    div[data-testid="stVerticalBlock"] button[kind="primary"] * { color: #ffffff !important; }
+    
+    /* Botões dentro de Form */
+    div[data-testid="stForm"] button[kind="primary"] {
+        background-color: #0d9488 !important; color: #ffffff !important; border: none; height: 48px; font-weight: 700; border-radius: 10px; margin-top: 10px; width: 100%;
+    }
+    div[data-testid="stVerticalBlock"] button[kind="primary"] { background-color: #0d9488 !important; color: #ffffff !important; }
+    
     button[kind="secondary"] { border: 1px solid #e2e8f0; color: #64748b; }
     .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; margin-bottom: 2px; }
     .blocked-slot { background-color: #fef2f2; height: 40px; border-radius: 4px; border: 1px solid #fecaca; opacity: 0.7; }
@@ -51,6 +56,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Javascript Cleaner
 components.html("""<script>try{const doc=window.parent.document;const style=doc.createElement('style');style.innerHTML=`header, footer, .stApp > header { display: none !important; } [data-testid="stToolbar"] { display: none !important; } .viewerBadge_container__1QSob { display: none !important; }`;doc.head.appendChild(style);}catch(e){}</script>""", height=0)
 
 # --- 4. FUNÇÕES DE SUPORTE ---
@@ -254,7 +260,7 @@ def render_calendar(sala, is_admin_mode=False):
         c_h[0].write("")
         d_n = ["SEG","TER","QUA","QUI","SEX","SÁB","DOM"]
         for i, d in enumerate(visiveis):
-            wd = d.weekday() # CORREÇÃO AQUI
+            wd = d.weekday()
             c_h[i+1].markdown(f"<div style='text-align:center; padding-bottom:5px; border-bottom:2px solid #e2e8f0; margin-bottom:5px'><div style='font-size:10px; font-weight:bold; color:#64748b'>{d_n[wd]}</div><div style='font-size:16px; font-weight:bold; color:#1e293b'>{visiveis[i].day}</div></div>", unsafe_allow_html=True)
         for h in range(7, 22):
             hora = f"{h:02d}:00:00"
@@ -373,18 +379,24 @@ def main():
             if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
             else: st.markdown("<h1 style='text-align:center; color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
             
-            # LOGIN
+            # --- LOGIN FORM (CORREÇÃO DE DUPLO CLIQUE) ---
             if st.session_state.auth_mode == 'login':
                 st.markdown("<h1>Bem-vindo de volta</h1>", unsafe_allow_html=True)
-                email = st.text_input("E-mail profissional", placeholder="seu@email.com")
-                senha = st.text_input("Sua senha", type="password", placeholder="••••••••")
-                if st.button("Entrar na Agenda", type="primary"):
-                    try:
-                        u = supabase.auth.sign_in_with_password({"email": email, "password": senha})
-                        st.session_state['user'] = u.user
-                        st.session_state['is_admin'] = (email == "admin@admin.com.br")
-                        st.rerun()
-                    except: st.error("Credenciais inválidas.")
+                with st.form("login_form"):
+                    email = st.text_input("E-mail profissional", placeholder="seu@email.com")
+                    senha = st.text_input("Sua senha", type="password", placeholder="••••••••")
+                    submitted = st.form_submit_button("Entrar na Agenda", type="primary")
+                    
+                    if submitted:
+                        try:
+                            # Tenta limpar sessões antigas antes
+                            supabase.auth.sign_out()
+                            u = supabase.auth.sign_in_with_password({"email": email, "password": senha})
+                            st.session_state['user'] = u.user
+                            st.session_state['is_admin'] = (email == "admin@admin.com.br")
+                            st.rerun()
+                        except: st.error("Credenciais inválidas.")
+                
                 st.markdown("<br>", unsafe_allow_html=True)
                 col_reg, col_rec = st.columns(2)
                 with col_reg:
@@ -392,7 +404,7 @@ def main():
                 with col_rec:
                     if st.button("Esqueci senha", type="secondary", use_container_width=True): st.session_state.auth_mode = 'forgot'; st.rerun()
 
-            # FORGOT PASSWORD (INICIO)
+            # --- OUTRAS TELAS MANTIDAS IGUAIS ---
             elif st.session_state.auth_mode == 'forgot':
                 st.markdown("<h1>Recuperar Senha</h1>", unsafe_allow_html=True)
                 st.info("Vamos enviar um CÓDIGO para seu e-mail.")
@@ -406,7 +418,6 @@ def main():
                     except Exception as e: st.error(f"Erro: {e}")
                 if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'login'; st.rerun()
 
-            # VERIFICAR CODIGO (CHAVE MESTRA)
             elif st.session_state.auth_mode == 'verify_otp':
                 st.markdown("<h1>Verificar Código</h1>", unsafe_allow_html=True)
                 st.info(f"Enviado para: {st.session_state.reset_email}")
@@ -414,7 +425,6 @@ def main():
                 
                 if st.button("Verificar e Redefinir", type="primary"):
                     success = False
-                    # TENTA VALIDAÇÃO TRIPLA
                     try:
                         res = supabase.auth.verify_otp({"email": st.session_state.reset_email, "token": otp_code, "type": "magiclink"})
                         if res.user: success = True
@@ -437,14 +447,26 @@ def main():
                         if curr_session:
                             st.session_state.user = curr_session.user
                             st.session_state.is_admin = (curr_session.user.email == "admin@admin.com.br")
-                            st.session_state.auth_mode = 'reset_screen' # Manda pra nova senha
+                            st.session_state.auth_mode = 'reset_screen'
                             st.rerun()
                     else:
-                        st.error("Código inválido em todas as tentativas.")
+                        st.error("Código inválido.")
                 
                 if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'forgot'; st.rerun()
 
-            # REGISTER
+            elif st.session_state.auth_mode == 'reset_screen':
+                st.markdown("<h1>Nova Senha</h1>", unsafe_allow_html=True)
+                new_pass = st.text_input("Digite sua nova senha", type="password")
+                if st.button("Salvar Senha", type="primary"):
+                    if len(new_pass) >= 6:
+                        supabase.auth.update_user({"password": new_pass})
+                        st.success("Senha alterada! Faça login.")
+                        st.session_state.auth_mode = 'login'
+                        st.session_state.user = None
+                        time.sleep(2)
+                        st.rerun()
+                    else: st.warning("Senha curta.")
+
             elif st.session_state.auth_mode == 'register':
                 st.markdown("<h1>Criar Nova Conta</h1>", unsafe_allow_html=True)
                 new_nome = st.text_input("Nome Completo")
@@ -464,27 +486,6 @@ def main():
     u = st.session_state['user']
     if u is None: st.session_state.auth_mode = 'login'; st.rerun(); return
 
-    # TELA DE NOVA SENHA (SE ESTIVER LOGADO APÓS OTP)
-    if st.session_state.auth_mode == 'reset_screen':
-        c1, c2, c3 = st.columns([1, 1.5, 1])
-        with c2:
-            st.write("")
-            if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True)
-            st.markdown("<h2 style='text-align:center'>🔒 Nova Senha</h2>", unsafe_allow_html=True)
-            new_pass = st.text_input("Digite sua nova senha", type="password")
-            if st.button("Salvar Senha", type="primary"):
-                if len(new_pass) >= 6:
-                    try:
-                        supabase.auth.update_user({"password": new_pass})
-                        st.success("Sucesso! Senha alterada.")
-                        st.session_state.auth_mode = 'app_main' # Sai do modo reset
-                        time.sleep(1)
-                        st.rerun()
-                    except Exception as e: st.error(f"Erro: {e}")
-                else: st.warning("Senha curta.")
-        return
-
-    # APP PRINCIPAL
     if st.session_state.get('is_admin'):
         c_adm_title, c_adm_out = st.columns([5,1])
         with c_adm_title: st.markdown(f"<h3 style='color:#0d9488; margin:0'>Painel Administrativo</h3>", unsafe_allow_html=True)
