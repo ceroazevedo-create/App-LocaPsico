@@ -19,7 +19,7 @@ if 'user' not in st.session_state: st.session_state.user = None
 if 'is_admin' not in st.session_state: st.session_state.is_admin = False
 if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
 if 'view_mode' not in st.session_state: st.session_state.view_mode = 'SEMANA'
-# Variáveis para o fluxo de OTP (Código)
+# Variáveis para o fluxo de Código (OTP)
 if 'reset_email' not in st.session_state: st.session_state.reset_email = ""
 if 'force_pass_reset' not in st.session_state: st.session_state.force_pass_reset = False
 
@@ -38,35 +38,23 @@ st.markdown("""
 <style>
     .block-container { padding-top: 1rem !important; margin-top: 0rem !important; max-width: 1000px; }
     .stApp { background-color: #f2f4f7; font-family: 'Inter', sans-serif; color: #1a1f36; }
-    
-    div[data-testid="column"]:nth-of-type(2) > div {
-        background-color: #ffffff; padding: 48px 40px; border-radius: 20px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.08); border: 1px solid #eef2f6; margin-top: 2vh;
-    }
+    div[data-testid="column"]:nth-of-type(2) > div { background-color: #ffffff; padding: 48px 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); border: 1px solid #eef2f6; margin-top: 2vh; }
     div[data-testid="stImage"] { display: flex; justify-content: center !important; width: 100%; margin-bottom: 20px; }
     div[data-testid="stImage"] > img { object-fit: contain; width: 90% !important; max-width: 380px; }
-    
     h1 { font-size: 28px; font-weight: 800; color: #1a1f36; margin-bottom: 8px; text-align: center; }
     p { color: #697386; font-size: 15px; text-align: center; margin-bottom: 24px; }
     .stTextInput input { background-color: #ffffff; border: 1px solid #e3e8ee; border-radius: 10px; padding: 12px; height: 48px; }
-    
-    div[data-testid="stVerticalBlock"] button[kind="primary"] {
-        background-color: #0d9488 !important; color: #ffffff !important; border: none; height: 48px; font-weight: 700; border-radius: 10px; margin-top: 10px;
-    }
+    div[data-testid="stVerticalBlock"] button[kind="primary"] { background-color: #0d9488 !important; color: #ffffff !important; border: none; height: 48px; font-weight: 700; border-radius: 10px; margin-top: 10px; }
     div[data-testid="stVerticalBlock"] button[kind="primary"] * { color: #ffffff !important; }
     button[kind="secondary"] { border: 1px solid #e2e8f0; color: #64748b; }
-    
-    button[key="logout_btn"], button[key="admin_logout"] { 
-        border-color: #fecaca !important; color: #ef4444 !important; background: #fef2f2 !important; font-weight: 600; 
-    }
-    
+    button[key="logout_btn"], button[key="admin_logout"] { border-color: #fecaca !important; color: #ef4444 !important; background: #fef2f2 !important; font-weight: 600; }
     .blocked-slot { background-color: #fef2f2; height: 40px; border-radius: 4px; border: 1px solid #fecaca; opacity: 0.7; }
     .admin-blocked { background-color: #1e293b; color: white; font-size: 10px; padding: 4px; border-radius: 4px; text-align: center; font-weight: bold; margin-bottom: 2px; }
     .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; margin-bottom: 2px; }
 </style>
 """, unsafe_allow_html=True)
 
-# Javascript Cleaner (Apenas visual)
+# Javascript Cleaner
 js_cleaner = """
 <script>
     try {
@@ -396,29 +384,34 @@ def tela_admin_master():
 
 # --- 7. MAIN ---
 def main():
-    # A) MODO RECUPERAÇÃO (PRIORIDADE ABSOLUTA)
+    # 1. VERIFICA MODO DE RECUPERAÇÃO DE SENHA (PRIORIDADE ALTA)
     if st.session_state.force_pass_reset:
         c1, c2, c3 = st.columns([1, 1.5, 1])
         with c2:
             st.write("")
             if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True)
             st.markdown("<h2 style='text-align:center'>🔒 Definir Nova Senha</h2>", unsafe_allow_html=True)
-            new_pass = st.text_input("Digite sua nova senha", type="password")
+            
+            new_pass = st.text_input("Nova Senha", type="password")
+            confirm_pass = st.text_input("Confirme a Senha", type="password")
+            
             if st.button("Atualizar Senha", type="primary"):
-                if len(new_pass) >= 6:
+                if new_pass == confirm_pass and len(new_pass) >= 6:
                     try:
                         supabase.auth.update_user({"password": new_pass})
                         st.success("Senha atualizada! Redirecionando...")
                         st.session_state.force_pass_reset = False
                         st.session_state.auth_mode = 'login'
-                        st.session_state.user = None # Desloga para forçar novo login
+                        st.session_state.user = None
+                        st.session_state.reset_email = "" # Limpa email
                         time.sleep(2)
                         st.rerun()
                     except Exception as e: st.error(f"Erro: {e}")
-                else: st.warning("Mínimo 6 caracteres.")
+                else:
+                    st.warning("Senhas não conferem ou curta.")
         return 
 
-    # B) TELA DE LOGIN / RECUPERAÇÃO
+    # 2. SE NÃO LOGADO
     if not st.session_state.user:
         c1, c2, c3 = st.columns([1, 1.2, 1])
         with c2:
@@ -445,7 +438,7 @@ def main():
                 with col_rec:
                     if st.button("Esqueci senha", type="secondary", use_container_width=True): st.session_state.auth_mode = 'forgot'; st.rerun()
 
-            # --- TELA 2: ESQUECI SENHA (CÓDIGO) ---
+            # --- TELA 2: ESQUECI SENHA (ENVIAR CÓDIGO) ---
             elif st.session_state.auth_mode == 'forgot':
                 st.markdown("<h1>Recuperar Senha</h1>", unsafe_allow_html=True)
                 st.info("Vamos enviar um CÓDIGO para seu e-mail.")
@@ -453,8 +446,9 @@ def main():
                 if st.button("Enviar Código", type="primary"):
                     try:
                         st.session_state.reset_email = reset_email # Salva e-mail
+                        # ENVIA CÓDIGO OTP (Números)
                         supabase.auth.sign_in_with_otp({"email": reset_email})
-                        st.session_state.auth_mode = 'verify_otp' # Vai para tela de verificar
+                        st.session_state.auth_mode = 'verify_otp' # Muda tela
                         st.rerun()
                     except Exception as e: st.error(f"Erro: {e}")
                 if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'login'; st.rerun()
@@ -463,17 +457,25 @@ def main():
             elif st.session_state.auth_mode == 'verify_otp':
                 st.markdown("<h1>Verificar Código</h1>", unsafe_allow_html=True)
                 st.info(f"Código enviado para: {st.session_state.reset_email}")
-                otp_code = st.text_input("Digite o código de 6 dígitos")
+                st.caption("Verifique se o email contém um código ou clique no link 'Magic Link' se não houver código.")
+                otp_code = st.text_input("Digite o código ou Token")
+                
                 if st.button("Verificar e Redefinir", type="primary"):
                     try:
-                        # Verifica o código e loga o usuário
-                        res = supabase.auth.verify_otp({"email": st.session_state.reset_email, "token": otp_code, "type": "email"})
+                        # Tenta validar o código
+                        res = supabase.auth.verify_otp({
+                            "email": st.session_state.reset_email, 
+                            "token": otp_code, 
+                            "type": "email"
+                        })
                         if res.user:
                             st.session_state.user = res.user
                             st.session_state.is_admin = (res.user.email == "admin@admin.com.br")
-                            st.session_state.force_pass_reset = True # Força a tela de nova senha
+                            st.session_state.force_pass_reset = True # Ativa tela de nova senha
                             st.rerun()
-                    except: st.error("Código inválido ou expirado.")
+                    except Exception as e: 
+                        st.error(f"Código inválido: {e}")
+                
                 if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'forgot'; st.rerun()
 
             # --- TELA 4: CADASTRO ---
@@ -494,7 +496,7 @@ def main():
 
     # C) APP LOGADO
     u = st.session_state['user']
-    if u is None: # Safety check
+    if u is None:
         st.session_state.auth_mode = 'login'
         st.rerun()
         return
