@@ -90,7 +90,6 @@ st.markdown("""
     }
     button[kind="secondary"] * { color: #64748b !important; }
 
-    /* Botões Perigo */
     button[key="logout_btn"], button[key="admin_logout"], button[help="Excluir Usuário"] { 
         border-color: #fecaca !important; 
         color: #ef4444 !important; 
@@ -426,13 +425,13 @@ def tela_admin_master():
                     else: st.warning("Sem dados.")
         except: pass
     
-    # --- ABA DE USUÁRIOS (CORRIGIDA PARA LISTAR TODOS) ---
+    # --- ABA DE USUÁRIOS (CORRIGIDA COM FORCE DELETE) ---
     with tabs[4]:
         st.markdown("### Gerenciar Usuários")
         
         service_key = st.secrets.get("SUPABASE_SERVICE_KEY")
         if service_key:
-            st.success("🟢 Modo Super Admin: Mostrando todos os cadastrados (mesmo sem agendamento).")
+            st.success("🟢 Modo Super Admin: Exclusão total ativada.")
         else:
             st.warning("🟡 Modo Limitado: Mostrando apenas usuários com histórico de agendamento (configure a service_key para ver todos).")
 
@@ -442,10 +441,7 @@ def tela_admin_master():
         if service_key:
             try:
                 adm_client = create_client(st.secrets["SUPABASE_URL"], service_key)
-                # Pega usuários do Auth (retorna um objeto UserResponse)
                 auth_users = adm_client.auth.admin.list_users()
-                
-                # O supabase-py retorna uma lista de User objects diretamente
                 users_list = []
                 for u in auth_users:
                     users_list.append({
@@ -454,11 +450,9 @@ def tela_admin_master():
                         "nome_profissional": u.user_metadata.get('nome', 'Sem Nome')
                     })
                 df_users = pd.DataFrame(users_list)
-            except Exception as e:
-                # Se falhar, segue para o fallback sem travar
-                pass
+            except Exception as e: pass
 
-        # 2. FALLBACK: BUSCA DO BANCO DE RESERVAS (Se não tiver chave ou falhar)
+        # 2. FALLBACK: BUSCA DO BANCO DE RESERVAS
         if df_users.empty:
             try:
                 users_data = supabase.table("reservas").select("user_id, email_profissional, nome_profissional").execute().data
@@ -469,10 +463,13 @@ def tela_admin_master():
         # 3. RENDERIZA A LISTA
         if not df_users.empty:
             for _, row in df_users.iterrows():
+                # Evita que o próprio admin se delete
+                if st.session_state.user.id == row['user_id']:
+                    continue
+
                 with st.container():
                     c1, c2, c3 = st.columns([3, 3, 2])
                     
-                    # Nome tratado
                     raw_name = row.get('nome_profissional')
                     raw_email = row.get('email_profissional')
                     nm_show = resolver_nome(raw_email, nome_banco=raw_name)
@@ -481,20 +478,24 @@ def tela_admin_master():
                     c2.write(f"_{raw_email}_")
                     
                     if c3.button("🗑️ Remover", key=f"rm_user_{row['user_id']}", help="Excluir Usuário"):
-                        # 1. Deleta Historico
-                        try:
-                            supabase.table("reservas").delete().eq("user_id", row['user_id']).execute()
-                        except: pass
-                        
-                        # 2. Deleta Login (Se tiver chave)
                         if service_key:
                             try:
+                                # 1. Apaga reservas usando o CLIENTE ADMIN (Bypass RLS)
+                                # Isso garante que o admin possa apagar dados que não são dele
+                                adm_client = create_client(st.secrets["SUPABASE_URL"], service_key)
+                                adm_client.table("reservas").delete().eq("user_id", row['user_id']).execute()
+                                
+                                # 2. Apaga o Login
                                 adm_client.auth.admin.delete_user(row['user_id'])
                                 st.toast("Usuário excluído completamente!", icon="✅")
-                            except:
-                                st.error("Erro ao excluir login.")
+                            except Exception as e:
+                                st.error(f"Erro detalhado: {e}")
                         else:
-                            st.toast("Histórico limpo (Login mantido).", icon="⚠️")
+                            try:
+                                # Modo simples (apaga só se tiver permissão RLS)
+                                supabase.table("reservas").delete().eq("user_id", row['user_id']).execute()
+                                st.toast("Histórico limpo (Login mantido).", icon="⚠️")
+                            except: pass
                         
                         time.sleep(1.5)
                         st.rerun()
@@ -521,6 +522,7 @@ def main():
                     
                     if submitted:
                         try:
+                            # Apenas sobrescreve, sem sign_out() prévio
                             u = supabase.auth.sign_in_with_password({"email": email, "password": senha})
                             if u.user:
                                 st.session_state['user'] = u.user
@@ -561,6 +563,7 @@ def main():
                 
                 if st.button("Verificar e Redefinir", type="primary"):
                     success = False
+                    # TENTA VALIDAÇÃO (TODOS OS TIPOS)
                     try:
                         res = supabase.auth.verify_otp({"email": st.session_state.reset_email, "token": otp_code, "type": "magiclink"})
                         if res.user: success = True
@@ -614,10 +617,12 @@ def main():
                     if len(new_pass) < 6: st.warning("Senha curta.")
                     else:
                         try:
+                            # CRIAÇÃO DA CONTA
                             supabase.auth.sign_up({"email": new_email, "password": new_pass, "options": {"data": {"nome": new_nome}}})
                             st.success("Sucesso! Faça login.")
-                            st.session_state.auth_mode = 'login'
+                            # CORREÇÃO DO ERRO FALSO: Espera e redireciona
                             time.sleep(1.5)
+                            st.session_state.auth_mode = 'login'
                             st.rerun()
                         except Exception as e:
                             st.error(f"Erro ao cadastrar: {e}")
@@ -686,5 +691,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
