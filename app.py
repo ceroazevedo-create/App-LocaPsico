@@ -13,14 +13,13 @@ import streamlit.components.v1 as components
 # --- 1. CONFIGURAÇÕES GERAIS E ESTADO ---
 st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide", initial_sidebar_state="collapsed")
 
-# Inicialização de Variáveis de Sessão (Para evitar AttributeError)
+# Inicializa variáveis de estado imediatamente
 if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
 if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
 if 'view_mode' not in st.session_state: st.session_state.view_mode = 'SEMANA'
 if 'user' not in st.session_state: st.session_state.user = None
 if 'is_admin' not in st.session_state: st.session_state.is_admin = False
 
-# NOME DA LOGO
 NOME_DO_ARQUIVO_LOGO = "logo.png" 
 
 # --- 2. CONEXÃO SUPABASE ---
@@ -31,7 +30,7 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS E JS (VISUAL) ---
+# --- 3. CSS E JS ---
 st.markdown("""
     <style>
         header, footer, #MainMenu, [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"] {
@@ -42,28 +41,28 @@ st.markdown("""
         .block-container { padding-top: 1rem !important; margin-top: 0rem !important; max-width: 1000px; }
         .stApp { background-color: #f2f4f7; font-family: 'Inter', sans-serif; color: #1a1f36; }
         
-        /* Card Login */
         div[data-testid="column"]:nth-of-type(2) > div {
             background-color: #ffffff; padding: 48px 40px; border-radius: 20px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.08); border: 1px solid #eef2f6; margin-top: 2vh;
         }
-        /* Logo */
         div[data-testid="stImage"] { display: flex; justify-content: center !important; width: 100%; margin-bottom: 20px; }
         div[data-testid="stImage"] > img { object-fit: contain; width: 90% !important; max-width: 380px; }
-        /* Tipografia */
+        
         h1 { font-size: 28px; font-weight: 800; color: #1a1f36; margin-bottom: 8px; text-align: center; }
         p { color: #697386; font-size: 15px; text-align: center; margin-bottom: 24px; }
-        /* Inputs e Botões */
+        
         .stTextInput input { background-color: #ffffff; border: 1px solid #e3e8ee; border-radius: 10px; padding: 12px; height: 48px; }
+        
         div[data-testid="stVerticalBlock"] button[kind="primary"] {
             background-color: #0d9488 !important; color: #ffffff !important; border: none; height: 48px; font-weight: 700; border-radius: 10px; margin-top: 10px;
         }
         div[data-testid="stVerticalBlock"] button[kind="primary"] * { color: #ffffff !important; }
         button[kind="secondary"] { border: 1px solid #e2e8f0; color: #64748b; }
+        
         button[key="logout_btn"], button[key="admin_logout"], button[kind="secondary"][help="Excluir"] { 
             border-color: #fecaca !important; color: #ef4444 !important; background: #fef2f2 !important; font-weight: 600; 
         }
-        /* Agenda */
+        
         .blocked-slot { 
             background-color: #fef2f2; 
             background-image: repeating-linear-gradient(45deg, #fee2e2 25%, transparent 25%, transparent 50%, #fee2e2 50%, #fee2e2 75%, transparent 75%, transparent);
@@ -97,21 +96,20 @@ components.html(js_fixer, height=0)
 # --- 4. FUNÇÕES DE DADOS E LÓGICA ---
 
 def check_session_from_url():
-    # Verifica parâmetros de URL para auto-login
     query_params = st.query_params
     if "access_token" in query_params and "refresh_token" in query_params:
         try:
             session = supabase.auth.set_session(query_params["access_token"], query_params["refresh_token"])
             if session:
                 st.session_state.user = session.user
-                st.session_state.is_admin = (session.user.email == "admin@admin.com.br") # Mude para seu email admin
+                st.session_state.is_admin = (session.user.email == "admin@admin.com.br")
                 st.query_params.clear()
                 st.success("Login via link realizado com sucesso!")
                 time.sleep(1.5)
                 st.rerun()
         except: st.error("Link inválido.")
 
-# Executa verificação inicial
+# Verifica sessão no início
 if not st.session_state.user:
     try:
         session = supabase.auth.get_session()
@@ -225,7 +223,7 @@ def modal_agendamento(sala_padrao, data_sugerida):
     
     if st.button("Confirmar Agendamento", type="primary", use_container_width=True):
         if not horarios_selecionados: st.error("Nenhum horário selecionado."); return
-        user = st.session_state['user']
+        user = st.session_state.user
         nm = resolver_nome(user.email, user.user_metadata.get('nome'))
         agora = datetime.datetime.now()
         datas_to_book = [dt]
@@ -446,7 +444,7 @@ def tela_admin_master():
                     else: st.warning("Sem dados.")
         except: pass
 
-# --- 7. MAIN (AGORA FICA NO FINAL) ---
+# --- 6. EXECUÇÃO ---
 if __name__ == "__main__":
     main()
 
