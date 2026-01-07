@@ -31,99 +31,219 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS VISUAL ---
+# --- 3. CSS VISUAL (DESIGN PREMIUM) ---
 st.markdown("""
 <style>
-    .block-container { padding-top: 1rem !important; margin-top: 0rem !important; max-width: 1000px; }
-    .stApp { background-color: #f2f4f7; font-family: 'Inter', sans-serif; color: #1a1f36; }
+    /* --- FUNDO E TIPOGRAFIA GERAL --- */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     
-    div[data-testid="column"]:nth-of-type(2) > div { background-color: #ffffff; padding: 48px 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); border: 1px solid #eef2f6; margin-top: 2vh; }
-    div[data-testid="stImage"] { display: flex; justify-content: center !important; width: 100%; margin-bottom: 20px; }
-    div[data-testid="stImage"] > img { object-fit: contain; width: 90% !important; max-width: 380px; }
-    
-    h1 { font-size: 28px; font-weight: 800; color: #1a1f36; margin-bottom: 8px; text-align: center; }
-    p { color: #697386; font-size: 15px; text-align: center; margin-bottom: 24px; }
-    .stTextInput input { background-color: #ffffff; border: 1px solid #e3e8ee; border-radius: 10px; padding: 12px; height: 48px; }
-    
-    /* --- BOTÕES VERDES --- */
-    div[data-testid="stForm"] button, 
-    div[data-testid="stButton"] button,
-    button[kind="primary"] {
-        background-color: #0d9488 !important;
-        border: none !important;
-        height: 48px !important;
-        font-weight: 700 !important;
-        border-radius: 10px !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-        color: #ffffff !important;
+    .stApp {
+        background-color: #f8fafc; /* Cinza muito suave, quase branco */
+        font-family: 'Inter', sans-serif;
+        color: #1e293b;
     }
-    div[data-testid="stForm"] button *, 
-    div[data-testid="stButton"] button *,
-    button[kind="primary"] * {
-        color: #ffffff !important;
-    }
-    div[data-testid="stForm"] button:hover,
-    div[data-testid="stButton"] button:hover,
-    button[kind="primary"]:hover {
-        background-color: #0f766e !important;
-        color: #ffffff !important;
+    
+    .block-container {
+        padding-top: 2rem !important;
+        max-width: 1100px;
     }
 
-    /* --- BOTÕES DE SLOT "LIVRE" --- */
-    div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-        border: 1px dashed #cbd5e1 !important;
-        background-color: #f8fafc !important;
-        color: #0d9488 !important;
-        font-size: 11px !important;
+    /* --- CARDS (CONTAINERS BRANCOS COM SOMBRA) --- */
+    div[data-testid="column"] > div > div[data-testid="stVerticalBlock"] > div.element-container {
+        /* Isso afeta elementos soltos, cuidado */
+    }
+    
+    /* Container Principal (simula um card de papel) */
+    div[data-testid="column"]:nth-of-type(2) > div {
+        background-color: #ffffff;
+        padding: 40px;
+        border-radius: 16px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        border: 1px solid #f1f5f9;
+        margin-bottom: 20px;
+    }
+
+    /* --- LOGO CENTRALIZADA --- */
+    div[data-testid="stImage"] {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 24px;
+    }
+    div[data-testid="stImage"] > img {
+        max-height: 120px;
+        object-fit: contain;
+    }
+
+    /* --- TÍTULOS --- */
+    h1 {
+        font-size: 26px;
+        font-weight: 700;
+        color: #0f172a;
+        text-align: center;
+        margin-bottom: 8px;
+        letter-spacing: -0.5px;
+    }
+    h2, h3 {
+        color: #334155;
+        font-weight: 600;
+    }
+    p {
+        color: #64748b;
+    }
+
+    /* --- INPUTS (CAMPOS DE TEXTO) --- */
+    .stTextInput input {
+        background-color: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 10px 12px;
+        height: 45px;
+        font-size: 15px;
+        transition: all 0.2s;
+    }
+    .stTextInput input:focus {
+        border-color: #0d9488;
+        box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2);
+    }
+
+    /* --- BOTÕES PRIMÁRIOS (VERDE TEAL) --- */
+    div[data-testid="stForm"] button, 
+    button[kind="primary"] {
+        background: linear-gradient(180deg, #0f766e 0%, #0d9488 100%) !important;
+        border: none !important;
+        height: 45px !important;
         font-weight: 600 !important;
-        height: 35px !important;
-        min-height: 35px !important;
+        letter-spacing: 0.5px;
+        border-radius: 8px !important;
+        box-shadow: 0 2px 4px rgba(13, 148, 136, 0.2) !important;
+        color: white !important;
+        transition: transform 0.1s ease !important;
+    }
+    div[data-testid="stForm"] button:hover, 
+    button[kind="primary"]:hover {
+        background: #0f766e !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px rgba(13, 148, 136, 0.3) !important;
+    }
+    div[data-testid="stForm"] button *, button[kind="primary"] * {
+        color: white !important;
+    }
+
+    /* --- BOTÕES SECUNDÁRIOS (CINZA) --- */
+    button[kind="secondary"] {
+        background-color: white !important;
+        border: 1px solid #cbd5e1 !important;
+        color: #475569 !important;
+        border-radius: 8px !important;
+        height: 45px !important;
+        font-weight: 500 !important;
+    }
+    button[kind="secondary"]:hover {
+        background-color: #f1f5f9 !important;
+        border-color: #94a3b8 !important;
+        color: #1e293b !important;
+    }
+
+    /* --- BOTÕES DO CALENDÁRIO (DIAS) --- */
+    div[data-testid="stButton"] button {
+        border-radius: 8px !important;
+        border: none !important;
+        font-weight: bold !important;
+    }
+
+    /* --- SLOT "LIVRE" (VERDE SUAVE) --- */
+    div[data-testid="stVerticalBlock"] button[kind="secondary"] {
+        background-color: #f0fdf4 !important; /* Verde menta bem claro */
+        border: 1px solid #bbf7d0 !important;
+        color: #15803d !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        height: 38px !important;
+        min-height: 38px !important;
         border-radius: 6px !important;
-        width: 100% !important;
+        box-shadow: none !important;
+        transition: all 0.2s;
     }
     div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover {
-        background-color: #f0fdf4 !important;
-        border-color: #0d9488 !important;
+        background-color: #16a34a !important; /* Verde Sólido ao passar mouse */
+        border-color: #16a34a !important;
+        color: white !important;
     }
-    div[data-testid="stVerticalBlock"] button[kind="secondary"] p {
-        color: #0d9488 !important;
+    div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover p {
+        color: white !important;
     }
 
-    /* --- OLHINHO TRANSPARENTE --- */
+    /* --- STATUS CHIPS (EVENTOS) --- */
+    .evt-chip {
+        background: white;
+        border-left: 4px solid #0d9488;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        color: #0f766e;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 6px 8px;
+        border-radius: 4px;
+        margin-bottom: 4px;
+        display: flex;
+        align-items: center;
+    }
+    
+    .admin-blocked {
+        background: #334155;
+        color: #f8fafc;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: bold;
+        text-align: center;
+        padding: 8px;
+        letter-spacing: 1px;
+    }
+
+    /* --- MÉTRICAS (DASHBOARD) --- */
+    div[data-testid="stMetric"] {
+        background-color: #f8fafc;
+        padding: 15px;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        text-align: center;
+    }
+    div[data-testid="stMetricLabel"] {
+        font-size: 14px !important;
+        color: #64748b !important;
+    }
+    div[data-testid="stMetricValue"] {
+        font-size: 24px !important;
+        color: #0d9488 !important;
+        font-weight: 700 !important;
+    }
+
+    /* --- BOTÕES DE PERIGO (VERMELHO) --- */
+    button[help="Excluir Usuário"], button[key="logout_btn"], button[key="admin_logout"] { 
+        border-color: #fecaca !important; 
+        color: #dc2626 !important; 
+        background-color: #fef2f2 !important; 
+    }
+    button[help="Excluir Usuário"]:hover, button[key="logout_btn"]:hover {
+        background-color: #dc2626 !important;
+        color: white !important;
+        border-color: #dc2626 !important;
+    }
+    button[help="Excluir Usuário"]:hover *, button[key="logout_btn"]:hover * {
+        color: white !important;
+    }
+
+    /* --- AJUSTES FINAIS --- */
+    div[data-testid="stExpander"] {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+    }
+    
+    /* Olhinho da senha */
     div[data-testid="stTextInput"] button {
         background-color: transparent !important;
         border: none !important;
         box-shadow: none !important;
-        height: auto !important;
-        margin: 0 !important;
-        padding: 0 10px !important;
-        min-height: auto !important;
     }
-    div[data-testid="stTextInput"] button * {
-        color: #31333F !important;
-    }
-    
-    /* Outros */
-    button[kind="secondary"] { 
-        background-color: #ffffff !important;
-        border: 1px solid #e2e8f0 !important; 
-        color: #64748b !important; 
-    }
-    
-    button[key="logout_btn"], button[key="admin_logout"], button[help="Excluir Usuário"] { 
-        border-color: #fecaca !important; 
-        color: #ef4444 !important; 
-        background-color: #fef2f2 !important; 
-        font-weight: 600; 
-    }
-    button[help="Excluir Usuário"]:hover, button[key="logout_btn"]:hover {
-        background-color: #fee2e2 !important;
-    }
-    button[key="logout_btn"] *, button[key="admin_logout"] *, button[help="Excluir Usuário"] * { color: #ef4444 !important; }
-    
-    .blocked-slot { background-color: #fef2f2; height: 35px; border-radius: 6px; border: 1px solid #fecaca; opacity: 0.7; margin-bottom: 5px; }
-    .admin-blocked { background-color: #1e293b; color: white; font-size: 10px; padding: 4px; border-radius: 4px; text-align: center; font-weight: bold; margin-bottom: 2px; }
-    .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; margin-bottom: 2px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -383,7 +503,8 @@ def render_calendar(sala, is_admin_mode=False):
                 elif is_sunday or is_sat_closed or is_past: cont.markdown("<div class='blocked-slot'></div>", unsafe_allow_html=True)
                 else: 
                     if not is_admin_mode:
-                        if cont.button("🟢 Livre", key=f"free_{d_s}_{h}", type="secondary", use_container_width=True):
+                        # BOTÃO "LIVRE" COM VISUAL PREMIUM
+                        if cont.button("Livre", key=f"free_{d_s}_{h}", type="secondary", use_container_width=True):
                             modal_agendamento(sala, d, h)
                     else:
                         cont.markdown("<div style='height:35px; border-left:1px dashed #cbd5e1'></div>", unsafe_allow_html=True)
