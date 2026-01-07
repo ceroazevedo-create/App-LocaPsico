@@ -102,61 +102,43 @@ def get_preco():
         return float(r.data[0]['preco_hora']) if r.data else 32.00
     except: return 32.00
 
-# --- GERADOR DE PDF DETALHADO (ATUALIZADO) ---
 def gerar_pdf_fatura(df, nome_usuario, mes_referencia):
-    # 1. Ordena por Data e Hora para o histórico ficar correto
+    # Ordenação garantida no PDF também
     df = df.sort_values(by=['data_reserva', 'hora_inicio'])
-    
     pdf = FPDF()
     pdf.add_page()
-    
-    # Cabeçalho do PDF
     pdf.set_font("Arial", "B", 16)
-    pdf.set_text_color(13, 148, 136) # Verde da marca
+    pdf.set_text_color(13, 148, 136)
     pdf.cell(0, 10, "LOCAPSICO - Extrato Detalhado", ln=True, align="C")
-    
     pdf.set_font("Arial", "", 12)
     pdf.set_text_color(50, 50, 50)
     pdf.ln(5)
     pdf.cell(0, 10, f"Profissional: {nome_usuario}", ln=True)
     pdf.cell(0, 10, f"Referencia: {mes_referencia}", ln=True)
     pdf.ln(10)
-    
-    # Cabeçalho da Tabela
-    pdf.set_fill_color(240, 253, 250) # Fundo verde claro
+    pdf.set_fill_color(240, 253, 250)
     pdf.set_font("Arial", "B", 10)
-    # Larguras: Data(30), Dia(20), Hora(25), Sala(40), Valor(30)
     pdf.cell(30, 10, "Data", 1, 0, 'C', True)
-    pdf.cell(20, 10, "Dia", 1, 0, 'C', True)
-    pdf.cell(25, 10, "Horario", 1, 0, 'C', True)
+    pdf.cell(30, 10, "Dia Sem.", 1, 0, 'C', True)
+    pdf.cell(30, 10, "Horario", 1, 0, 'C', True)
     pdf.cell(40, 10, "Sala", 1, 0, 'C', True)
     pdf.cell(30, 10, "Valor", 1, 1, 'C', True)
-    
-    # Linhas da Tabela
     pdf.set_font("Arial", "", 10)
     total = 0
     dias_sem = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sab", "Dom"]
-    
     for _, row in df.iterrows():
         total += float(row['valor_cobrado'])
-        
-        # Formata data
         dt_obj = pd.to_datetime(row['data_reserva'])
         dt_str = dt_obj.strftime('%d/%m/%Y')
         dia_sem_str = dias_sem[dt_obj.weekday()]
-        
         pdf.cell(30, 10, dt_str, 1, 0, 'C')
-        pdf.cell(20, 10, dia_sem_str, 1, 0, 'C')
-        pdf.cell(25, 10, str(row['hora_inicio'])[:5], 1, 0, 'C')
+        pdf.cell(30, 10, dia_sem_str, 1, 0, 'C')
+        pdf.cell(30, 10, str(row['hora_inicio'])[:5], 1, 0, 'C')
         pdf.cell(40, 10, str(row['sala_nome']), 1, 0, 'C')
         pdf.cell(30, 10, f"R$ {row['valor_cobrado']:.2f}", 1, 1, 'R')
-        
-    # Totalizador
-    pdf.ln(15)
+    pdf.ln(5)
     pdf.set_font("Arial", "B", 14)
-    pdf.set_text_color(0, 0, 0)
-    pdf.cell(0, 10, f"TOTAL A PAGAR: R$ {total:.2f}", ln=True, align="R")
-    
+    pdf.cell(0, 10, f"TOTAL: R$ {total:.2f}", ln=True, align="R")
     return pdf.output(dest='S').encode('latin-1')
 
 # --- 4. FUNÇÕES SISTEMA ---
@@ -252,7 +234,6 @@ def render_calendar(sala, is_admin_mode=False):
         dias = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
         for i, d in enumerate(dias):
             cols[i].markdown(f"<div style='text-align:center; font-weight:bold; color:#64748b; font-size:12px; margin-bottom:5px'>{d}</div>", unsafe_allow_html=True)
-        
         cal_matrix = calendar.monthcalendar(ref.year, ref.month)
         for week in cal_matrix:
             cols = st.columns(7)
@@ -264,7 +245,6 @@ def render_calendar(sala, is_admin_mode=False):
                     bg_color = "white"
                     if d_obj < datetime.date.today() or d_obj.weekday() == 6: bg_color = "#fef2f2"
                     elif d_obj == datetime.date.today(): bg_color = "#f0fdf4"
-
                     eventos_html = ""
                     if d_str in mapa:
                         for h in sorted(mapa[d_str].keys()):
@@ -274,7 +254,6 @@ def render_calendar(sala, is_admin_mode=False):
                             else:
                                 nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
                                 eventos_html += f"<div style='background:#ccfbf1; color:#115e59; font-size:9px; padding:2px; border-radius:3px; margin-bottom:2px; white-space:nowrap; overflow:hidden;'>{h[:5]} {nm}</div>"
-                    
                     cols[i].markdown(f"<div style='background:{bg_color}; border:1px solid #e2e8f0; border-radius:8px; min-height:80px; padding:5px; font-size:12px;'><div style='font-weight:bold; color:#1e293b; text-align:right'>{day}</div>{eventos_html}</div>", unsafe_allow_html=True)
 
     else:
@@ -286,7 +265,6 @@ def render_calendar(sala, is_admin_mode=False):
         for i, d in enumerate(visiveis):
             wd = d.weekday()
             c_h[i+1].markdown(f"<div style='text-align:center; padding-bottom:5px; border-bottom:2px solid #e2e8f0; margin-bottom:5px'><div style='font-size:10px; font-weight:bold; color:#64748b'>{d_n[wd]}</div><div style='font-size:16px; font-weight:bold; color:#1e293b'>{d.day}</div></div>", unsafe_allow_html=True)
-        
         for h in range(7, 22):
             hora = f"{h:02d}:00:00"
             row = st.columns(ratio)
@@ -384,7 +362,6 @@ def main():
     # LOGADO
     u = st.session_state['user']
     if st.session_state.get('is_admin'):
-        # ADMIN: Header com Botão de Sair
         c_adm_title, c_adm_out = st.columns([5,1])
         with c_adm_title: st.markdown(f"<h3 style='color:#0d9488; margin:0'>Painel Administrativo</h3>", unsafe_allow_html=True)
         with c_adm_out:
@@ -393,7 +370,6 @@ def main():
         st.divider()
         tela_admin_master()
     else:
-        # USER: Header com Botão de Sair
         nm = resolver_nome(u.email, u.user_metadata.get('nome'))
         c_head_text, c_head_btn = st.columns([5, 1])
         with c_head_text: st.markdown(f"<h3 style='color:#0d9488; margin:0'>LocaPsico | <span style='color:#334155'>Olá, {nm}</span></h3>", unsafe_allow_html=True)
@@ -497,11 +473,24 @@ def tela_admin_master():
                     r_fin = supabase.table("reservas").select("*").eq("status", "confirmada").gte("data_reserva", d_ini).lte("data_reserva", d_fim).execute()
                     df_fin = pd.DataFrame(r_fin.data)
                     if not df_fin.empty:
+                        # Ordena Cronologicamente para o Display
+                        df_fin = df_fin.sort_values(by=['data_reserva', 'hora_inicio'])
+                        
                         df_fin['nm'] = df_fin.apply(lambda x: resolver_nome(x['email_profissional'], nome_banco=x['nome_profissional']), axis=1)
                         df_final = df_fin[df_fin['nm'] == user_sel]
+                        
                         if not df_final.empty:
                             total = df_final['valor_cobrado'].sum()
-                            st.success(f"Total: R$ {total:.2f}")
+                            st.success(f"Total a Receber: R$ {total:.2f}")
+                            
+                            # --- MOSTRAR TABELA NA TELA ---
+                            st.markdown("### Detalhamento dos Agendamentos")
+                            # Cria DataFrame limpo para exibição
+                            df_display = df_final[['data_reserva', 'hora_inicio', 'sala_nome', 'valor_cobrado']].copy()
+                            df_display.columns = ['Data', 'Horário', 'Sala', 'Valor (R$)']
+                            # Exibe a tabela sem índice numérico
+                            st.dataframe(df_display, use_container_width=True, hide_index=True)
+                            
                             pdf_data = gerar_pdf_fatura(df_final, user_sel, mes_sel)
                             b64 = base64.b64encode(pdf_data).decode()
                             st.markdown(f'<a href="data:application/octet-stream;base64,{b64}" download="Extrato_{user_sel}_{mes_sel}.pdf" style="text-decoration:none; background:#0d9488; color:white; padding:10px; border-radius:8px; display:block; text-align:center;">📥 BAIXAR PDF DETALHADO</a>', unsafe_allow_html=True)
