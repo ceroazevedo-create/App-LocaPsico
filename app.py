@@ -64,7 +64,7 @@ st.markdown("""
     div[data-testid="stVerticalBlock"] button[kind="primary"] * { color: #ffffff !important; }
     button[kind="secondary"] { border: 1px solid #e2e8f0; color: #64748b; }
     
-    /* Botões de Ação (Logout e Excluir) */
+    /* Botões de Ação */
     button[key="logout_btn"], button[key="admin_logout"], button[kind="secondary"][help="Excluir"] { 
         border-color: #fecaca !important; color: #ef4444 !important; background: #fef2f2 !important; font-weight: 600; 
     }
@@ -96,7 +96,6 @@ def resolver_nome(email, nome_meta=None, nome_banco=None):
     if email and "thascaranalle" in email: return "Thays"
     return nome_banco or nome_meta or email.split('@')[0].title()
 
-# Busca todos os preços configurados no banco
 def get_config_precos():
     defaults = {
         'preco_hora': 32.0, 'preco_manha': 100.0, 
@@ -106,7 +105,6 @@ def get_config_precos():
         r = supabase.table("configuracoes").select("*").limit(1).execute()
         if r.data:
             data = r.data[0]
-            # Usa .get() para evitar erro se a coluna ainda não existir no banco
             return {
                 'preco_hora': float(data.get('preco_hora', 32.0)),
                 'preco_manha': float(data.get('preco_manha', 100.0)),
@@ -168,13 +166,9 @@ def navegar(direcao):
 @st.dialog("Novo Agendamento")
 def modal_agendamento(sala_padrao, data_sugerida):
     st.markdown("### Detalhes da Reserva")
-    
-    # Busca configurações de preço
     config_precos = get_config_precos()
     
-    # 1. Escolha do Modo
     modo = st.radio("Tipo de Cobrança", ["Por Hora", "Por Período"], horizontal=True)
-    
     dt = st.date_input("Data", value=data_sugerida, min_value=datetime.date.today())
     
     horarios_selecionados = []
@@ -185,13 +179,11 @@ def modal_agendamento(sala_padrao, data_sugerida):
         if dia_sem == 6: lista_horas = []; st.error("Domingo: Fechado")
         elif dia_sem == 5: lista_horas = [f"{h:02d}:00" for h in range(7, 14)]; st.info("Sábado: Até 14h")
         else: lista_horas = [f"{h:02d}:00" for h in range(7, 22)]
-        
         hr = st.selectbox("Horário de Início", lista_horas, disabled=(len(lista_horas)==0))
         if hr:
             horarios_selecionados = [(hr, f"{int(hr[:2])+1:02d}:00")]
             valor_final = config_precos['preco_hora']
-            
-    else: # Por Período
+    else:
         opcoes_periodo = {
             "Manhã (07h - 12h)": {"start": 7, "end": 12, "price": config_precos['preco_manha']},
             "Tarde (13h - 18h)": {"start": 13, "end": 18, "price": config_precos['preco_tarde']},
@@ -200,9 +192,7 @@ def modal_agendamento(sala_padrao, data_sugerida):
         }
         sel_periodo = st.selectbox("Escolha o Período", list(opcoes_periodo.keys()))
         dados_p = opcoes_periodo[sel_periodo]
-        
         st.info(f"Reservando das {dados_p['start']}:00 às {dados_p['end']}:00 - Valor: R$ {dados_p['price']:.2f}")
-        
         for h in range(dados_p['start'], dados_p['end']):
             horarios_selecionados.append((f"{h:02d}:00", f"{h+1:02d}:00"))
         valor_final = dados_p['price']
@@ -211,49 +201,35 @@ def modal_agendamento(sala_padrao, data_sugerida):
     is_recurring = st.checkbox("🔄 Repetir nas próximas 4 semanas (Mensal)")
     
     if st.button("Confirmar Agendamento", type="primary", use_container_width=True):
-        if not horarios_selecionados:
-            st.error("Nenhum horário selecionado."); return
-
+        if not horarios_selecionados: st.error("Nenhum horário selecionado."); return
         user = st.session_state['user']
         nm = resolver_nome(user.email, user.user_metadata.get('nome'))
         agora = datetime.datetime.now()
-        
         datas_to_book = [dt]
         if is_recurring:
             for i in range(1, 4): datas_to_book.append(dt + timedelta(days=7*i))
-        
         try:
             inserts = []
             for d_res in datas_to_book:
                 if d_res.weekday() == 6: st.warning(f"Ignorado {d_res} (Domingo)."); continue
-                
                 for h_start, h_end in horarios_selecionados:
                     dt_check = datetime.datetime.combine(d_res, datetime.datetime.strptime(h_start, "%H:%M").time())
-                    
                     if dt_check < agora: st.error(f"Horário {h_start} em {d_res} já passou."); return
                     if d_res.weekday() == 5 and int(h_start[:2]) >= 14: st.error(f"Sábado {d_res} fecha às 14h."); return
-
                     chk = supabase.table("reservas").select("id").eq("sala_nome", sala_padrao).eq("data_reserva", str(d_res)).eq("hora_inicio", f"{h_start}:00").neq("status", "cancelada").execute()
                     if chk.data: st.error(f"Conflito: {d_res} às {h_start} já está ocupado."); return 
                     
                     val_to_save = 0.0
-                    # Se for período, cobra o valor cheio SOMENTE no primeiro slot do dia
-                    if (h_start, h_end) == horarios_selecionados[0]:
-                        val_to_save = valor_final
-                    elif modo == "Por Hora": 
-                        val_to_save = valor_final 
+                    if (h_start, h_end) == horarios_selecionados[0]: val_to_save = valor_final
+                    elif modo == "Por Hora": val_to_save = valor_final 
 
                     inserts.append({
-                        "sala_nome": sala_padrao, "data_reserva": str(d_res),
-                        "hora_inicio": f"{h_start}:00", "hora_fim": f"{h_end}:00",
-                        "user_id": user.id, "email_profissional": user.email, "nome_profissional": nm,
-                        "valor_cobrado": val_to_save, "status": "confirmada"
+                        "sala_nome": sala_padrao, "data_reserva": str(d_res), "hora_inicio": f"{h_start}:00", "hora_fim": f"{h_end}:00",
+                        "user_id": user.id, "email_profissional": user.email, "nome_profissional": nm, "valor_cobrado": val_to_save, "status": "confirmada"
                     })
-            
             if inserts:
                 supabase.table("reservas").insert(inserts).execute()
                 st.toast("Agendamento(s) realizado(s)!", icon="✅"); time.sleep(1); st.rerun()
-                
         except Exception as e: st.error(f"Erro técnico: {e}")
 
 def render_calendar(sala, is_admin_mode=False):
@@ -406,6 +382,7 @@ def main():
                 with col_reg:
                     if st.button("Criar conta", type="secondary", use_container_width=True): st.session_state.auth_mode = 'register'; st.rerun()
                 with col_rec:
+                    # CORREÇÃO CRÍTICA: Link de recuperação atualizado para funcionar com Supabase Auth
                     if st.button("Esqueci senha", type="secondary", use_container_width=True): st.session_state.auth_mode = 'forgot'; st.rerun()
 
             elif st.session_state.auth_mode == 'register':
@@ -427,7 +404,8 @@ def main():
                 rec_e = st.text_input("E-mail")
                 if st.button("Enviar Link", type="primary"):
                     try:
-                        supabase.auth.reset_password_for_email(rec_e, options={"redirect_to": "https://locapsico.streamlit.app"})
+                        # CORREÇÃO: URL exata do app
+                        supabase.auth.reset_password_for_email(rec_e, options={"redirect_to": "https://app-locapsico.streamlit.app"})
                         st.success("Verifique seu e-mail.")
                     except: st.error("Erro.")
                 if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'login'; st.rerun()
@@ -579,5 +557,6 @@ def tela_admin_master():
 
 if __name__ == "__main__":
     main()
+
 
 
