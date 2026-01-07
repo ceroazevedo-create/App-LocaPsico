@@ -102,42 +102,61 @@ def get_preco():
         return float(r.data[0]['preco_hora']) if r.data else 32.00
     except: return 32.00
 
+# --- GERADOR DE PDF DETALHADO (ATUALIZADO) ---
 def gerar_pdf_fatura(df, nome_usuario, mes_referencia):
+    # 1. Ordena por Data e Hora para o histórico ficar correto
     df = df.sort_values(by=['data_reserva', 'hora_inicio'])
+    
     pdf = FPDF()
     pdf.add_page()
+    
+    # Cabeçalho do PDF
     pdf.set_font("Arial", "B", 16)
-    pdf.set_text_color(13, 148, 136)
+    pdf.set_text_color(13, 148, 136) # Verde da marca
     pdf.cell(0, 10, "LOCAPSICO - Extrato Detalhado", ln=True, align="C")
+    
     pdf.set_font("Arial", "", 12)
     pdf.set_text_color(50, 50, 50)
     pdf.ln(5)
     pdf.cell(0, 10, f"Profissional: {nome_usuario}", ln=True)
     pdf.cell(0, 10, f"Referencia: {mes_referencia}", ln=True)
     pdf.ln(10)
-    pdf.set_fill_color(240, 253, 250)
+    
+    # Cabeçalho da Tabela
+    pdf.set_fill_color(240, 253, 250) # Fundo verde claro
     pdf.set_font("Arial", "B", 10)
+    # Larguras: Data(30), Dia(20), Hora(25), Sala(40), Valor(30)
     pdf.cell(30, 10, "Data", 1, 0, 'C', True)
-    pdf.cell(30, 10, "Dia Sem.", 1, 0, 'C', True)
-    pdf.cell(30, 10, "Horario", 1, 0, 'C', True)
+    pdf.cell(20, 10, "Dia", 1, 0, 'C', True)
+    pdf.cell(25, 10, "Horario", 1, 0, 'C', True)
     pdf.cell(40, 10, "Sala", 1, 0, 'C', True)
     pdf.cell(30, 10, "Valor", 1, 1, 'C', True)
+    
+    # Linhas da Tabela
     pdf.set_font("Arial", "", 10)
     total = 0
     dias_sem = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sab", "Dom"]
+    
     for _, row in df.iterrows():
         total += float(row['valor_cobrado'])
+        
+        # Formata data
         dt_obj = pd.to_datetime(row['data_reserva'])
         dt_str = dt_obj.strftime('%d/%m/%Y')
         dia_sem_str = dias_sem[dt_obj.weekday()]
+        
         pdf.cell(30, 10, dt_str, 1, 0, 'C')
-        pdf.cell(30, 10, dia_sem_str, 1, 0, 'C')
-        pdf.cell(30, 10, str(row['hora_inicio'])[:5], 1, 0, 'C')
+        pdf.cell(20, 10, dia_sem_str, 1, 0, 'C')
+        pdf.cell(25, 10, str(row['hora_inicio'])[:5], 1, 0, 'C')
         pdf.cell(40, 10, str(row['sala_nome']), 1, 0, 'C')
         pdf.cell(30, 10, f"R$ {row['valor_cobrado']:.2f}", 1, 1, 'R')
-    pdf.ln(5)
+        
+    # Totalizador
+    pdf.ln(15)
     pdf.set_font("Arial", "B", 14)
-    pdf.cell(0, 10, f"TOTAL: R$ {total:.2f}", ln=True, align="R")
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 10, f"TOTAL A PAGAR: R$ {total:.2f}", ln=True, align="R")
+    
     return pdf.output(dest='S').encode('latin-1')
 
 # --- 4. FUNÇÕES SISTEMA ---
@@ -492,4 +511,5 @@ def tela_admin_master():
 
 if __name__ == "__main__":
     main()
+
 
