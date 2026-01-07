@@ -16,127 +16,59 @@ st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide", initia
 # NOME DA LOGO
 NOME_DO_ARQUIVO_LOGO = "logo.png" 
 
-# --- HACK PARA LIMPEZA TOTAL DA INTERFACE ---
+# --- HACK DE LIMPEZA (MANTIDO) ---
 st.markdown("""
     <style>
-        /* Esconde elementos padrão do Streamlit */
         header, footer, #MainMenu, [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"] {
-            visibility: hidden !important;
-            display: none !important;
-            height: 0px !important;
+            visibility: hidden !important; display: none !important; height: 0px !important;
         }
-        
-        /* Remove links de rodapé */
         a[href*="streamlit.app"] { display: none !important; }
         .viewerBadge_container__1QSob { display: none !important; }
-        
-        /* Ajuste de layout */
-        .block-container {
-            padding-top: 0rem !important;
-            margin-top: 1rem !important;
-            max-width: 1000px;
-        }
-        
-        /* Fundo */
-        .stApp { 
-            background-color: #f2f4f7;
-            font-family: 'Inter', sans-serif;
-            color: #1a1f36;
-        }
+        .block-container { padding-top: 0rem !important; margin-top: 1rem !important; max-width: 1000px; }
+        .stApp { background-color: #f2f4f7; font-family: 'Inter', sans-serif; color: #1a1f36; }
     </style>
 """, unsafe_allow_html=True)
 
-# Javascript Cleaner (Reforço)
 js_cleaner = """
 <script>
     try {
         const doc = window.parent.document;
         const style = doc.createElement('style');
-        style.innerHTML = `
-            header, footer, .stApp > header { display: none !important; }
-            [data-testid="stToolbar"] { display: none !important; }
-            .viewerBadge_container__1QSob { display: none !important; }
-        `;
+        style.innerHTML = `header, footer, .stApp > header { display: none !important; } [data-testid="stToolbar"] { display: none !important; } .viewerBadge_container__1QSob { display: none !important; }`;
         doc.head.appendChild(style);
-    } catch (e) { console.log("JS Clean blocked"); }
+    } catch (e) {}
 </script>
 """
 components.html(js_cleaner, height=0)
 
-# --- CSS GERAL ---
+# --- CSS VISUAL (MANTIDO) ---
 st.markdown("""
 <style>
-    /* Card de Login */
+    /* Card Login */
     div[data-testid="column"]:nth-of-type(2) > div {
-        background-color: #ffffff;
-        padding: 48px 40px;
-        border-radius: 20px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-        border: 1px solid #eef2f6;
-        margin-top: 5vh;
+        background-color: #ffffff; padding: 48px 40px; border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08); border: 1px solid #eef2f6; margin-top: 5vh;
     }
-
     /* Logo */
-    div[data-testid="stImage"] {
-        display: flex; justify-content: center !important; width: 100%; margin-bottom: 20px;
-    }
-    div[data-testid="stImage"] > img {
-        object-fit: contain; width: 90% !important; max-width: 380px;
-    }
-
-    /* Tipografia */
-    h1 { font-size: 32px; font-weight: 800; color: #1a1f36; margin-bottom: 8px; text-align: center; letter-spacing: -0.8px; }
-    p { color: #697386; font-size: 16px; text-align: center; margin-bottom: 32px; line-height: 1.5; }
-    
-    /* Inputs */
-    .stTextInput input {
-        background-color: #ffffff; border: 1px solid #e3e8ee; color: #1a1f36;
-        border-radius: 10px; padding: 12px 16px; height: 50px; font-size: 16px;
-    }
-    .stTextInput input:focus {
-        border-color: #0d9488; box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.15); outline: none;
-    }
-
-    /* Botão Principal */
+    div[data-testid="stImage"] { display: flex; justify-content: center !important; width: 100%; margin-bottom: 20px; }
+    div[data-testid="stImage"] > img { object-fit: contain; width: 90% !important; max-width: 380px; }
+    /* Tipografia e Inputs */
+    h1 { font-size: 32px; font-weight: 800; color: #1a1f36; margin-bottom: 8px; text-align: center; }
+    p { color: #697386; font-size: 16px; text-align: center; margin-bottom: 32px; }
+    .stTextInput input { background-color: #ffffff; border: 1px solid #e3e8ee; border-radius: 10px; padding: 12px; height: 50px; }
+    /* Botões */
     div[data-testid="stVerticalBlock"] button[kind="primary"] {
-        background-color: #0d9488 !important; color: #ffffff !important;
-        border: none; height: 50px; font-size: 16px; font-weight: 700;
-        border-radius: 10px; width: 100%; margin-top: 10px;
-        box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3); transition: transform 0.2s;
+        background-color: #0d9488 !important; color: #ffffff !important; border: none; height: 50px; font-weight: 700; border-radius: 10px; margin-top: 10px;
     }
     div[data-testid="stVerticalBlock"] button[kind="primary"] * { color: #ffffff !important; }
-    div[data-testid="stVerticalBlock"] button[kind="primary"]:hover {
-        background-color: #0f766e !important; transform: translateY(-2px);
-    }
-
-    /* Links Secundários */
-    .forgot-container { text-align: center; margin-top: 24px; }
-    .forgot-btn button {
-        background: none !important; border: none !important; padding: 0 !important;
-        color: #697386 !important; font-size: 14px !important; font-weight: 500 !important;
-        text-decoration: none !important; box-shadow: none !important; width: auto !important;
-    }
-    .forgot-btn button:hover { color: #0d9488 !important; text-decoration: underline !important; }
-
-    /* Responsividade */
-    @media (max-width: 768px) {
-        div[data-testid="column"]:nth-of-type(2) > div {
-            box-shadow: none; border: none; background-color: transparent; padding: 0;
-        }
-        div[data-testid="stImage"] > img { width: 70% !important; }
-        .block-container { padding-top: 1rem !important; }
-    }
-    
-    /* CSS Agenda */
+    /* Links */
+    .forgot-btn button { background: none !important; border: none !important; color: #697386 !important; font-size: 14px !important; }
+    /* Agenda */
     .app-header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 30px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
     .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; margin-bottom: 2px; }
     .blocked-slot { background: repeating-linear-gradient(45deg, #fef2f2, #fef2f2 10px, #fee2e2 10px, #fee2e2 20px); height: 40px; border-radius: 4px; opacity: 0.5; }
-    
-    /* Estilo do Dia no Mês */
-    .month-day-box {
-        background: white; border: 1px solid #e2e8f0; border-radius: 8px; min-height: 80px; padding: 6px; margin-bottom: 6px; font-size: 12px; overflow: hidden;
-    }
-    .month-day-num { font-weight: bold; color: #1e293b; margin-bottom: 4px; }
+    /* Card Agendamento User */
+    .user-res-card { background: white; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -148,7 +80,7 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. LÓGICA DE DADOS ---
+# --- 3. LÓGICA ---
 def resolver_nome(email, nome_meta=None, nome_banco=None):
     return nome_banco or nome_meta or email.split('@')[0].title()
 
@@ -247,7 +179,6 @@ def render_calendar(sala):
     mes_str = ref.strftime("%B").capitalize()
     lbl = f"{mes_str} {ref.year}"
     
-    # Define início e fim para a busca no banco
     if mode == 'MÊS':
         ano, mes = ref.year, ref.month
         last_day = calendar.monthrange(ano, mes)[1]
@@ -263,7 +194,6 @@ def render_calendar(sala):
 
     st.markdown(f"<div style='text-align:center; font-weight:800; color:#334155; margin:10px 0'>{lbl}</div>", unsafe_allow_html=True)
 
-    # Busca reservas
     reservas = []
     try:
         r = supabase.table("reservas").select("*").eq("sala_nome", sala).eq("status", "confirmada").gte("data_reserva", str(d_start)).lte("data_reserva", str(d_end)).execute()
@@ -276,46 +206,30 @@ def render_calendar(sala):
         if d not in mapa: mapa[d] = {}
         mapa[d][x['hora_inicio']] = x
 
-    # --- RENDERIZAÇÃO MENSAL (NOVA LÓGICA) ---
     if mode == 'MÊS':
-        # Cabeçalho da Semana
         cols = st.columns(7)
         dias = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
         for i, d in enumerate(dias):
             cols[i].markdown(f"<div style='text-align:center; font-weight:bold; color:#64748b; font-size:12px; margin-bottom:5px'>{d}</div>", unsafe_allow_html=True)
         
-        # Calendário
         cal_matrix = calendar.monthcalendar(ref.year, ref.month)
         for week in cal_matrix:
             cols = st.columns(7)
             for i, day in enumerate(week):
-                if day == 0:
-                    cols[i].write("")
+                if day == 0: cols[i].write("")
                 else:
                     d_obj = datetime.date(ref.year, ref.month, day)
                     d_str = str(d_obj)
-                    
-                    # Conteúdo do dia
                     eventos_html = ""
                     if d_str in mapa:
-                        # Ordena por horário
-                        horarios = sorted(mapa[d_str].keys())
-                        for h in horarios:
+                        for h in sorted(mapa[d_str].keys()):
                             res = mapa[d_str][h]
                             nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
-                            # Cria um chip simples
-                            eventos_html += f"<div style='background:#ccfbf1; color:#115e59; font-size:9px; padding:2px 4px; border-radius:3px; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>{h[:5]} {nm}</div>"
+                            eventos_html += f"<div style='background:#ccfbf1; color:#115e59; font-size:9px; padding:2px; border-radius:3px; margin-bottom:2px; white-space:nowrap; overflow:hidden;'>{h[:5]} {nm}</div>"
                     
-                    # Renderiza o dia
                     bg = "#f0fdf4" if d_obj == datetime.date.today() else "white"
-                    cols[i].markdown(f"""
-                    <div style='background:{bg}; border:1px solid #e2e8f0; border-radius:8px; min-height:80px; padding:5px; font-size:12px;'>
-                        <div style='font-weight:bold; color:#1e293b; margin-bottom:4px; text-align:right'>{day}</div>
-                        {eventos_html}
-                    </div>
-                    """, unsafe_allow_html=True)
+                    cols[i].markdown(f"<div style='background:{bg}; border:1px solid #e2e8f0; border-radius:8px; min-height:80px; padding:5px; font-size:12px;'><div style='font-weight:bold; color:#1e293b; text-align:right'>{day}</div>{eventos_html}</div>", unsafe_allow_html=True)
 
-    # --- RENDERIZAÇÃO SEMANAL/DIÁRIA (MANTIDA) ---
     else:
         visiveis = [d_start + timedelta(days=i) for i in range(7 if mode == 'SEMANA' else 1)]
         ratio = [0.6] + [1]*len(visiveis)
@@ -348,7 +262,7 @@ def render_calendar(sala):
     if st.button("➕ Agendar", type="primary", use_container_width=True):
         modal_agendamento(sala, st.session_state.data_ref)
 
-# --- 5. TELA DE LOGIN ---
+# --- 5. APP PRINCIPAL ---
 if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
 
 def main():
@@ -356,10 +270,8 @@ def main():
         c1, c2, c3 = st.columns([1, 1.2, 1])
         with c2:
             st.write("") 
-            if os.path.exists(NOME_DO_ARQUIVO_LOGO):
-                st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
-            else:
-                st.markdown("<h1 style='text-align:center; color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
+            if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
+            else: st.markdown("<h1 style='text-align:center; color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
             
             if st.session_state.auth_mode == 'login':
                 st.markdown("<h1>Bem-vindo de volta</h1>", unsafe_allow_html=True)
@@ -376,7 +288,6 @@ def main():
                 st.markdown('<div class="forgot-container"><div class="forgot-btn">', unsafe_allow_html=True)
                 if st.button("Esqueci minha senha"): st.session_state.auth_mode = 'forgot'; st.rerun()
                 st.markdown('</div></div>', unsafe_allow_html=True)
-
             elif st.session_state.auth_mode == 'forgot':
                 st.markdown("<h1>Recuperar Senha</h1>", unsafe_allow_html=True)
                 st.markdown("<p>Informe seu e-mail cadastrado</p>", unsafe_allow_html=True)
@@ -391,7 +302,7 @@ def main():
                 st.markdown('</div></div>', unsafe_allow_html=True)
         return
 
-    # --- APP LOGADO ---
+    # LOGADO
     u = st.session_state['user']
     if st.session_state.get('is_admin'):
         with st.sidebar:
@@ -407,17 +318,60 @@ def main():
             sala = st.radio("Sala", ["Sala 1", "Sala 2"], horizontal=True)
             render_calendar(sala)
         with tabs[1]:
+            # --- ÁREA DO USUÁRIO (Painel e Cancelamentos) ---
+            st.markdown("### Meus Agendamentos")
+            # Busca agendamentos futuros
+            agora = datetime.datetime.now()
+            hoje = datetime.date.today()
             try:
-                df = pd.DataFrame(supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").execute().data)
+                # Busca tudo que é de hoje em diante
+                res_futuras = supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").gte("data_reserva", str(hoje)).order("data_reserva").order("hora_inicio").execute()
+                df_fut = pd.DataFrame(res_futuras.data)
+                
+                if not df_fut.empty:
+                    for _, row in df_fut.iterrows():
+                        # Constrói o datetime do agendamento
+                        dt_reserva = datetime.datetime.combine(
+                            datetime.date.fromisoformat(row['data_reserva']),
+                            datetime.datetime.strptime(row['hora_inicio'], "%H:%M:%S").time()
+                        )
+                        
+                        # Mostra apenas se for no futuro real (data+hora > agora)
+                        if dt_reserva > agora:
+                            with st.container():
+                                c_info, c_btn = st.columns([3, 1])
+                                c_info.markdown(f"**{row['data_reserva']}** às **{row['hora_inicio'][:5]}** - {row['sala_nome']}")
+                                
+                                # Lógica de 24 horas
+                                diff = dt_reserva - agora
+                                if diff > timedelta(hours=24):
+                                    if c_btn.button("Cancelar", key=f"usr_cancel_{row['id']}"):
+                                        supabase.table("reservas").update({"status": "cancelada"}).eq("id", row['id']).execute()
+                                        st.toast("Agendamento cancelado!", icon="✅")
+                                        time.sleep(1)
+                                        st.rerun()
+                                else:
+                                    c_btn.caption("🚫 < 24h")
+                                st.divider()
+                else:
+                    st.info("Nenhum agendamento futuro encontrado.")
+                    
+                st.markdown("### Resumo Financeiro")
+                # Busca tudo para estatística
+                df_all = pd.DataFrame(supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").execute().data)
                 k1, k2 = st.columns(2)
-                k1.metric("Investido", f"R$ {df['valor_cobrado'].sum() if not df.empty else 0:.0f}")
-                k2.metric("Sessões", len(df) if not df.empty else 0)
-                with st.expander("Segurança"):
-                    p1 = st.text_input("Nova Senha", type="password")
-                    if st.button("Alterar Senha"):
-                        supabase.auth.update_user({"password": p1})
-                        st.success("OK!")
-            except: pass
+                k1.metric("Investido Total", f"R$ {df_all['valor_cobrado'].sum() if not df_all.empty else 0:.0f}")
+                k2.metric("Sessões Totais", len(df_all) if not df_all.empty else 0)
+                
+            except Exception as e:
+                st.error(f"Erro ao carregar painel: {e}")
+
+            with st.expander("Segurança"):
+                p1 = st.text_input("Nova Senha", type="password")
+                if st.button("Alterar Senha"):
+                    supabase.auth.update_user({"password": p1})
+                    st.success("Senha atualizada!")
+
         with st.sidebar:
             if st.button("Sair"): supabase.auth.sign_out(); st.session_state.clear(); st.rerun()
 
