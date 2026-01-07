@@ -31,7 +31,7 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS VISUAL (CORRIGIDO FORÇA BRUTA) ---
+# --- 3. CSS VISUAL (CORREÇÃO CIRÚRGICA DOS BOTÕES) ---
 st.markdown("""
 <style>
     .block-container { padding-top: 1rem !important; margin-top: 0rem !important; max-width: 1000px; }
@@ -45,34 +45,48 @@ st.markdown("""
     p { color: #697386; font-size: 15px; text-align: center; margin-bottom: 24px; }
     .stTextInput input { background-color: #ffffff; border: 1px solid #e3e8ee; border-radius: 10px; padding: 12px; height: 48px; }
     
-    /* --- CORREÇÃO DO BOTÃO VERDE --- */
-    /* Alvo: Botão normal E Botão de Formulário */
-    div[data-testid="stForm"] button, 
-    div[data-testid="stVerticalBlock"] button[kind="primary"] {
-        background-color: #0d9488 !important; 
-        color: #ffffff !important; 
-        border: none !important; 
-        height: 48px !important; 
-        font-weight: 700 !important; 
-        border-radius: 10px !important; 
+    /* --- CORREÇÃO DO BOTÃO VERDE PRINCIPAL --- */
+    /* 1. Aplica o fundo verde ao botão do formulário */
+    div[data-testid="stForm"] button {
+        background-color: #0d9488 !important;
+        border: none !important;
+        height: 48px !important;
+        border-radius: 10px !important;
         margin-top: 10px !important;
         width: 100% !important;
         box-shadow: none !important;
     }
+    /* 2. FORÇA O TEXTO DENTRO DO BOTÃO A FICAR BRANCO (Corrige Issue 1) */
+    div[data-testid="stForm"] button * {
+        color: #ffffff !important;
+        font-weight: 700 !important;
+    }
     
-    /* Efeito Hover para ficar bonito */
-    div[data-testid="stForm"] button:hover,
-    div[data-testid="stVerticalBlock"] button[kind="primary"]:hover {
+    /* Efeito Hover no botão principal */
+    div[data-testid="stForm"] button:hover {
         background-color: #0f766e !important;
-        color: white !important;
+    }
+
+    /* --- CORREÇÃO DO BOTÃO DE OLHINHO (SENHA) --- */
+    /* 3. Reseta o botão que fica DENTRO do input de senha para transparente (Corrige Issue 2) */
+    div[data-testid="stTextInput"] button {
+        background-color: transparent !important;
+        border: none !important;
+        margin: 0 !important;
+        padding: 0 10px !important; /* Ajuste fino de espaçamento */
+        height: auto !important;
+        width: auto !important;
+        box-shadow: none !important;
+    }
+    /* Garante que o ícone do olhinho use a cor padrão (escura) */
+    div[data-testid="stTextInput"] button * {
+        color: inherit !important;
     }
     
+    /* Outros estilos */
+    div[data-testid="stVerticalBlock"] button[kind="primary"] { background-color: #0d9488 !important; color: white !important; font-weight: 700 !important; }
     button[kind="secondary"] { border: 1px solid #e2e8f0; color: #64748b; }
-    
-    button[key="logout_btn"], button[key="admin_logout"] { 
-        border-color: #fecaca !important; color: #ef4444 !important; background: #fef2f2 !important; font-weight: 600; 
-    }
-    
+    button[key="logout_btn"], button[key="admin_logout"] { border-color: #fecaca !important; color: #ef4444 !important; background: #fef2f2 !important; font-weight: 600; }
     .blocked-slot { background-color: #fef2f2; height: 40px; border-radius: 4px; border: 1px solid #fecaca; opacity: 0.7; }
     .admin-blocked { background-color: #1e293b; color: white; font-size: 10px; padding: 4px; border-radius: 4px; text-align: center; font-weight: bold; margin-bottom: 2px; }
     .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; margin-bottom: 2px; }
