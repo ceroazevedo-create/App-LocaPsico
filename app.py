@@ -31,7 +31,7 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS VISUAL (BOTÃO VERDE + CORREÇÃO DE LOGIN) ---
+# --- 3. CSS VISUAL (CORREÇÃO TOTAL DE CORES) ---
 st.markdown("""
 <style>
     .block-container { padding-top: 1rem !important; margin-top: 0rem !important; max-width: 1000px; }
@@ -45,46 +45,68 @@ st.markdown("""
     p { color: #697386; font-size: 15px; text-align: center; margin-bottom: 24px; }
     .stTextInput input { background-color: #ffffff; border: 1px solid #e3e8ee; border-radius: 10px; padding: 12px; height: 48px; }
     
-    /* --- BOTÃO VERDE PERFEITO --- */
-    div[data-testid="stForm"] button {
-        background-color: #0d9488 !important;
+    /* --- PADRONIZAÇÃO DE BOTÕES VERDES --- */
+    
+    /* 1. Alvo: Botões de Formulário E Botões Primários (dentro do app) */
+    div[data-testid="stForm"] button, 
+    div[data-testid="stButton"] button,
+    button[kind="primary"] {
+        background-color: #0d9488 !important; /* Fundo Verde */
         border: none !important;
         height: 48px !important;
-        border-radius: 10px !important;
-        margin-top: 10px !important;
-        width: 100% !important;
-        box-shadow: none !important;
-    }
-    
-    /* FORÇA TEXTO BRANCO DENTRO DO BOTÃO */
-    div[data-testid="stForm"] button * {
-        color: #ffffff !important;
         font-weight: 700 !important;
-    }
-    
-    /* Hover */
-    div[data-testid="stForm"] button:hover {
-        background-color: #0f766e !important;
+        border-radius: 10px !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+        color: #ffffff !important; /* Texto Branco (Nível 1) */
     }
 
-    /* --- CORREÇÃO DO OLHINHO --- */
+    /* 2. FORÇA BRUTA: Garante que qualquer texto (p, span, div) DENTRO do botão seja branco */
+    div[data-testid="stForm"] button *, 
+    div[data-testid="stButton"] button *,
+    button[kind="primary"] * {
+        color: #ffffff !important; /* Texto Branco (Nível 2 - Filhos) */
+    }
+    
+    /* 3. Hover (Passar o mouse) */
+    div[data-testid="stForm"] button:hover,
+    div[data-testid="stButton"] button:hover,
+    button[kind="primary"]:hover {
+        background-color: #0f766e !important; /* Verde um pouco mais escuro */
+        color: #ffffff !important;
+    }
+
+    /* --- EXCEÇÃO: BOTÃO DE OLHINHO (SENHA) --- */
+    /* Esse botão precisa ser transparente e ter ícone escuro */
     div[data-testid="stTextInput"] button {
         background-color: transparent !important;
-        color: #31333F !important;
         border: none !important;
         box-shadow: none !important;
         height: auto !important;
         margin: 0 !important;
+        padding: 0 10px !important;
     }
-    /* Ícone do olhinho */
     div[data-testid="stTextInput"] button * {
-        color: inherit !important; 
+        color: #31333F !important; /* Reseta a cor do ícone para cinza escuro */
     }
     
-    /* Botões fora do form */
-    div[data-testid="stVerticalBlock"] button[kind="primary"] { background-color: #0d9488 !important; color: white !important; font-weight: 700 !important; }
-    button[kind="secondary"] { border: 1px solid #e2e8f0; color: #64748b; }
-    button[key="logout_btn"], button[key="admin_logout"] { border-color: #fecaca !important; color: #ef4444 !important; background: #fef2f2 !important; font-weight: 600; }
+    /* --- BOTÕES SECUNDÁRIOS (Cinza/Branco) --- */
+    button[kind="secondary"] { 
+        background-color: #ffffff !important;
+        border: 1px solid #e2e8f0 !important; 
+        color: #64748b !important; 
+    }
+    button[kind="secondary"] * { color: #64748b !important; }
+
+    /* --- BOTÕES ESPECIAIS (Logout/Excluir - Vermelho) --- */
+    button[key="logout_btn"], button[key="admin_logout"] { 
+        border-color: #fecaca !important; 
+        color: #ef4444 !important; 
+        background-color: #fef2f2 !important; 
+        font-weight: 600; 
+    }
+    button[key="logout_btn"] *, button[key="admin_logout"] * { color: #ef4444 !important; }
+    
+    /* Agenda e Chips */
     .blocked-slot { background-color: #fef2f2; height: 40px; border-radius: 4px; border: 1px solid #fecaca; opacity: 0.7; }
     .admin-blocked { background-color: #1e293b; color: white; font-size: 10px; padding: 4px; border-radius: 4px; text-align: center; font-weight: bold; margin-bottom: 2px; }
     .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; margin-bottom: 2px; }
@@ -420,17 +442,18 @@ def main():
                 with st.form("login_form"):
                     email = st.text_input("E-mail profissional", placeholder="seu@email.com")
                     senha = st.text_input("Sua senha", type="password", placeholder="••••••••")
-                    submitted = st.form_submit_button("Entrar na Agenda") # Removido type="primary" daqui
+                    # Removemos type="primary" daqui pois o CSS já força a cor
+                    submitted = st.form_submit_button("Entrar na Agenda") 
                     
                     if submitted:
                         try:
+                            # Apenas sobrescreve, sem sign_out() prévio para evitar erro
                             u = supabase.auth.sign_in_with_password({"email": email, "password": senha})
                             if u.user:
                                 st.session_state['user'] = u.user
                                 st.session_state['is_admin'] = (email == "admin@admin.com.br")
                                 st.rerun()
                         except Exception as e:
-                            # Filtra mensagem técnica se for erro de senha
                             if "Invalid login credentials" in str(e):
                                 st.error("E-mail ou senha incorretos.")
                             else:
