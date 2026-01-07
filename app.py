@@ -51,7 +51,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Javascript Cleaner
 components.html("""<script>try{const doc=window.parent.document;const style=doc.createElement('style');style.innerHTML=`header, footer, .stApp > header { display: none !important; } [data-testid="stToolbar"] { display: none !important; } .viewerBadge_container__1QSob { display: none !important; }`;doc.head.appendChild(style);}catch(e){}</script>""", height=0)
 
 # --- 4. FUNÇÕES DE SUPORTE ---
@@ -254,7 +253,9 @@ def render_calendar(sala, is_admin_mode=False):
         c_h = st.columns(ratio)
         c_h[0].write("")
         d_n = ["SEG","TER","QUA","QUI","SEX","SÁB","DOM"]
-        for i, d in enumerate(visiveis): c_h[i+1].markdown(f"<div style='text-align:center; padding-bottom:5px; border-bottom:2px solid #e2e8f0; margin-bottom:5px'><div style='font-size:10px; font-weight:bold; color:#64748b'>{d_n[wd]}</div><div style='font-size:16px; font-weight:bold; color:#1e293b'>{visiveis[i].day}</div></div>", unsafe_allow_html=True)
+        for i, d in enumerate(visiveis):
+            wd = d.weekday() # CORREÇÃO AQUI
+            c_h[i+1].markdown(f"<div style='text-align:center; padding-bottom:5px; border-bottom:2px solid #e2e8f0; margin-bottom:5px'><div style='font-size:10px; font-weight:bold; color:#64748b'>{d_n[wd]}</div><div style='font-size:16px; font-weight:bold; color:#1e293b'>{visiveis[i].day}</div></div>", unsafe_allow_html=True)
         for h in range(7, 22):
             hora = f"{h:02d}:00:00"
             row = st.columns(ratio)
@@ -414,20 +415,17 @@ def main():
                 if st.button("Verificar e Redefinir", type="primary"):
                     success = False
                     # TENTA VALIDAÇÃO TRIPLA
-                    # 1. Tenta como MAGICLINK (Padrão para Login OTP)
                     try:
                         res = supabase.auth.verify_otp({"email": st.session_state.reset_email, "token": otp_code, "type": "magiclink"})
                         if res.user: success = True
                     except: pass
                     
-                    # 2. Tenta como RECOVERY (Caso seja fluxo de reset antigo)
                     if not success:
                         try:
                             res = supabase.auth.verify_otp({"email": st.session_state.reset_email, "token": otp_code, "type": "recovery"})
                             if res.user: success = True
                         except: pass
                     
-                    # 3. Tenta como EMAIL (Caso seja mudança de email)
                     if not success:
                         try:
                             res = supabase.auth.verify_otp({"email": st.session_state.reset_email, "token": otp_code, "type": "email"})
@@ -435,7 +433,6 @@ def main():
                         except: pass
 
                     if success:
-                        # Pega o usuário logado da sessão atual
                         curr_session = supabase.auth.get_session()
                         if curr_session:
                             st.session_state.user = curr_session.user
