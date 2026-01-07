@@ -63,7 +63,7 @@ js_cleaner = """
 """
 components.html(js_cleaner, height=0)
 
-# --- CSS DO LOGIN (Visual Notion/Stripe) ---
+# --- CSS GERAL ---
 st.markdown("""
 <style>
     /* Card de Login */
@@ -76,73 +76,37 @@ st.markdown("""
         margin-top: 5vh;
     }
 
-    /* Logo Proporcional */
+    /* Logo */
     div[data-testid="stImage"] {
-        display: flex;
-        justify-content: center !important;
-        align-items: center !important;
-        width: 100%;
-        margin-bottom: 20px;
+        display: flex; justify-content: center !important; width: 100%; margin-bottom: 20px;
     }
     div[data-testid="stImage"] > img {
-        object-fit: contain;
-        width: 90% !important;
-        max-width: 380px;
+        object-fit: contain; width: 90% !important; max-width: 380px;
     }
 
     /* Tipografia */
-    h1 { 
-        font-size: 32px;
-        font-weight: 800; 
-        color: #1a1f36; 
-        margin-bottom: 8px; 
-        text-align: center; 
-        letter-spacing: -0.8px;
-    }
-    p { 
-        color: #697386; 
-        font-size: 16px; 
-        text-align: center; 
-        margin-bottom: 32px; 
-        line-height: 1.5;
-    }
+    h1 { font-size: 32px; font-weight: 800; color: #1a1f36; margin-bottom: 8px; text-align: center; letter-spacing: -0.8px; }
+    p { color: #697386; font-size: 16px; text-align: center; margin-bottom: 32px; line-height: 1.5; }
     
     /* Inputs */
     .stTextInput input {
-        background-color: #ffffff;
-        border: 1px solid #e3e8ee;
-        color: #1a1f36;
-        border-radius: 10px;
-        padding: 12px 16px;
-        height: 50px;
-        font-size: 16px;
+        background-color: #ffffff; border: 1px solid #e3e8ee; color: #1a1f36;
+        border-radius: 10px; padding: 12px 16px; height: 50px; font-size: 16px;
     }
     .stTextInput input:focus {
-        border-color: #0d9488;
-        box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.15);
-        outline: none;
+        border-color: #0d9488; box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.15); outline: none;
     }
 
     /* Botão Principal */
     div[data-testid="stVerticalBlock"] button[kind="primary"] {
-        background-color: #0d9488 !important;
-        color: #ffffff !important;
-        border: none;
-        height: 50px;
-        font-size: 16px;
-        font-weight: 700;
-        border-radius: 10px;
-        width: 100%;
-        margin-top: 10px;
-        box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3);
-        transition: transform 0.2s;
+        background-color: #0d9488 !important; color: #ffffff !important;
+        border: none; height: 50px; font-size: 16px; font-weight: 700;
+        border-radius: 10px; width: 100%; margin-top: 10px;
+        box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3); transition: transform 0.2s;
     }
-    div[data-testid="stVerticalBlock"] button[kind="primary"] * {
-        color: #ffffff !important;
-    }
+    div[data-testid="stVerticalBlock"] button[kind="primary"] * { color: #ffffff !important; }
     div[data-testid="stVerticalBlock"] button[kind="primary"]:hover {
-        background-color: #0f766e !important;
-        transform: translateY(-2px);
+        background-color: #0f766e !important; transform: translateY(-2px);
     }
 
     /* Links Secundários */
@@ -152,9 +116,7 @@ st.markdown("""
         color: #697386 !important; font-size: 14px !important; font-weight: 500 !important;
         text-decoration: none !important; box-shadow: none !important; width: auto !important;
     }
-    .forgot-btn button:hover {
-        color: #0d9488 !important; text-decoration: underline !important;
-    }
+    .forgot-btn button:hover { color: #0d9488 !important; text-decoration: underline !important; }
 
     /* Responsividade */
     @media (max-width: 768px) {
@@ -165,10 +127,16 @@ st.markdown("""
         .block-container { padding-top: 1rem !important; }
     }
     
-    /* CSS Interno (Agenda) */
+    /* CSS Agenda */
     .app-header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 30px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-    .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; }
+    .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; margin-bottom: 2px; }
     .blocked-slot { background: repeating-linear-gradient(45deg, #fef2f2, #fef2f2 10px, #fee2e2 10px, #fee2e2 20px); height: 40px; border-radius: 4px; opacity: 0.5; }
+    
+    /* Estilo do Dia no Mês */
+    .month-day-box {
+        background: white; border: 1px solid #e2e8f0; border-radius: 8px; min-height: 80px; padding: 6px; margin-bottom: 6px; font-size: 12px; overflow: hidden;
+    }
+    .month-day-num { font-weight: bold; color: #1e293b; margin-bottom: 4px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -180,10 +148,8 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. LÓGICA DE DADOS (CORRIGIDA) ---
-# CORREÇÃO: Adicionado o parâmetro 'nome_banco' para evitar o TypeError
+# --- 3. LÓGICA DE DADOS ---
 def resolver_nome(email, nome_meta=None, nome_banco=None):
-    # Prioridade: Nome no banco > Nome no metadado do login > Parte do email
     return nome_banco or nome_meta or email.split('@')[0].title()
 
 def get_preco():
@@ -280,22 +246,24 @@ def render_calendar(sala):
     ref = st.session_state.data_ref
     mes_str = ref.strftime("%B").capitalize()
     lbl = f"{mes_str} {ref.year}"
-    if mode == 'SEMANA':
-        i = ref - timedelta(days=ref.weekday())
-        f = i + timedelta(days=6)
-        lbl = f"{i.day} - {f.day} {mes_str}"
-    elif mode == 'DIA': lbl = f"{ref.day} de {mes_str}"
-    st.markdown(f"<div style='text-align:center; font-weight:800; color:#334155; margin:10px 0'>{lbl}</div>", unsafe_allow_html=True)
-
+    
+    # Define início e fim para a busca no banco
     if mode == 'MÊS':
         ano, mes = ref.year, ref.month
-        last = calendar.monthrange(ano, mes)[1]
-        d_start, d_end = datetime.date(ano, mes, 1), datetime.date(ano, mes, last)
+        last_day = calendar.monthrange(ano, mes)[1]
+        d_start, d_end = datetime.date(ano, mes, 1), datetime.date(ano, mes, last_day)
+        lbl = f"{mes_str} {ano}"
     elif mode == 'SEMANA':
         d_start = ref - timedelta(days=ref.weekday())
         d_end = d_start + timedelta(days=6)
-    else: d_start = d_end = ref
+        lbl = f"{d_start.day} - {d_end.day} {mes_str}"
+    else: 
+        d_start = d_end = ref
+        lbl = f"{ref.day} de {mes_str}"
 
+    st.markdown(f"<div style='text-align:center; font-weight:800; color:#334155; margin:10px 0'>{lbl}</div>", unsafe_allow_html=True)
+
+    # Busca reservas
     reservas = []
     try:
         r = supabase.table("reservas").select("*").eq("sala_nome", sala).eq("status", "confirmada").gte("data_reserva", str(d_start)).lte("data_reserva", str(d_end)).execute()
@@ -308,8 +276,46 @@ def render_calendar(sala):
         if d not in mapa: mapa[d] = {}
         mapa[d][x['hora_inicio']] = x
 
+    # --- RENDERIZAÇÃO MENSAL (NOVA LÓGICA) ---
     if mode == 'MÊS':
-        st.info("Visão mensal simplificada. Use a semanal para detalhes.")
+        # Cabeçalho da Semana
+        cols = st.columns(7)
+        dias = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
+        for i, d in enumerate(dias):
+            cols[i].markdown(f"<div style='text-align:center; font-weight:bold; color:#64748b; font-size:12px; margin-bottom:5px'>{d}</div>", unsafe_allow_html=True)
+        
+        # Calendário
+        cal_matrix = calendar.monthcalendar(ref.year, ref.month)
+        for week in cal_matrix:
+            cols = st.columns(7)
+            for i, day in enumerate(week):
+                if day == 0:
+                    cols[i].write("")
+                else:
+                    d_obj = datetime.date(ref.year, ref.month, day)
+                    d_str = str(d_obj)
+                    
+                    # Conteúdo do dia
+                    eventos_html = ""
+                    if d_str in mapa:
+                        # Ordena por horário
+                        horarios = sorted(mapa[d_str].keys())
+                        for h in horarios:
+                            res = mapa[d_str][h]
+                            nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
+                            # Cria um chip simples
+                            eventos_html += f"<div style='background:#ccfbf1; color:#115e59; font-size:9px; padding:2px 4px; border-radius:3px; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>{h[:5]} {nm}</div>"
+                    
+                    # Renderiza o dia
+                    bg = "#f0fdf4" if d_obj == datetime.date.today() else "white"
+                    cols[i].markdown(f"""
+                    <div style='background:{bg}; border:1px solid #e2e8f0; border-radius:8px; min-height:80px; padding:5px; font-size:12px;'>
+                        <div style='font-weight:bold; color:#1e293b; margin-bottom:4px; text-align:right'>{day}</div>
+                        {eventos_html}
+                    </div>
+                    """, unsafe_allow_html=True)
+
+    # --- RENDERIZAÇÃO SEMANAL/DIÁRIA (MANTIDA) ---
     else:
         visiveis = [d_start + timedelta(days=i) for i in range(7 if mode == 'SEMANA' else 1)]
         ratio = [0.6] + [1]*len(visiveis)
@@ -328,7 +334,6 @@ def render_calendar(sala):
                 res = mapa.get(d_s, {}).get(hora)
                 cont = row[i+1].container()
                 if res:
-                    # AQUI ESTAVA O ERRO: Chamada corrigida
                     nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
                     cont.markdown(f"<div class='evt-chip'>{nm}</div>", unsafe_allow_html=True)
                 else:
@@ -348,26 +353,19 @@ if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
 
 def main():
     if 'user' not in st.session_state:
-        # Layout 3 colunas para centralizar
         c1, c2, c3 = st.columns([1, 1.2, 1])
-        
         with c2:
-            st.write("") # Spacer
-            
-            # --- LOGO ---
+            st.write("") 
             if os.path.exists(NOME_DO_ARQUIVO_LOGO):
                 st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
             else:
                 st.markdown("<h1 style='text-align:center; color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
             
-            # --- LOGIN ---
             if st.session_state.auth_mode == 'login':
                 st.markdown("<h1>Bem-vindo de volta</h1>", unsafe_allow_html=True)
                 st.markdown("<p>Acesse sua agenda profissional</p>", unsafe_allow_html=True)
-                
                 email = st.text_input("E-mail profissional", placeholder="seu@email.com")
                 senha = st.text_input("Sua senha", type="password", placeholder="••••••••")
-                
                 if st.button("Entrar na Agenda", type="primary"):
                     try:
                         u = supabase.auth.sign_in_with_password({"email": email, "password": senha})
@@ -375,34 +373,26 @@ def main():
                         st.session_state['is_admin'] = (email == "admin@admin.com.br")
                         st.rerun()
                     except: st.error("Credenciais inválidas.")
-
                 st.markdown('<div class="forgot-container"><div class="forgot-btn">', unsafe_allow_html=True)
-                if st.button("Esqueci minha senha"):
-                    st.session_state.auth_mode = 'forgot'; st.rerun()
+                if st.button("Esqueci minha senha"): st.session_state.auth_mode = 'forgot'; st.rerun()
                 st.markdown('</div></div>', unsafe_allow_html=True)
 
-            # --- RECUPERAÇÃO ---
             elif st.session_state.auth_mode == 'forgot':
                 st.markdown("<h1>Recuperar Senha</h1>", unsafe_allow_html=True)
                 st.markdown("<p>Informe seu e-mail cadastrado</p>", unsafe_allow_html=True)
-                
                 rec_e = st.text_input("E-mail")
-                
                 if st.button("Enviar Link", type="primary"):
                     try:
                         supabase.auth.reset_password_for_email(rec_e, options={"redirect_to": "https://locapsico.streamlit.app"})
                         st.success("Verifique seu e-mail.")
                     except: st.error("Erro ao enviar.")
-                
                 st.markdown('<div class="forgot-container"><div class="forgot-btn">', unsafe_allow_html=True)
-                if st.button("Voltar ao Login"):
-                    st.session_state.auth_mode = 'login'; st.rerun()
+                if st.button("Voltar ao Login"): st.session_state.auth_mode = 'login'; st.rerun()
                 st.markdown('</div></div>', unsafe_allow_html=True)
         return
 
     # --- APP LOGADO ---
     u = st.session_state['user']
-    
     if st.session_state.get('is_admin'):
         with st.sidebar:
             if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, width=100)
@@ -496,7 +486,5 @@ def tela_admin_master():
 
 if __name__ == "__main__":
     main()
-
-
 
 
