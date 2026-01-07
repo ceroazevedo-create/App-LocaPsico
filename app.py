@@ -10,16 +10,15 @@ import time
 import os
 import streamlit.components.v1 as components
 
-# --- 1. CONFIGURAÇÕES GERAIS E ESTADO ---
+# --- 1. CONFIGURAÇÕES INICIAIS ---
 st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide", initial_sidebar_state="collapsed")
 
-# Inicializa variáveis de estado
+# Inicializa Estado (Garante que as variáveis existem)
 if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
-if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
-if 'view_mode' not in st.session_state: st.session_state.view_mode = 'SEMANA'
 if 'user' not in st.session_state: st.session_state.user = None
 if 'is_admin' not in st.session_state: st.session_state.is_admin = False
-if 'force_pass_reset' not in st.session_state: st.session_state.force_pass_reset = False
+if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
+if 'view_mode' not in st.session_state: st.session_state.view_mode = 'SEMANA'
 
 NOME_DO_ARQUIVO_LOGO = "logo.png" 
 
@@ -31,11 +30,12 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. JAVASCRIPT MÁGICO (RECUPERAÇÃO DE LINK) ---
-# Este script pega o token do link (ex: #access_token=...) e recarrega a página entregando para o Python
+# --- 3. JAVASCRIPT CORRETOR DE URL (ESSENCIAL PARA O LINK FUNCIONAR) ---
+# Este script pega o "Hash" (#access_token=...) que o email envia e transforma
+# em um parâmetro que o Streamlit consegue ler (?access_token=...)
 js_fixer = """
 <script>
-    // 1. Limpa a interface visual do Streamlit
+    // 1. Limpa a interface visual enquanto carrega
     try {
         const doc = window.parent.document;
         const style = doc.createElement('style');
@@ -43,11 +43,11 @@ js_fixer = """
         doc.head.appendChild(style);
     } catch (e) {}
     
-    // 2. Detecta Token de Recuperação na URL (Hash)
+    // 2. Detecta se veio de um link de email (Hash na URL)
     if (window.location.hash) {
         const params = new URLSearchParams(window.location.hash.substring(1));
-        // Se tiver token de acesso, recarrega a página transformando em Query Param
         if (params.has('access_token') && params.has('refresh_token')) {
+            // Recarrega a página passando os tokens para o Python
             const newUrl = window.location.origin + window.location.pathname + 
                            '?access_token=' + params.get('access_token') + 
                            '&refresh_token=' + params.get('refresh_token') +
@@ -61,80 +61,48 @@ components.html(js_fixer, height=0)
 
 # --- 4. CSS VISUAL ---
 st.markdown("""
-    <style>
-        /* CSS GERAL */
-        .block-container { padding-top: 1rem !important; margin-top: 0rem !important; max-width: 1000px; }
-        .stApp { background-color: #f2f4f7; font-family: 'Inter', sans-serif; color: #1a1f36; }
-        
-        /* CARD CENTRALIZADO */
-        div[data-testid="column"]:nth-of-type(2) > div {
-            background-color: #ffffff; padding: 48px 40px; border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08); border: 1px solid #eef2f6; margin-top: 2vh;
-        }
-        div[data-testid="stImage"] { display: flex; justify-content: center !important; width: 100%; margin-bottom: 20px; }
-        div[data-testid="stImage"] > img { object-fit: contain; width: 90% !important; max-width: 380px; }
-        
-        h1 { font-size: 28px; font-weight: 800; color: #1a1f36; margin-bottom: 8px; text-align: center; }
-        p { color: #697386; font-size: 15px; text-align: center; margin-bottom: 24px; }
-        
-        .stTextInput input { background-color: #ffffff; border: 1px solid #e3e8ee; border-radius: 10px; padding: 12px; height: 48px; }
-        
-        div[data-testid="stVerticalBlock"] button[kind="primary"] {
-            background-color: #0d9488 !important; color: #ffffff !important; border: none; height: 48px; font-weight: 700; border-radius: 10px; margin-top: 10px;
-        }
-        div[data-testid="stVerticalBlock"] button[kind="primary"] * { color: #ffffff !important; }
-        button[kind="secondary"] { border: 1px solid #e2e8f0; color: #64748b; }
-        
-        button[key="logout_btn"], button[key="admin_logout"] { 
-            border-color: #fecaca !important; color: #ef4444 !important; background: #fef2f2 !important; font-weight: 600; 
-        }
-        
-        /* AGENDA */
-        .blocked-slot { 
-            background-color: #fef2f2; 
-            background-image: repeating-linear-gradient(45deg, #fee2e2 25%, transparent 25%, transparent 50%, #fee2e2 50%, #fee2e2 75%, transparent 75%, transparent);
-            background-size: 10px 10px; height: 40px; border-radius: 4px; border: 1px solid #fecaca; opacity: 0.7; 
-        }
-        .admin-blocked { background-color: #1e293b; color: white; font-size: 10px; padding: 4px; border-radius: 4px; text-align: center; font-weight: bold; margin-bottom: 2px; }
-        .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; margin-bottom: 2px; }
-    </style>
+<style>
+    .block-container { padding-top: 1rem !important; margin-top: 0rem !important; max-width: 1000px; }
+    .stApp { background-color: #f2f4f7; font-family: 'Inter', sans-serif; color: #1a1f36; }
+    
+    /* Card Central */
+    div[data-testid="column"]:nth-of-type(2) > div {
+        background-color: #ffffff; padding: 48px 40px; border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08); border: 1px solid #eef2f6; margin-top: 2vh;
+    }
+    div[data-testid="stImage"] { display: flex; justify-content: center !important; width: 100%; margin-bottom: 20px; }
+    div[data-testid="stImage"] > img { object-fit: contain; width: 90% !important; max-width: 380px; }
+    
+    /* Tipografia e Inputs */
+    h1 { font-size: 28px; font-weight: 800; color: #1a1f36; margin-bottom: 8px; text-align: center; }
+    p { color: #697386; font-size: 15px; text-align: center; margin-bottom: 24px; }
+    .stTextInput input { background-color: #ffffff; border: 1px solid #e3e8ee; border-radius: 10px; padding: 12px; height: 48px; }
+    
+    /* Botões */
+    div[data-testid="stVerticalBlock"] button[kind="primary"] {
+        background-color: #0d9488 !important; color: #ffffff !important; border: none; height: 48px; font-weight: 700; border-radius: 10px; margin-top: 10px;
+    }
+    div[data-testid="stVerticalBlock"] button[kind="primary"] * { color: #ffffff !important; }
+    button[kind="secondary"] { border: 1px solid #e2e8f0; color: #64748b; }
+    
+    /* Botões de Ação */
+    button[key="logout_btn"], button[key="admin_logout"], button[kind="secondary"][help="Excluir"] { 
+        border-color: #fecaca !important; color: #ef4444 !important; background: #fef2f2 !important; font-weight: 600; 
+    }
+    
+    /* Agenda */
+    .blocked-slot { background-color: #fef2f2; height: 40px; border-radius: 4px; border: 1px solid #fecaca; opacity: 0.7; }
+    .admin-blocked { background-color: #1e293b; color: white; font-size: 10px; padding: 4px; border-radius: 4px; text-align: center; font-weight: bold; margin-bottom: 2px; }
+    .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; margin-bottom: 2px; }
+</style>
 """, unsafe_allow_html=True)
 
-# --- 5. LÓGICA DE LOGIN E SESSÃO ---
-
-def check_session_from_url():
-    # Verifica se o JS converteu o hash em query params
-    qp = st.query_params
-    if "access_token" in qp and "refresh_token" in qp:
-        try:
-            # Faz login com o token da URL
-            session = supabase.auth.set_session(qp["access_token"], qp["refresh_token"])
-            if session:
-                st.session_state.user = session.user
-                st.session_state.is_admin = (session.user.email == "admin@admin.com.br")
-                
-                # Se for recuperação, ativa modo de reset
-                if qp.get("type") == "recovery":
-                    st.session_state.force_pass_reset = True
-                
-                st.query_params.clear() # Limpa a URL
-                st.rerun()
-        except: 
-            st.error("O link de recuperação expirou ou é inválido.")
-
-# Verifica sessão
-if not st.session_state.user:
-    try:
-        session = supabase.auth.get_session()
-        if session:
-            st.session_state.user = session.user
-            st.session_state.is_admin = (session.user.email == "admin@admin.com.br")
-    except: pass
-    check_session_from_url()
+# --- 5. FUNÇÕES DE SUPORTE ---
 
 def resolver_nome(email, nome_meta=None, nome_banco=None):
-    if email and "cesar_unib" in email: return "Cesar"
-    if email and "thascaranalle" in email: return "Thays"
+    if not email: return "Visitante"
+    if "cesar_unib" in email: return "Cesar"
+    if "thascaranalle" in email: return "Thays"
     return nome_banco or nome_meta or email.split('@')[0].title()
 
 def get_config_precos():
@@ -196,8 +164,6 @@ def navegar(direcao):
     delta = 1 if mode == 'DIA' else (7 if mode == 'SEMANA' else 30)
     if direcao == 'prev': st.session_state.data_ref -= timedelta(days=delta)
     else: st.session_state.data_ref += timedelta(days=delta)
-
-# --- 6. COMPONENTES DE UI ---
 
 @st.dialog("Novo Agendamento")
 def modal_agendamento(sala_padrao, data_sugerida):
@@ -276,7 +242,6 @@ def render_calendar(sala, is_admin_mode=False):
         if st.button("◀ Anterior", use_container_width=True, key=f"nav_prev_{is_admin_mode}"): navegar('prev'); st.rerun()
     with c_R: 
         if st.button("Próximo ▶", use_container_width=True, key=f"nav_next_{is_admin_mode}"): navegar('next'); st.rerun()
-    
     mode = st.session_state.view_mode
     def set_mode(m): st.session_state.view_mode = m
     bt_sty = lambda m: "primary" if mode == m else "secondary"
@@ -287,7 +252,6 @@ def render_calendar(sala, is_admin_mode=False):
         if st.button("Semana", type=bt_sty('SEMANA'), use_container_width=True, key=f"v_sem_{is_admin_mode}"): set_mode('SEMANA'); st.rerun()
     with b3: 
         if st.button("Mês", type=bt_sty('MÊS'), use_container_width=True, key=f"v_mes_{is_admin_mode}"): set_mode('MÊS'); st.rerun()
-
     ref = st.session_state.data_ref
     mes_str = ref.strftime("%B").capitalize()
     if mode == 'MÊS':
@@ -302,21 +266,17 @@ def render_calendar(sala, is_admin_mode=False):
     else: 
         d_start = d_end = ref
         lbl = f"{ref.day} de {mes_str}"
-
     st.markdown(f"<div style='text-align:center; font-weight:800; color:#334155; margin:10px 0'>{lbl}</div>", unsafe_allow_html=True)
-
     reservas = []
     try:
         r = supabase.table("reservas").select("*").eq("sala_nome", sala).neq("status", "cancelada").gte("data_reserva", str(d_start)).lte("data_reserva", str(d_end)).execute()
         reservas = r.data
     except: pass
-
     mapa = {}
     for x in reservas:
         d = x['data_reserva']
         if d not in mapa: mapa[d] = {}
         mapa[d][x['hora_inicio']] = x
-
     if mode == 'MÊS':
         cols = st.columns(7)
         dias = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
@@ -457,35 +417,45 @@ def tela_admin_master():
                     else: st.warning("Sem dados.")
         except: pass
 
-# --- 7. TELA PRINCIPAL (CONTROLE DE FLUXO) ---
+# --- 6. FUNÇÃO PRINCIPAL DE CONTROLE ---
 def main():
-    # 1. Se veio de link de recuperação (Flag ativa), mostra APENAS a troca de senha
-    if st.session_state.force_pass_reset:
+    # 1. VERIFICAÇÃO DE LOGIN VIA URL (Recuperação de Senha)
+    query_params = st.query_params
+    if "access_token" in query_params and "refresh_token" in query_params:
+        try:
+            # Login automático com o token do email
+            session = supabase.auth.set_session(query_params["access_token"], query_params["refresh_token"])
+            st.session_state.user = session.user
+            st.session_state.is_admin = (session.user.email == "admin@admin.com.br")
+            
+            # Se for do tipo 'recovery', força a tela de mudança de senha
+            if query_params.get("type") == "recovery":
+                st.session_state.auth_mode = 'reset_password'
+            
+            st.query_params.clear() # Limpa a URL
+            st.rerun()
+        except: 
+            st.error("Link de recuperação expirado.")
+    
+    # 2. TELA DE REDEFINIÇÃO DE SENHA (PRIORIDADE ALTA)
+    if st.session_state.auth_mode == 'reset_password':
         c1, c2, c3 = st.columns([1, 1.5, 1])
         with c2:
             st.write("")
             if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True)
-            st.markdown("<h2 style='text-align:center'>🔒 Definir Nova Senha</h2>", unsafe_allow_html=True)
-            st.info("Você acessou via link de recuperação. Por favor, defina sua nova senha abaixo.")
-            
-            new_pass = st.text_input("Nova Senha", type="password")
-            confirm_pass = st.text_input("Confirme a Senha", type="password")
-            
+            st.markdown("<h2 style='text-align:center'>🔒 Nova Senha</h2>", unsafe_allow_html=True)
+            new_pass = st.text_input("Digite sua nova senha", type="password")
             if st.button("Atualizar Senha", type="primary"):
-                if new_pass == confirm_pass and len(new_pass) >= 6:
-                    try:
-                        supabase.auth.update_user({"password": new_pass})
-                        st.success("Senha atualizada com sucesso! Redirecionando...")
-                        st.session_state.force_pass_reset = False
-                        st.session_state.auth_mode = 'login'
-                        time.sleep(2)
-                        st.rerun()
-                    except Exception as e: st.error(f"Erro: {e}")
-                else:
-                    st.warning("Senhas não conferem ou são muito curtas.")
-        return # Para a execução aqui para não mostrar o resto
+                if len(new_pass) >= 6:
+                    supabase.auth.update_user({"password": new_pass})
+                    st.success("Senha atualizada! Redirecionando...")
+                    st.session_state.auth_mode = 'login' # Volta para login ou loga direto
+                    time.sleep(2)
+                    st.rerun()
+                else: st.warning("Senha muito curta.")
+        return # Para a execução aqui
 
-    # 2. Se não está logado, mostra Login/Cadastro
+    # 3. TELA DE LOGIN / CADASTRO (Se não estiver logado)
     if not st.session_state.user:
         c1, c2, c3 = st.columns([1, 1.2, 1])
         with c2:
@@ -536,8 +506,14 @@ def main():
                 if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'login'; st.rerun()
         return
 
-    # 3. Se logado, mostra App Principal
-    u = st.session_state['user']
+    # 4. APP LOGADO
+    # Garante que u existe antes de acessar propriedades
+    u = st.session_state.get('user')
+    if u is None:
+        st.session_state.auth_mode = 'login'
+        st.rerun()
+        return
+
     if st.session_state.get('is_admin'):
         c_adm_title, c_adm_out = st.columns([5,1])
         with c_adm_title: st.markdown(f"<h3 style='color:#0d9488; margin:0'>Painel Administrativo</h3>", unsafe_allow_html=True)
