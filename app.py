@@ -13,17 +13,18 @@ import streamlit.components.v1 as components
 # --- 1. CONFIGURAÇÕES INICIAIS ---
 st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide", initial_sidebar_state="collapsed")
 
-# --- 2. VARIAVEIS DE ESTADO (Inicialização Segura) ---
+# Inicialização de Variáveis de Estado
 if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
 if 'user' not in st.session_state: st.session_state.user = None
 if 'is_admin' not in st.session_state: st.session_state.is_admin = False
 if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
 if 'view_mode' not in st.session_state: st.session_state.view_mode = 'SEMANA'
+# Variável Mestra de Recuperação
 if 'recovery_mode' not in st.session_state: st.session_state.recovery_mode = False
 
 NOME_DO_ARQUIVO_LOGO = "logo.png" 
 
-# --- 3. CONEXÃO SUPABASE ---
+# --- 2. CONEXÃO SUPABASE ---
 @st.cache_resource
 def init_connection():
     try: return create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
@@ -31,57 +32,69 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 4. INTERCEPTADOR DE URL (O SEGREDO DA CORREÇÃO) ---
-# Este bloco roda ANTES de qualquer desenho na tela.
-# Se ele achar o token na URL (query params), ele loga o usuário e ativa o modo recuperação.
-
-def intercept_recovery_token():
-    qp = st.query_params
-    # Se existirem tokens na URL (vindos do JS abaixo)
-    if "access_token" in qp and "refresh_token" in qp:
-        try:
-            # 1. Tenta criar a sessão com o token
-            session = supabase.auth.set_session(qp["access_token"], qp["refresh_token"])
-            
-            if session and session.user:
-                # 2. Sucesso! Define usuário e ATIVA MODO RECUPERAÇÃO
-                st.session_state.user = session.user
-                st.session_state.is_admin = (session.user.email == "admin@admin.com.br") # Ajuste seu email
-                st.session_state.recovery_mode = True 
-                
-                # 3. Limpa a URL para não processar de novo num refresh futuro
-                st.query_params.clear()
-        except Exception as e:
-            st.error(f"Token expirado ou inválido. Peça nova recuperação.")
-            st.query_params.clear()
-
-# Chama a interceptação imediatamente
-intercept_recovery_token()
-
-# --- 5. JAVASCRIPT: CONVERSOR DE HASH ---
-# Transforma o link do email (que usa #) em um link que o Streamlit entende (que usa ?)
-js_hash_fix = """
+# --- 3. JAVASCRIPT: PONTE DE URL (HASH -> QUERY) ---
+# Este script roda no navegador. Se ele ver um "#", ele recarrega a página transformando em "?"
+# Isso é obrigatório porque o Streamlit não lê "#" (fragmentos), mas lê "?" (query params).
+js_bridge = """
 <script>
-    // Verifica se há um hash (#access_token=...) na URL
     if (window.location.hash) {
         const hash = window.location.hash.substring(1);
         const params = new URLSearchParams(hash);
-        
         if (params.has('access_token')) {
-            // Constroi nova URL trocando # por ?
-            const newUrl = window.location.origin + window.location.pathname + 
-                           '?access_token=' + params.get('access_token') + 
-                           '&refresh_token=' + params.get('refresh_token') + 
-                           '&type=recovery';
-            // Força o navegador a ir para a nova URL imediatamente
+            // Reconstrói a URL para o formato que o Streamlit entende
+            var newUrl = window.location.origin + window.location.pathname + 
+                         '?access_token=' + params.get('access_token') + 
+                         '&refresh_token=' + params.get('refresh_token') + 
+                         '&type=' + (params.get('type') || 'recovery');
+            // Força o redirecionamento
             window.location.href = newUrl;
         }
     }
 </script>
 """
-components.html(js_hash_fix, height=0)
+components.html(js_bridge, height=0)
 
-# --- 6. CSS ---
+# --- 4. INTERCEPTADOR DE RECUPERAÇÃO (O CORAÇÃO DA SOLUÇÃO) ---
+def handle_auth_flow():
+    # 1. Verifica se há tokens na URL (Query Params)
+    qp = st.query_params
+    
+    if "access_token" in qp:
+        # Se encontrou token, tenta validar
+        try:
+            token = qp["access_token"]
+            refresh = qp["refresh_token"]
+            
+            # Autentica a sessão com o token recebido
+            session = supabase.auth.set_session(token, refresh)
+            
+            if session and session.user:
+                st.session_state.user = session.user
+                
+                # Se for recuperação de senha, ativa a trava
+                if qp.get("type") == "recovery":
+                    st.session_state.recovery_mode = True
+                
+                # Limpa a URL para ficar bonita, mas mantém o estado na memória
+                st.query_params.clear()
+                
+        except Exception as e:
+            st.error(f"Link inválido ou expirado. Erro: {e}")
+            st.query_params.clear()
+
+    # 2. Se não veio da URL, verifica se já existe sessão salva no navegador
+    elif not st.session_state.user:
+        try:
+            session = supabase.auth.get_session()
+            if session:
+                st.session_state.user = session.user
+                st.session_state.is_admin = (session.user.email == "admin@admin.com.br")
+        except: pass
+
+# Executa a verificação imediatamente
+handle_auth_flow()
+
+# --- 5. CSS VISUAL ---
 st.markdown("""
 <style>
     .block-container { padding-top: 1rem !important; margin-top: 0rem !important; max-width: 1000px; }
@@ -114,7 +127,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 7. FUNÇÕES DE SUPORTE ---
+# --- 6. FUNÇÕES DE SUPORTE ---
 def resolver_nome(email, nome_meta=None, nome_banco=None):
     if not email: return "Visitante"
     if "cesar_unib" in email: return "Cesar"
@@ -433,15 +446,16 @@ def tela_admin_master():
                     else: st.warning("Sem dados.")
         except: pass
 
-# --- 8. EXECUÇÃO ---
+# --- 7. MAIN ---
 def main():
-    # A) MODO RECUPERAÇÃO (BLOQUEIO TOTAL)
+    # A) PRIORIDADE 1: TELA DE MUDANÇA DE SENHA
     if st.session_state.recovery_mode:
         c1, c2, c3 = st.columns([1, 1.5, 1])
         with c2:
             st.write("")
             if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True)
-            st.markdown("<h2 style='text-align:center'>🔒 Nova Senha</h2>", unsafe_allow_html=True)
+            st.markdown("<h2 style='text-align:center'>🔒 Definir Nova Senha</h2>", unsafe_allow_html=True)
+            
             new_pass = st.text_input("Digite sua nova senha", type="password")
             
             c_save, c_cancel = st.columns(2)
@@ -452,7 +466,7 @@ def main():
                             supabase.auth.update_user({"password": new_pass})
                             st.success("Sucesso! Faça login com a nova senha.")
                             st.session_state.recovery_mode = False
-                            st.session_state.user = None # Desloga para forçar login novo
+                            st.session_state.user = None
                             st.session_state.auth_mode = 'login'
                             time.sleep(2)
                             st.rerun()
@@ -465,14 +479,13 @@ def main():
                     st.rerun()
         return
 
-    # B) TELA DE LOGIN (SE NÃO LOGADO)
+    # B) TELA DE LOGIN
     if not st.session_state.user:
         c1, c2, c3 = st.columns([1, 1.2, 1])
         with c2:
             st.write("") 
             if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
             else: st.markdown("<h1 style='text-align:center; color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
-            
             if st.session_state.auth_mode == 'login':
                 st.markdown("<h1>Bem-vindo de volta</h1>", unsafe_allow_html=True)
                 email = st.text_input("E-mail profissional", placeholder="seu@email.com")
@@ -490,7 +503,6 @@ def main():
                     if st.button("Criar conta", type="secondary", use_container_width=True): st.session_state.auth_mode = 'register'; st.rerun()
                 with col_rec:
                     if st.button("Esqueci senha", type="secondary", use_container_width=True): st.session_state.auth_mode = 'forgot'; st.rerun()
-
             elif st.session_state.auth_mode == 'register':
                 st.markdown("<h1>Criar Nova Conta</h1>", unsafe_allow_html=True)
                 new_nome = st.text_input("Nome Completo")
@@ -504,7 +516,6 @@ def main():
                             st.success("Sucesso! Faça login."); st.session_state.auth_mode = 'login'; time.sleep(1.5); st.rerun()
                         except: st.error("Erro ao cadastrar.")
                 if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'login'; st.rerun()
-
             elif st.session_state.auth_mode == 'forgot':
                 st.markdown("<h1>Recuperar Senha</h1>", unsafe_allow_html=True)
                 rec_e = st.text_input("E-mail")
@@ -518,7 +529,7 @@ def main():
 
     # C) APP LOGADO
     u = st.session_state['user']
-    if u is None: # Safety check
+    if u is None:
         st.session_state.auth_mode = 'login'
         st.rerun()
         return
@@ -574,4 +585,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
