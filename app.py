@@ -16,7 +16,7 @@ st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide", initia
 # NOME DA LOGO
 NOME_DO_ARQUIVO_LOGO = "logo.png" 
 
-# --- HACK DE LIMPEZA VISUAL ---
+# --- HACK DE LIMPEZA VISUAL (Mantido) ---
 st.markdown("""
     <style>
         header, footer, #MainMenu, [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"] {
@@ -29,6 +29,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# Javascript para limpar interface
 js_cleaner = """
 <script>
     try {
@@ -41,7 +42,7 @@ js_cleaner = """
 """
 components.html(js_cleaner, height=0)
 
-# --- CSS VISUAL ---
+# --- CSS VISUAL (Mantido) ---
 st.markdown("""
 <style>
     /* Card Login */
@@ -90,7 +91,55 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. LÓGICA DE DADOS ---
+# --- 3. AUTO-LOGIN MÁGICO (NOVIDADE CRÍTICA) ---
+# Este bloco verifica se há tokens na URL (vindos do email) e loga o usuário
+def check_session_from_url():
+    # Detecta parâmetros na URL (query params)
+    query_params = st.query_params
+    if "access_token" in query_params and "refresh_token" in query_params:
+        try:
+            # Tenta logar com os tokens da URL
+            supabase.auth.set_session(
+                query_params["access_token"], 
+                query_params["refresh_token"]
+            )
+            # Limpa a URL para segurança
+            st.query_params.clear()
+            st.success("Login via link realizado com sucesso! Altere sua senha abaixo.")
+            time.sleep(1) # Dá tempo de ver a mensagem
+            st.rerun()
+        except Exception as e:
+            st.error(f"Link inválido ou expirado: {e}")
+
+# Injeta JS para transformar Hash (#) em Query (?) para o Streamlit entender
+# O Supabase manda como #access_token=..., o Streamlit só lê ?access_token=...
+url_fixer = """
+<script>
+    if (window.location.hash) {
+        const params = new URLSearchParams(window.location.hash.substring(1));
+        if (params.has('access_token') && params.has('refresh_token')) {
+            const newUrl = window.location.origin + window.location.pathname + 
+                           '?access_token=' + params.get('access_token') + 
+                           '&refresh_token=' + params.get('refresh_token');
+            window.location.href = newUrl;
+        }
+    }
+</script>
+"""
+components.html(url_fixer, height=0)
+
+# Chama a verificação no início do app
+if 'user' not in st.session_state:
+    try:
+        session = supabase.auth.get_session()
+        if session:
+            st.session_state['user'] = session.user
+            st.session_state['is_admin'] = (session.user.email == "admin@admin.com.br") # Substitua pelo email real do admin
+    except: pass
+
+check_session_from_url() # Verifica se veio do email
+
+# --- 4. LÓGICA DE DADOS ---
 def resolver_nome(email, nome_meta=None, nome_banco=None):
     if email and "cesar_unib" in email: return "Cesar"
     if email and "thascaranalle" in email: return "Thays"
@@ -153,7 +202,7 @@ def gerar_pdf_fatura(df, nome_usuario, mes_referencia):
     pdf.cell(0, 10, f"TOTAL: R$ {total:.2f}", ln=True, align="R")
     return pdf.output(dest='S').encode('latin-1')
 
-# --- 4. FUNÇÕES SISTEMA ---
+# --- 5. FUNÇÕES SISTEMA ---
 if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
 if 'view_mode' not in st.session_state: st.session_state.view_mode = 'SEMANA'
 
@@ -167,13 +216,10 @@ def navegar(direcao):
 def modal_agendamento(sala_padrao, data_sugerida):
     st.markdown("### Detalhes da Reserva")
     config_precos = get_config_precos()
-    
     modo = st.radio("Tipo de Cobrança", ["Por Hora", "Por Período"], horizontal=True)
     dt = st.date_input("Data", value=data_sugerida, min_value=datetime.date.today())
-    
     horarios_selecionados = []
     valor_final = 0.0
-    
     if modo == "Por Hora":
         dia_sem = dt.weekday()
         if dia_sem == 6: lista_horas = []; st.error("Domingo: Fechado")
@@ -199,7 +245,6 @@ def modal_agendamento(sala_padrao, data_sugerida):
 
     st.markdown("---")
     is_recurring = st.checkbox("🔄 Repetir nas próximas 4 semanas (Mensal)")
-    
     if st.button("Confirmar Agendamento", type="primary", use_container_width=True):
         if not horarios_selecionados: st.error("Nenhum horário selecionado."); return
         user = st.session_state['user']
@@ -218,11 +263,9 @@ def modal_agendamento(sala_padrao, data_sugerida):
                     if d_res.weekday() == 5 and int(h_start[:2]) >= 14: st.error(f"Sábado {d_res} fecha às 14h."); return
                     chk = supabase.table("reservas").select("id").eq("sala_nome", sala_padrao).eq("data_reserva", str(d_res)).eq("hora_inicio", f"{h_start}:00").neq("status", "cancelada").execute()
                     if chk.data: st.error(f"Conflito: {d_res} às {h_start} já está ocupado."); return 
-                    
                     val_to_save = 0.0
                     if (h_start, h_end) == horarios_selecionados[0]: val_to_save = valor_final
                     elif modo == "Por Hora": val_to_save = valor_final 
-
                     inserts.append({
                         "sala_nome": sala_padrao, "data_reserva": str(d_res), "hora_inicio": f"{h_start}:00", "hora_fim": f"{h_end}:00",
                         "user_id": user.id, "email_profissional": user.email, "nome_profissional": nm, "valor_cobrado": val_to_save, "status": "confirmada"
@@ -238,7 +281,6 @@ def render_calendar(sala, is_admin_mode=False):
         if st.button("◀ Anterior", use_container_width=True, key=f"nav_prev_{is_admin_mode}"): navegar('prev'); st.rerun()
     with c_R: 
         if st.button("Próximo ▶", use_container_width=True, key=f"nav_next_{is_admin_mode}"): navegar('next'); st.rerun()
-    
     mode = st.session_state.view_mode
     def set_mode(m): st.session_state.view_mode = m
     bt_sty = lambda m: "primary" if mode == m else "secondary"
@@ -249,7 +291,6 @@ def render_calendar(sala, is_admin_mode=False):
         if st.button("Semana", type=bt_sty('SEMANA'), use_container_width=True, key=f"v_sem_{is_admin_mode}"): set_mode('SEMANA'); st.rerun()
     with b3: 
         if st.button("Mês", type=bt_sty('MÊS'), use_container_width=True, key=f"v_mes_{is_admin_mode}"): set_mode('MÊS'); st.rerun()
-
     ref = st.session_state.data_ref
     mes_str = ref.strftime("%B").capitalize()
     if mode == 'MÊS':
@@ -264,26 +305,21 @@ def render_calendar(sala, is_admin_mode=False):
     else: 
         d_start = d_end = ref
         lbl = f"{ref.day} de {mes_str}"
-
     st.markdown(f"<div style='text-align:center; font-weight:800; color:#334155; margin:10px 0'>{lbl}</div>", unsafe_allow_html=True)
-
     reservas = []
     try:
         r = supabase.table("reservas").select("*").eq("sala_nome", sala).neq("status", "cancelada").gte("data_reserva", str(d_start)).lte("data_reserva", str(d_end)).execute()
         reservas = r.data
     except: pass
-
     mapa = {}
     for x in reservas:
         d = x['data_reserva']
         if d not in mapa: mapa[d] = {}
         mapa[d][x['hora_inicio']] = x
-
     if mode == 'MÊS':
         cols = st.columns(7)
         dias = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
-        for i, d in enumerate(dias):
-            cols[i].markdown(f"<div style='text-align:center; font-weight:bold; color:#64748b; font-size:12px; margin-bottom:5px'>{d}</div>", unsafe_allow_html=True)
+        for i, d in enumerate(dias): cols[i].markdown(f"<div style='text-align:center; font-weight:bold; color:#64748b; font-size:12px; margin-bottom:5px'>{d}</div>", unsafe_allow_html=True)
         cal_matrix = calendar.monthcalendar(ref.year, ref.month)
         for week in cal_matrix:
             cols = st.columns(7)
@@ -305,16 +341,13 @@ def render_calendar(sala, is_admin_mode=False):
                                 nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
                                 eventos_html += f"<div style='background:#ccfbf1; color:#115e59; font-size:9px; padding:2px; border-radius:3px; margin-bottom:2px; white-space:nowrap; overflow:hidden;'>{h[:5]} {nm}</div>"
                     cols[i].markdown(f"<div style='background:{bg_color}; border:1px solid #e2e8f0; border-radius:8px; min-height:80px; padding:5px; font-size:12px;'><div style='font-weight:bold; color:#1e293b; text-align:right'>{day}</div>{eventos_html}</div>", unsafe_allow_html=True)
-
     else:
         visiveis = [d_start + timedelta(days=i) for i in range(7 if mode == 'SEMANA' else 1)]
         ratio = [0.6] + [1]*len(visiveis)
         c_h = st.columns(ratio)
         c_h[0].write("")
         d_n = ["SEG","TER","QUA","QUI","SEX","SÁB","DOM"]
-        for i, d in enumerate(visiveis):
-            wd = d.weekday()
-            c_h[i+1].markdown(f"<div style='text-align:center; padding-bottom:5px; border-bottom:2px solid #e2e8f0; margin-bottom:5px'><div style='font-size:10px; font-weight:bold; color:#64748b'>{d_n[wd]}</div><div style='font-size:16px; font-weight:bold; color:#1e293b'>{d.day}</div></div>", unsafe_allow_html=True)
+        for i, d in enumerate(visiveis): c_h[i+1].markdown(f"<div style='text-align:center; padding-bottom:5px; border-bottom:2px solid #e2e8f0; margin-bottom:5px'><div style='font-size:10px; font-weight:bold; color:#64748b'>{d_n[wd]}</div><div style='font-size:16px; font-weight:bold; color:#1e293b'>{visiveis[i].day}</div></div>", unsafe_allow_html=True)
         for h in range(7, 22):
             hora = f"{h:02d}:00:00"
             row = st.columns(ratio)
@@ -328,35 +361,25 @@ def render_calendar(sala, is_admin_mode=False):
                 is_sunday = d.weekday() == 6
                 is_sat_closed = (d.weekday() == 5 and h >= 14)
                 is_past = dt_slot < agora
-                
                 if res:
                     if res['status'] == 'bloqueado':
                         cont.markdown(f"<div class='admin-blocked'>⛔ FECHADO</div>", unsafe_allow_html=True)
                         if is_admin_mode:
-                             if cont.button("🗑️", key=f"del_blk_{res['id']}"):
-                                supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
+                             if cont.button("🗑️", key=f"del_blk_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
                     else:
                         nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
                         if is_admin_mode:
                             c_chip, c_del = cont.columns([3,1])
                             c_chip.markdown(f"<div class='evt-chip'>{nm}</div>", unsafe_allow_html=True)
-                            if c_del.button("🗑️", key=f"del_res_{res['id']}", help="Excluir"):
-                                supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
-                        else:
-                            cont.markdown(f"<div class='evt-chip'>{nm}</div>", unsafe_allow_html=True)
-                elif is_sunday or is_sat_closed or is_past:
-                    cont.markdown("<div class='blocked-slot'></div>", unsafe_allow_html=True)
-                else:
-                    cont.markdown("<div style='height:40px; border-left:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
-
+                            if c_del.button("🗑️", key=f"del_res_{res['id']}", help="Excluir"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
+                        else: cont.markdown(f"<div class='evt-chip'>{nm}</div>", unsafe_allow_html=True)
+                elif is_sunday or is_sat_closed or is_past: cont.markdown("<div class='blocked-slot'></div>", unsafe_allow_html=True)
+                else: cont.markdown("<div style='height:40px; border-left:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
     if not is_admin_mode:
-        if st.button("➕ Agendar", type="primary", use_container_width=True):
-            modal_agendamento(sala, st.session_state.data_ref)
+        if st.button("➕ Agendar", type="primary", use_container_width=True): modal_agendamento(sala, st.session_state.data_ref)
 
-# --- 5. APP ---
-if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
-
+# --- 6. TELAS ---
 def main():
     if 'user' not in st.session_state:
         c1, c2, c3 = st.columns([1, 1.2, 1])
@@ -364,27 +387,23 @@ def main():
             st.write("") 
             if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
             else: st.markdown("<h1 style='text-align:center; color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
-            
             if st.session_state.auth_mode == 'login':
                 st.markdown("<h1>Bem-vindo de volta</h1>", unsafe_allow_html=True)
-                st.markdown("<p>Acesse sua agenda profissional</p>", unsafe_allow_html=True)
                 email = st.text_input("E-mail profissional", placeholder="seu@email.com")
                 senha = st.text_input("Sua senha", type="password", placeholder="••••••••")
                 if st.button("Entrar na Agenda", type="primary"):
                     try:
                         u = supabase.auth.sign_in_with_password({"email": email, "password": senha})
                         st.session_state['user'] = u.user
-                        st.session_state['is_admin'] = (email == "admin@admin.com.br")
+                        st.session_state['is_admin'] = (email == "admin@admin.com.br") # Troque pelo email real
                         st.rerun()
-                    except: st.error("Email ou senha inválidos.")
+                    except: st.error("Credenciais inválidas.")
                 st.markdown("<br>", unsafe_allow_html=True)
                 col_reg, col_rec = st.columns(2)
                 with col_reg:
                     if st.button("Criar conta", type="secondary", use_container_width=True): st.session_state.auth_mode = 'register'; st.rerun()
                 with col_rec:
-                    # CORREÇÃO CRÍTICA: Link de recuperação atualizado para funcionar com Supabase Auth
                     if st.button("Esqueci senha", type="secondary", use_container_width=True): st.session_state.auth_mode = 'forgot'; st.rerun()
-
             elif st.session_state.auth_mode == 'register':
                 st.markdown("<h1>Criar Nova Conta</h1>", unsafe_allow_html=True)
                 new_nome = st.text_input("Nome Completo")
@@ -398,13 +417,11 @@ def main():
                             st.success("Sucesso! Faça login."); st.session_state.auth_mode = 'login'; time.sleep(1.5); st.rerun()
                         except: st.error("Erro ao cadastrar.")
                 if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'login'; st.rerun()
-
             elif st.session_state.auth_mode == 'forgot':
                 st.markdown("<h1>Recuperar Senha</h1>", unsafe_allow_html=True)
                 rec_e = st.text_input("E-mail")
                 if st.button("Enviar Link", type="primary"):
                     try:
-                        # CORREÇÃO: URL exata do app
                         supabase.auth.reset_password_for_email(rec_e, options={"redirect_to": "https://app-locapsico.streamlit.app"})
                         st.success("Verifique seu e-mail.")
                     except: st.error("Erro.")
@@ -417,8 +434,7 @@ def main():
         c_adm_title, c_adm_out = st.columns([5,1])
         with c_adm_title: st.markdown(f"<h3 style='color:#0d9488; margin:0'>Painel Administrativo</h3>", unsafe_allow_html=True)
         with c_adm_out:
-            if st.button("Sair", key="admin_logout", use_container_width=True):
-                supabase.auth.sign_out(); st.session_state.clear(); st.rerun()
+            if st.button("Sair", key="admin_logout", use_container_width=True): supabase.auth.sign_out(); st.session_state.clear(); st.rerun()
         st.divider()
         tela_admin_master()
     else:
@@ -428,7 +444,6 @@ def main():
         with c_head_btn:
             if st.button("Sair", key="logout_btn", use_container_width=True): supabase.auth.sign_out(); st.session_state.clear(); st.rerun()
         st.divider()
-
         tabs = st.tabs(["📅 Agenda", "📊 Painel"])
         with tabs[0]:
             sala = st.radio("Sala", ["Sala 1", "Sala 2"], horizontal=True)
@@ -450,29 +465,23 @@ def main():
                                 diff = dt_reserva - agora
                                 if diff > timedelta(hours=24):
                                     if c_btn.button("Cancelar", key=f"usr_cancel_{row['id']}"):
-                                        supabase.table("reservas").update({"status": "cancelada"}).eq("id", row['id']).execute()
-                                        st.toast("Cancelado!", icon="✅"); time.sleep(1); st.rerun()
+                                        supabase.table("reservas").update({"status": "cancelada"}).eq("id", row['id']).execute(); st.toast("Cancelado!", icon="✅"); time.sleep(1); st.rerun()
                                 else: c_btn.caption("🚫 < 24h")
                                 st.divider()
                 else: st.info("Sem agendamentos futuros.")
-                
                 st.markdown("### Financeiro")
                 df_all = pd.DataFrame(supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").execute().data)
                 k1, k2 = st.columns(2)
                 k1.metric("Investido Total", f"R$ {df_all['valor_cobrado'].sum() if not df_all.empty else 0:.0f}")
                 k2.metric("Sessões Totais", len(df_all) if not df_all.empty else 0)
             except: st.error("Erro ao carregar dados.")
-
             with st.expander("Segurança"):
                 p1 = st.text_input("Nova Senha", type="password")
-                if st.button("Alterar Senha"):
-                    supabase.auth.update_user({"password": p1})
-                    st.success("Senha atualizada!")
+                if st.button("Alterar Senha"): supabase.auth.update_user({"password": p1}); st.success("Senha atualizada!")
 
 # --- ADMIN ---
 def tela_admin_master():
     tabs = st.tabs(["💰 Config", "📅 Visualizar/Excluir", "🚫 Bloqueios", "📄 Relatórios"])
-    
     with tabs[0]: 
         cf = get_config_precos()
         st.markdown("### Configuração de Preços")
@@ -485,25 +494,21 @@ def tela_admin_master():
             pn = st.number_input("Valor Noite (18-22h)", value=cf['preco_noite'], step=1.0)
             pdia = st.number_input("Valor Diária (07-22h)", value=cf['preco_diaria'], step=1.0)
             st.write("")
-            st.write("")
             if st.button("💾 Salvar Tabela de Preços", type="primary"):
                 supabase.table("configuracoes").update({
                     "preco_hora": ph, "preco_manha": pm, "preco_tarde": pt, 
                     "preco_noite": pn, "preco_diaria": pdia
                 }).gt("id", 0).execute()
                 st.success("Preços atualizados!")
-    
     with tabs[1]:
-        st.info("Selecione a sala para visualizar e use o botão 🗑️ para excluir agendamentos.")
+        st.info("Selecione a sala para visualizar.")
         sala_adm = st.radio("Selecione Sala:", ["Sala 1", "Sala 2"], horizontal=True, key="sala_adm_view")
         render_calendar(sala_adm, is_admin_mode=True)
-
     with tabs[2]:
         st.write("Bloquear dias inteiros (Feriados/Manutenção)")
         c_dt_b, c_sl_b, c_bt_b = st.columns([2, 2, 2])
         dt_block = c_dt_b.date_input("Data para Bloquear")
         sala_block = c_sl_b.selectbox("Sala", ["Sala 1", "Sala 2", "Ambas"])
-        
         if c_bt_b.button("🔒 Bloquear Data", type="primary"):
             salas_to_block = ["Sala 1", "Sala 2"] if sala_block == "Ambas" else [sala_block]
             try:
@@ -518,7 +523,6 @@ def tela_admin_master():
                 supabase.table("reservas").insert(inserts).execute()
                 st.success(f"Dia {dt_block} bloqueado com sucesso!")
             except Exception as e: st.error(f"Erro: {e}")
-
     with tabs[3]:
         col_m, col_u = st.columns(2)
         mes_sel = col_m.selectbox("Mês", ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"])
@@ -542,12 +546,10 @@ def tela_admin_master():
                         if not df_final.empty:
                             total = df_final['valor_cobrado'].sum()
                             st.success(f"Total a Receber: R$ {total:.2f}")
-                            
                             st.markdown("### Detalhamento")
                             df_table = df_final[['data_reserva', 'hora_inicio', 'sala_nome', 'valor_cobrado']].copy()
                             df_table.columns = ['Data', 'Horário', 'Sala', 'Valor (R$)']
                             st.dataframe(df_table, use_container_width=True, hide_index=True)
-                            
                             pdf_data = gerar_pdf_fatura(df_final, user_sel, mes_sel)
                             b64 = base64.b64encode(pdf_data).decode()
                             st.markdown(f'<a href="data:application/octet-stream;base64,{b64}" download="Extrato_{user_sel}_{mes_sel}.pdf" style="text-decoration:none; background:#0d9488; color:white; padding:10px; border-radius:8px; display:block; text-align:center;">📥 BAIXAR PDF DETALHADO</a>', unsafe_allow_html=True)
