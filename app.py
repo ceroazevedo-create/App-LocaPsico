@@ -10,11 +10,10 @@ import time
 import os
 import streamlit.components.v1 as components
 
-# --- 1. CONFIGURAÇÕES GERAIS ---
+# --- 1. CONFIGURAÇÕES GERAIS E ESTADO ---
 st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide", initial_sidebar_state="collapsed")
 
-# --- 2. INICIALIZAÇÃO DE ESTADO (CORREÇÃO DO ERRO) ---
-# Garantimos que as variáveis existem antes de qualquer lógica
+# Inicialização de Variáveis de Sessão (Para evitar AttributeError)
 if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
 if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
 if 'view_mode' not in st.session_state: st.session_state.view_mode = 'SEMANA'
@@ -24,7 +23,7 @@ if 'is_admin' not in st.session_state: st.session_state.is_admin = False
 # NOME DA LOGO
 NOME_DO_ARQUIVO_LOGO = "logo.png" 
 
-# --- 3. CONEXÃO SUPABASE ---
+# --- 2. CONEXÃO SUPABASE ---
 @st.cache_resource
 def init_connection():
     try: return create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
@@ -32,7 +31,7 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 4. HACK DE LIMPEZA VISUAL E URL ---
+# --- 3. CSS E JS (VISUAL) ---
 st.markdown("""
     <style>
         header, footer, #MainMenu, [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"] {
@@ -42,27 +41,52 @@ st.markdown("""
         .viewerBadge_container__1QSob { display: none !important; }
         .block-container { padding-top: 1rem !important; margin-top: 0rem !important; max-width: 1000px; }
         .stApp { background-color: #f2f4f7; font-family: 'Inter', sans-serif; color: #1a1f36; }
+        
+        /* Card Login */
+        div[data-testid="column"]:nth-of-type(2) > div {
+            background-color: #ffffff; padding: 48px 40px; border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08); border: 1px solid #eef2f6; margin-top: 2vh;
+        }
+        /* Logo */
+        div[data-testid="stImage"] { display: flex; justify-content: center !important; width: 100%; margin-bottom: 20px; }
+        div[data-testid="stImage"] > img { object-fit: contain; width: 90% !important; max-width: 380px; }
+        /* Tipografia */
+        h1 { font-size: 28px; font-weight: 800; color: #1a1f36; margin-bottom: 8px; text-align: center; }
+        p { color: #697386; font-size: 15px; text-align: center; margin-bottom: 24px; }
+        /* Inputs e Botões */
+        .stTextInput input { background-color: #ffffff; border: 1px solid #e3e8ee; border-radius: 10px; padding: 12px; height: 48px; }
+        div[data-testid="stVerticalBlock"] button[kind="primary"] {
+            background-color: #0d9488 !important; color: #ffffff !important; border: none; height: 48px; font-weight: 700; border-radius: 10px; margin-top: 10px;
+        }
+        div[data-testid="stVerticalBlock"] button[kind="primary"] * { color: #ffffff !important; }
+        button[kind="secondary"] { border: 1px solid #e2e8f0; color: #64748b; }
+        button[key="logout_btn"], button[key="admin_logout"], button[kind="secondary"][help="Excluir"] { 
+            border-color: #fecaca !important; color: #ef4444 !important; background: #fef2f2 !important; font-weight: 600; 
+        }
+        /* Agenda */
+        .blocked-slot { 
+            background-color: #fef2f2; 
+            background-image: repeating-linear-gradient(45deg, #fee2e2 25%, transparent 25%, transparent 50%, #fee2e2 50%, #fee2e2 75%, transparent 75%, transparent);
+            background-size: 10px 10px; height: 40px; border-radius: 4px; border: 1px solid #fecaca; opacity: 0.7; 
+        }
+        .admin-blocked { background-color: #1e293b; color: white; font-size: 10px; padding: 4px; border-radius: 4px; text-align: center; font-weight: bold; margin-bottom: 2px; }
+        .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; margin-bottom: 2px; }
     </style>
 """, unsafe_allow_html=True)
 
-# Limpa UI e Corrige URL Hash para Query Param
 js_fixer = """
 <script>
-    // Limpa UI
     try {
         const doc = window.parent.document;
         const style = doc.createElement('style');
         style.innerHTML = `header, footer, .stApp > header { display: none !important; } [data-testid="stToolbar"] { display: none !important; } .viewerBadge_container__1QSob { display: none !important; }`;
         doc.head.appendChild(style);
     } catch (e) {}
-
-    // Converte Hash do Supabase em Query Param
+    
     if (window.location.hash) {
         const params = new URLSearchParams(window.location.hash.substring(1));
         if (params.has('access_token') && params.has('refresh_token')) {
-            const newUrl = window.location.origin + window.location.pathname + 
-                           '?access_token=' + params.get('access_token') + 
-                           '&refresh_token=' + params.get('refresh_token');
+            const newUrl = window.location.origin + window.location.pathname + '?access_token=' + params.get('access_token') + '&refresh_token=' + params.get('refresh_token');
             window.location.href = newUrl;
         }
     }
@@ -70,76 +94,33 @@ js_fixer = """
 """
 components.html(js_fixer, height=0)
 
-# --- 5. LÓGICA DE AUTO-LOGIN ---
+# --- 4. FUNÇÕES DE DADOS E LÓGICA ---
+
 def check_session_from_url():
+    # Verifica parâmetros de URL para auto-login
     query_params = st.query_params
     if "access_token" in query_params and "refresh_token" in query_params:
         try:
-            session = supabase.auth.set_session(
-                query_params["access_token"], 
-                query_params["refresh_token"]
-            )
+            session = supabase.auth.set_session(query_params["access_token"], query_params["refresh_token"])
             if session:
                 st.session_state.user = session.user
-                # Verifica se é admin (Substitua pelo email real)
-                st.session_state.is_admin = (session.user.email == "admin@admin.com.br")
-                st.query_params.clear() # Limpa URL
-                st.success("Login realizado via link! Você pode alterar sua senha abaixo.")
+                st.session_state.is_admin = (session.user.email == "admin@admin.com.br") # Mude para seu email admin
+                st.query_params.clear()
+                st.success("Login via link realizado com sucesso!")
                 time.sleep(1.5)
                 st.rerun()
-        except Exception:
-            st.error("Link expirado ou inválido.")
+        except: st.error("Link inválido.")
 
-# Executa verificação de sessão se não estiver logado
+# Executa verificação inicial
 if not st.session_state.user:
-    # Tenta pegar sessão existente (cache do navegador)
     try:
         session = supabase.auth.get_session()
         if session:
             st.session_state.user = session.user
             st.session_state.is_admin = (session.user.email == "admin@admin.com.br")
     except: pass
-    # Tenta pegar da URL
     check_session_from_url()
 
-# --- 6. CSS VISUAL ---
-st.markdown("""
-<style>
-    /* Card Login */
-    div[data-testid="column"]:nth-of-type(2) > div {
-        background-color: #ffffff; padding: 48px 40px; border-radius: 20px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.08); border: 1px solid #eef2f6; margin-top: 2vh;
-    }
-    /* Logo */
-    div[data-testid="stImage"] { display: flex; justify-content: center !important; width: 100%; margin-bottom: 20px; }
-    div[data-testid="stImage"] > img { object-fit: contain; width: 90% !important; max-width: 380px; }
-    /* Tipografia */
-    h1 { font-size: 28px; font-weight: 800; color: #1a1f36; margin-bottom: 8px; text-align: center; }
-    p { color: #697386; font-size: 15px; text-align: center; margin-bottom: 24px; }
-    /* Inputs */
-    .stTextInput input { background-color: #ffffff; border: 1px solid #e3e8ee; border-radius: 10px; padding: 12px; height: 48px; }
-    /* Botões */
-    div[data-testid="stVerticalBlock"] button[kind="primary"] {
-        background-color: #0d9488 !important; color: #ffffff !important; border: none; height: 48px; font-weight: 700; border-radius: 10px; margin-top: 10px;
-    }
-    div[data-testid="stVerticalBlock"] button[kind="primary"] * { color: #ffffff !important; }
-    button[kind="secondary"] { border: 1px solid #e2e8f0; color: #64748b; }
-    /* Botões Especiais */
-    button[key="logout_btn"], button[key="admin_logout"], button[kind="secondary"][help="Excluir"] { 
-        border-color: #fecaca !important; color: #ef4444 !important; background: #fef2f2 !important; font-weight: 600; 
-    }
-    /* Agenda */
-    .blocked-slot { 
-        background-color: #fef2f2; 
-        background-image: repeating-linear-gradient(45deg, #fee2e2 25%, transparent 25%, transparent 50%, #fee2e2 50%, #fee2e2 75%, transparent 75%, transparent);
-        background-size: 10px 10px; height: 40px; border-radius: 4px; border: 1px solid #fecaca; opacity: 0.7; 
-    }
-    .admin-blocked { background-color: #1e293b; color: white; font-size: 10px; padding: 4px; border-radius: 4px; text-align: center; font-weight: bold; margin-bottom: 2px; }
-    .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; margin-bottom: 2px; }
-</style>
-""", unsafe_allow_html=True)
-
-# --- 7. LÓGICA DE DADOS ---
 def resolver_nome(email, nome_meta=None, nome_banco=None):
     if email and "cesar_unib" in email: return "Cesar"
     if email and "thascaranalle" in email: return "Thays"
@@ -199,7 +180,6 @@ def gerar_pdf_fatura(df, nome_usuario, mes_referencia):
     pdf.cell(0, 10, f"TOTAL: R$ {total:.2f}", ln=True, align="R")
     return pdf.output(dest='S').encode('latin-1')
 
-# --- 8. FUNÇÕES DO SISTEMA ---
 def navegar(direcao):
     mode = st.session_state.view_mode
     delta = 1 if mode == 'DIA' else (7 if mode == 'SEMANA' else 30)
@@ -245,7 +225,7 @@ def modal_agendamento(sala_padrao, data_sugerida):
     
     if st.button("Confirmar Agendamento", type="primary", use_container_width=True):
         if not horarios_selecionados: st.error("Nenhum horário selecionado."); return
-        user = st.session_state.user
+        user = st.session_state['user']
         nm = resolver_nome(user.email, user.user_metadata.get('nome'))
         agora = datetime.datetime.now()
         datas_to_book = [dt]
@@ -389,7 +369,6 @@ def render_calendar(sala, is_admin_mode=False):
     if not is_admin_mode:
         if st.button("➕ Agendar", type="primary", use_container_width=True): modal_agendamento(sala, st.session_state.data_ref)
 
-# --- 9. ADMIN PANEL ---
 def tela_admin_master():
     tabs = st.tabs(["💰 Config", "📅 Visualizar/Excluir", "🚫 Bloqueios", "📄 Relatórios"])
     with tabs[0]: 
@@ -467,9 +446,8 @@ def tela_admin_master():
                     else: st.warning("Sem dados.")
         except: pass
 
-# --- MAIN ENTRY POINT ---
+# --- 7. MAIN (AGORA FICA NO FINAL) ---
 if __name__ == "__main__":
     main()
-
 
 
