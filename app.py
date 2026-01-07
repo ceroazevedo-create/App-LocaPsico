@@ -10,19 +10,22 @@ import time
 import os
 import streamlit.components.v1 as components
 
-# --- 1. CONFIGURAÇÕES E ESTADO ---
+# --- 1. CONFIGURAÇÕES INICIAIS ---
 st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide", initial_sidebar_state="collapsed")
 
-# Inicializa variáveis de estado SEGURO
+# Inicializa Estado
 if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
 if 'user' not in st.session_state: st.session_state.user = None
 if 'is_admin' not in st.session_state: st.session_state.is_admin = False
 if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
 if 'view_mode' not in st.session_state: st.session_state.view_mode = 'SEMANA'
+# Variáveis para o fluxo de OTP (Código)
+if 'reset_email' not in st.session_state: st.session_state.reset_email = ""
+if 'force_pass_reset' not in st.session_state: st.session_state.force_pass_reset = False
 
 NOME_DO_ARQUIVO_LOGO = "logo.png"
 
-# --- 2. CONEXÃO ---
+# --- 2. CONEXÃO SUPABASE ---
 @st.cache_resource
 def init_connection():
     try: return create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
@@ -30,80 +33,53 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. JAVASCRIPT: PONTE DE URL (ESSENCIAL) ---
-# Converte o fragmento # (hash) em parâmetro ? (query) para o Python ler
-js_bridge = """
-<script>
-    if (window.location.hash) {
-        const params = new URLSearchParams(window.location.hash.substring(1));
-        if (params.has('access_token') && params.has('refresh_token')) {
-            const newUrl = window.location.origin + window.location.pathname + 
-                           '?access_token=' + params.get('access_token') + 
-                           '&refresh_token=' + params.get('refresh_token') + 
-                           '&type=' + (params.get('type') || 'recovery');
-            window.location.href = newUrl;
-        }
-    }
-</script>
-"""
-components.html(js_bridge, height=0)
-
-# --- 4. INTERCEPTADOR DE SESSÃO (CORAÇÃO DO FIX) ---
-# Verifica se há tokens na URL ANTES de qualquer coisa
-qp = st.query_params
-if "access_token" in qp:
-    try:
-        # Tenta logar com os dados da URL
-        session = supabase.auth.set_session(qp["access_token"], qp["refresh_token"])
-        if session and session.user:
-            # SUCESSO: Define usuário e estado
-            st.session_state.user = session.user
-            st.session_state.is_admin = (session.user.email == "admin@admin.com.br") # Mude para seu email
-            
-            # Se for recuperação, FORÇA a tela de reset
-            if qp.get("type") == "recovery":
-                st.session_state.auth_mode = 'reset_password'
-                st.toast("Modo de recuperação detectado!", icon="🔒")
-            
-            # Limpa URL e recarrega para aplicar o estado
-            st.query_params.clear()
-            st.rerun()
-            
-    except Exception as e:
-        st.error(f"Link inválido ou expirado. Erro: {e}")
-        st.query_params.clear()
-
-# Recuperação de sessão persistente (se não veio da URL)
-if not st.session_state.user:
-    try:
-        sess = supabase.auth.get_session()
-        if sess:
-            st.session_state.user = sess.user
-            st.session_state.is_admin = (sess.user.email == "admin@admin.com.br")
-    except: pass
-
-# --- 5. CSS VISUAL ---
+# --- 3. CSS VISUAL ---
 st.markdown("""
 <style>
     .block-container { padding-top: 1rem !important; margin-top: 0rem !important; max-width: 1000px; }
     .stApp { background-color: #f2f4f7; font-family: 'Inter', sans-serif; color: #1a1f36; }
-    div[data-testid="column"]:nth-of-type(2) > div { background-color: #ffffff; padding: 48px 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); border: 1px solid #eef2f6; margin-top: 2vh; }
+    
+    div[data-testid="column"]:nth-of-type(2) > div {
+        background-color: #ffffff; padding: 48px 40px; border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08); border: 1px solid #eef2f6; margin-top: 2vh;
+    }
     div[data-testid="stImage"] { display: flex; justify-content: center !important; width: 100%; margin-bottom: 20px; }
     div[data-testid="stImage"] > img { object-fit: contain; width: 90% !important; max-width: 380px; }
+    
     h1 { font-size: 28px; font-weight: 800; color: #1a1f36; margin-bottom: 8px; text-align: center; }
     p { color: #697386; font-size: 15px; text-align: center; margin-bottom: 24px; }
     .stTextInput input { background-color: #ffffff; border: 1px solid #e3e8ee; border-radius: 10px; padding: 12px; height: 48px; }
-    div[data-testid="stVerticalBlock"] button[kind="primary"] { background-color: #0d9488 !important; color: #ffffff !important; border: none; height: 48px; font-weight: 700; border-radius: 10px; margin-top: 10px; }
+    
+    div[data-testid="stVerticalBlock"] button[kind="primary"] {
+        background-color: #0d9488 !important; color: #ffffff !important; border: none; height: 48px; font-weight: 700; border-radius: 10px; margin-top: 10px;
+    }
     div[data-testid="stVerticalBlock"] button[kind="primary"] * { color: #ffffff !important; }
     button[kind="secondary"] { border: 1px solid #e2e8f0; color: #64748b; }
-    button[key="logout_btn"], button[key="admin_logout"] { border-color: #fecaca !important; color: #ef4444 !important; background: #fef2f2 !important; font-weight: 600; }
+    
+    button[key="logout_btn"], button[key="admin_logout"] { 
+        border-color: #fecaca !important; color: #ef4444 !important; background: #fef2f2 !important; font-weight: 600; 
+    }
+    
     .blocked-slot { background-color: #fef2f2; height: 40px; border-radius: 4px; border: 1px solid #fecaca; opacity: 0.7; }
     .admin-blocked { background-color: #1e293b; color: white; font-size: 10px; padding: 4px; border-radius: 4px; text-align: center; font-weight: bold; margin-bottom: 2px; }
     .evt-chip { background: #ccfbf1; border-left: 3px solid #0d9488; color: #115e59; font-size: 10px; padding: 4px; border-radius: 4px; overflow: hidden; white-space: nowrap; margin-bottom: 2px; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 6. FUNÇÕES AUXILIARES ---
+# Javascript Cleaner (Apenas visual)
+js_cleaner = """
+<script>
+    try {
+        const doc = window.parent.document;
+        const style = doc.createElement('style');
+        style.innerHTML = `header, footer, .stApp > header { display: none !important; } [data-testid="stToolbar"] { display: none !important; } .viewerBadge_container__1QSob { display: none !important; }`;
+        doc.head.appendChild(style);
+    } catch (e) {}
+</script>
+"""
+components.html(js_cleaner, height=0)
+
+# --- 4. FUNÇÕES DE SUPORTE ---
 def resolver_nome(email, nome_meta=None, nome_banco=None):
     if not email: return "Visitante"
     if "cesar_unib" in email: return "Cesar"
@@ -229,10 +205,8 @@ def modal_agendamento(sala_padrao, data_sugerida):
                     if (h_start, h_end) == horarios_selecionados[0]: val_to_save = valor_final
                     elif modo == "Por Hora": val_to_save = valor_final 
                     inserts.append({
-                        "sala_nome": sala_padrao, "data_reserva": str(d_res),
-                        "hora_inicio": f"{h_start}:00", "hora_fim": f"{h_end}:00",
-                        "user_id": user.id, "email_profissional": user.email, "nome_profissional": nm,
-                        "valor_cobrado": val_to_save, "status": "confirmada"
+                        "sala_nome": sala_padrao, "data_reserva": str(d_res), "hora_inicio": f"{h_start}:00", "hora_fim": f"{h_end}:00",
+                        "user_id": user.id, "email_profissional": user.email, "nome_profissional": nm, "valor_cobrado": val_to_save, "status": "confirmada"
                     })
             if inserts:
                 supabase.table("reservas").insert(inserts).execute()
@@ -422,34 +396,29 @@ def tela_admin_master():
 
 # --- 7. MAIN ---
 def main():
-    # A) MODO DE RECUPERAÇÃO DE SENHA (PRIORIDADE ALTA)
-    if st.session_state.auth_mode == 'reset_password':
+    # A) MODO RECUPERAÇÃO (PRIORIDADE ABSOLUTA)
+    if st.session_state.force_pass_reset:
         c1, c2, c3 = st.columns([1, 1.5, 1])
         with c2:
             st.write("")
             if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True)
             st.markdown("<h2 style='text-align:center'>🔒 Definir Nova Senha</h2>", unsafe_allow_html=True)
-            
-            new_pass = st.text_input("Nova Senha", type="password")
-            
+            new_pass = st.text_input("Digite sua nova senha", type="password")
             if st.button("Atualizar Senha", type="primary"):
                 if len(new_pass) >= 6:
                     try:
                         supabase.auth.update_user({"password": new_pass})
-                        st.success("Sucesso! Senha atualizada.")
-                        # Limpa tudo para forçar novo login
-                        st.session_state.user = None
+                        st.success("Senha atualizada! Redirecionando...")
+                        st.session_state.force_pass_reset = False
                         st.session_state.auth_mode = 'login'
-                        st.session_state.is_admin = False
-                        st.query_params.clear()
+                        st.session_state.user = None # Desloga para forçar novo login
                         time.sleep(2)
                         st.rerun()
                     except Exception as e: st.error(f"Erro: {e}")
-                else:
-                    st.warning("Mínimo 6 caracteres.")
-        return # Para execução aqui
+                else: st.warning("Mínimo 6 caracteres.")
+        return 
 
-    # B) TELA DE LOGIN (SE NÃO LOGADO)
+    # B) TELA DE LOGIN / RECUPERAÇÃO
     if not st.session_state.user:
         c1, c2, c3 = st.columns([1, 1.2, 1])
         with c2:
@@ -457,6 +426,7 @@ def main():
             if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
             else: st.markdown("<h1 style='text-align:center; color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
             
+            # --- TELA 1: LOGIN ---
             if st.session_state.auth_mode == 'login':
                 st.markdown("<h1>Bem-vindo de volta</h1>", unsafe_allow_html=True)
                 email = st.text_input("E-mail profissional", placeholder="seu@email.com")
@@ -475,6 +445,38 @@ def main():
                 with col_rec:
                     if st.button("Esqueci senha", type="secondary", use_container_width=True): st.session_state.auth_mode = 'forgot'; st.rerun()
 
+            # --- TELA 2: ESQUECI SENHA (CÓDIGO) ---
+            elif st.session_state.auth_mode == 'forgot':
+                st.markdown("<h1>Recuperar Senha</h1>", unsafe_allow_html=True)
+                st.info("Vamos enviar um CÓDIGO para seu e-mail.")
+                reset_email = st.text_input("E-mail", value=st.session_state.reset_email)
+                if st.button("Enviar Código", type="primary"):
+                    try:
+                        st.session_state.reset_email = reset_email # Salva e-mail
+                        supabase.auth.sign_in_with_otp({"email": reset_email})
+                        st.session_state.auth_mode = 'verify_otp' # Vai para tela de verificar
+                        st.rerun()
+                    except Exception as e: st.error(f"Erro: {e}")
+                if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'login'; st.rerun()
+
+            # --- TELA 3: VERIFICAR CÓDIGO ---
+            elif st.session_state.auth_mode == 'verify_otp':
+                st.markdown("<h1>Verificar Código</h1>", unsafe_allow_html=True)
+                st.info(f"Código enviado para: {st.session_state.reset_email}")
+                otp_code = st.text_input("Digite o código de 6 dígitos")
+                if st.button("Verificar e Redefinir", type="primary"):
+                    try:
+                        # Verifica o código e loga o usuário
+                        res = supabase.auth.verify_otp({"email": st.session_state.reset_email, "token": otp_code, "type": "email"})
+                        if res.user:
+                            st.session_state.user = res.user
+                            st.session_state.is_admin = (res.user.email == "admin@admin.com.br")
+                            st.session_state.force_pass_reset = True # Força a tela de nova senha
+                            st.rerun()
+                    except: st.error("Código inválido ou expirado.")
+                if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'forgot'; st.rerun()
+
+            # --- TELA 4: CADASTRO ---
             elif st.session_state.auth_mode == 'register':
                 st.markdown("<h1>Criar Nova Conta</h1>", unsafe_allow_html=True)
                 new_nome = st.text_input("Nome Completo")
@@ -488,21 +490,11 @@ def main():
                             st.success("Sucesso! Faça login."); st.session_state.auth_mode = 'login'; time.sleep(1.5); st.rerun()
                         except: st.error("Erro ao cadastrar.")
                 if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'login'; st.rerun()
-
-            elif st.session_state.auth_mode == 'forgot':
-                st.markdown("<h1>Recuperar Senha</h1>", unsafe_allow_html=True)
-                rec_e = st.text_input("E-mail")
-                if st.button("Enviar Link", type="primary"):
-                    try:
-                        supabase.auth.reset_password_for_email(rec_e, options={"redirect_to": "https://app-locapsico.streamlit.app"})
-                        st.success("Verifique seu e-mail.")
-                    except: st.error("Erro ao enviar.")
-                if st.button("Voltar", type="secondary"): st.session_state.auth_mode = 'login'; st.rerun()
         return
 
     # C) APP LOGADO
     u = st.session_state['user']
-    if u is None:
+    if u is None: # Safety check
         st.session_state.auth_mode = 'login'
         st.rerun()
         return
