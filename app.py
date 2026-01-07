@@ -731,7 +731,7 @@ def main():
             if st.button("Sair", key="logout_btn", use_container_width=True): supabase.auth.sign_out(); st.session_state.clear(); st.rerun()
         st.divider()
         
-        # --- MUDANÇA AQUI: NOVA ABA SEGURANÇA ---
+        # --- ABAS (SEGURANÇA AGORA É UMA ABA) ---
         tabs = st.tabs(["📅 Agenda", "📊 Painel", "🔒 Segurança"])
         
         with tabs[0]:
@@ -739,38 +739,43 @@ def main():
             render_calendar(sala)
             
         with tabs[1]:
+            # Fetch isolado para não conflitar com Rerun
             st.markdown("### Meus Agendamentos")
             agora = datetime.datetime.now()
             hoje = datetime.date.today()
+            df_fut = pd.DataFrame()
             try:
                 res_futuras = supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").gte("data_reserva", str(hoje)).order("data_reserva").order("hora_inicio").execute()
                 df_fut = pd.DataFrame(res_futuras.data)
-                if not df_fut.empty:
-                    for _, row in df_fut.iterrows():
-                        dt_reserva = datetime.datetime.combine(datetime.date.fromisoformat(row['data_reserva']), datetime.datetime.strptime(row['hora_inicio'], "%H:%M:%S").time())
-                        if dt_reserva > agora:
-                            with st.container():
-                                c_info, c_btn = st.columns([3, 1])
-                                c_info.markdown(f"**{row['data_reserva']}** às **{row['hora_inicio'][:5]}** - {row['sala_nome']}")
-                                diff = dt_reserva - agora
-                                if diff > timedelta(hours=24):
-                                    if c_btn.button("Cancelar", key=f"usr_cancel_{row['id']}"):
-                                        try:
-                                            supabase.table("reservas").update({"status": "cancelada"}).eq("id", row['id']).execute()
-                                            st.toast("Cancelado!", icon="✅")
-                                            time.sleep(1)
-                                            st.rerun()
-                                        except Exception as e: st.error(f"Erro ao cancelar: {e}")
-                                else: c_btn.caption("🚫 < 24h")
-                                st.divider()
-                else: st.info("Sem agendamentos futuros.")
+            except: st.error("Erro ao carregar dados.")
+
+            if not df_fut.empty:
+                for _, row in df_fut.iterrows():
+                    dt_reserva = datetime.datetime.combine(datetime.date.fromisoformat(row['data_reserva']), datetime.datetime.strptime(row['hora_inicio'], "%H:%M:%S").time())
+                    if dt_reserva > agora:
+                        with st.container():
+                            c_info, c_btn = st.columns([3, 1])
+                            c_info.markdown(f"**{row['data_reserva']}** às **{row['hora_inicio'][:5]}** - {row['sala_nome']}")
+                            diff = dt_reserva - agora
+                            if diff > timedelta(hours=24):
+                                if c_btn.button("Cancelar", key=f"usr_cancel_{row['id']}"):
+                                    try:
+                                        supabase.table("reservas").update({"status": "cancelada"}).eq("id", row['id']).execute()
+                                        st.toast("Cancelado!", icon="✅")
+                                        time.sleep(1)
+                                        st.rerun()
+                                    except Exception as e: st.error(f"Erro ao cancelar: {e}")
+                            else: c_btn.caption("🚫 < 24h")
+                            st.divider()
+            else: st.info("Sem agendamentos futuros.")
                 
-                st.markdown("### Financeiro")
+            st.markdown("### Financeiro")
+            try:
                 df_all = pd.DataFrame(supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").execute().data)
                 k1, k2 = st.columns(2)
                 k1.metric("Investido Total", f"R$ {df_all['valor_cobrado'].sum() if not df_all.empty else 0:.0f}")
                 k2.metric("Sessões Totais", len(df_all) if not df_all.empty else 0)
-            except: st.error("Erro ao carregar dados.")
+            except: st.error("Erro ao carregar financeiro.")
             
         with tabs[2]:
             st.markdown("### Segurança da Conta")
@@ -787,4 +792,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
