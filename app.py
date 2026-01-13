@@ -19,8 +19,9 @@ if 'user' not in st.session_state: st.session_state.user = None
 if 'is_admin' not in st.session_state: st.session_state.is_admin = False
 if 'reset_email' not in st.session_state: st.session_state.reset_email = ""
 if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
-# Novo estado para controlar quantos dias mostram na tela (3 para mobile, 7 para PC)
-if 'days_view' not in st.session_state: st.session_state.days_view = 7 
+if 'view_mode' not in st.session_state: st.session_state.view_mode = 'SEMANA'
+# Padrão começa com 7 dias, mas o usuário pode mudar
+if 'days_to_show' not in st.session_state: st.session_state.days_to_show = 7 
 
 NOME_DO_ARQUIVO_LOGO = "logo.png"
 
@@ -32,72 +33,81 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS VISUAL (ESTILO CLEAN / GOOGLE) ---
+# --- 3. CSS VISUAL (GRADE "INQUEBRÁVEL") ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-    .stApp { background-color: #ffffff; font-family: 'Inter', sans-serif; color: #1e293b; }
+    .stApp { background-color: #f8fafc; font-family: 'Inter', sans-serif; color: #1e293b; }
     
-    /* Remove margens extras do topo */
-    .block-container { padding-top: 1rem !important; max-width: 1200px; padding-bottom: 2rem; }
+    /* --- CSS CRÍTICO: FORÇAR GRADE HORIZONTAL (NÃO EMPILHAR) --- */
+    /* Isso garante que st.columns NUNCA empilhe, independente do tamanho da tela */
+    div[data-testid="stHorizontalBlock"] {
+        flex-wrap: nowrap !important; /* Proíbe quebra de linha */
+        overflow-x: auto !important;  /* Permite rolagem lateral */
+        display: flex !important;
+        align-items: stretch !important;
+        padding-bottom: 5px; /* Espaço para scrollbar se houver */
+    }
+    
+    /* Define largura mínima para colunas não esmagarem */
+    div[data-testid="column"] {
+        flex: 1 0 auto !important; /* Cresce, não encolhe, base auto */
+        min-width: 0px !important;
+    }
+    
+    /* Regra especial para grade de horário: Colunas de dia devem ter largura mínima confortável */
+    /* Aplica-se apenas quando temos muitas colunas (calendário) */
+    div[data-testid="column"]:nth-of-type(n+2) { 
+        min-width: 90px !important; /* Largura mínima do dia no celular */
+    }
+    
+    /* A primeira coluna (Hora) pode ser mais fina */
+    div[data-testid="column"]:first-of-type {
+        min-width: 45px !important;
+        position: sticky;
+        left: 0;
+        background-color: #f8fafc; /* Fundo para cobrir ao rolar */
+        z-index: 10;
+        border-right: 1px solid #e2e8f0;
+    }
+    /* ----------------------------------------------------------- */
 
-    /* Login Card Compacto */
+    .block-container { padding-top: 1rem !important; max-width: 1200px; }
+
+    /* Login e Cards */
     div[data-testid="column"]:nth-of-type(2) > div { 
-        background-color: #ffffff; padding: 25px; border-radius: 12px; 
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08); border: 1px solid #f1f5f9; 
+        background-color: #ffffff; padding: 30px; border-radius: 16px; 
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid #f1f5f9; 
     }
 
-    /* --- CALENDÁRIO ESTILO GOOGLE --- */
+    h1 { font-size: 22px; font-weight: 700; color: #0f172a; text-align: center; margin-bottom: 10px; }
     
-    /* Cabeçalho do Dia (SEG 12) */
-    .cal-header {
-        text-align: center;
-        border-bottom: 1px solid #e2e8f0;
-        padding-bottom: 10px;
-        margin-bottom: 5px;
-    }
-    .cal-day-name { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
-    .cal-day-num { font-size: 22px; font-weight: 700; color: #1e293b; line-height: 1.2; }
-    .cal-today .cal-day-num { color: #0d9488; } /* Cor destaque hoje */
+    /* Botões e Inputs */
+    div[data-testid="stForm"] button, button[kind="primary"] { background: linear-gradient(180deg, #0f766e 0%, #0d9488 100%) !important; border: none !important; height: 45px !important; font-weight: 600 !important; border-radius: 8px !important; color: white !important; }
+    button[kind="secondary"] { background-color: white !important; border: 1px solid #cbd5e1 !important; color: #475569 !important; border-radius: 8px !important; height: 45px !important; font-weight: 500 !important; }
+    .stTextInput input { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; height: 45px; }
 
-    /* Coluna de Hora */
-    .time-col { 
-        font-size: 11px; color: #94a3b8; text-align: center; 
-        position: relative; top: -10px; /* Alinha com a linha */
-        font-weight: 500;
-    }
-
-    /* Células da Grade */
+    /* Estilo Calendário */
+    .cal-header { text-align: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 5px; }
+    .cal-day { font-size: 10px; font-weight: bold; color: #64748b; text-transform: uppercase; }
+    .cal-num { font-size: 18px; font-weight: 700; color: #1e293b; }
+    .cal-today .cal-num { color: #0d9488; }
+    
+    /* Botões da Grade */
     div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-        background-color: transparent !important;
-        border: 1px solid #f1f5f9 !important; /* Linhas bem suaves */
-        border-top: none !important;
-        border-left: 1px dashed #f1f5f9 !important;
-        border-radius: 0px !important;
-        height: 50px !important;
-        width: 100% !important;
-        margin: 0 !important;
+        background-color: #ffffff !important; border: 1px solid #f1f5f9 !important; color: transparent !important;
+        height: 50px !important; width: 100% !important; border-radius: 0px !important; margin: 0 !important;
     }
-    /* Efeito Hover */
     div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover {
-        background-color: #f0fdf4 !important;
-        border-color: #0d9488 !important;
-    }
-
-    /* Eventos Agendados */
-    .evt-card {
-        background-color: #ccfbf1; border-left: 3px solid #0d9488;
-        color: #0f766e; font-size: 10px; font-weight: 600;
-        height: 48px; width: 100%; border-radius: 4px;
-        display: flex; align-items: center; justify-content: center;
-        margin-top: 1px;
+        background-color: #f0fdf4 !important; border-color: #0d9488 !important; color: #0d9488 !important;
     }
     
-    /* Bloqueados */
-    .blocked-slot { background: #f8fafc; height: 50px; opacity: 0.6; border-right: 1px solid #f1f5f9; }
+    .evt-card { background: #ccfbf1; border-left: 3px solid #0d9488; color: #0f766e; font-size: 10px; font-weight: 700; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 4px; overflow: hidden; margin-top: 1px; }
+    .admin-blocked { background: #334155; color: #cbd5e1; font-size: 10px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 4px; }
+    .blocked-slot { background: #f8fafc; height: 50px; border-right: 1px solid #f1f5f9; opacity: 0.5; }
     
-    /* Forçar colunas a não empilhar no modo mobile */
-    div[data-testid="column"] { min-width: 0 !important; }
+    /* Coluna Hora */
+    .time-label { font-size: 11px; font-weight: 600; color: #94a3b8; text-align: center; margin-top: 15px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -167,7 +177,7 @@ def gerar_pdf_fatura(df, nome_usuario, mes_referencia):
     return pdf.output(dest='S').encode('latin-1')
 
 def navegar(direcao):
-    delta = st.session_state.days_view # Pula 3 ou 7 dias dependendo da visão
+    delta = st.session_state.days_to_show # Navega conforme a visão (3 ou 7 dias)
     if direcao == 'prev': st.session_state.data_ref -= timedelta(days=delta)
     else: st.session_state.data_ref += timedelta(days=delta)
 
@@ -179,13 +189,11 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
     dt = data_sugerida
     horarios_selecionados = []
     valor_final = 0.0
-    
     if modo == "Por Hora":
         dia_sem = dt.weekday()
         if dia_sem == 6: lista_horas = []; st.error("Domingo Fechado")
         elif dia_sem == 5: lista_horas = [f"{h:02d}:00" for h in range(7, 14)]; st.info("Sábado até 14h")
         else: lista_horas = [f"{h:02d}:00" for h in range(7, 22)]
-        
         idx_padrao = 0
         if hora_sugerida_int:
             str_h = f"{hora_sugerida_int:02d}:00"
@@ -203,15 +211,14 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
         }
         sel_periodo = st.selectbox("Período", list(opcoes_periodo.keys()))
         dados_p = opcoes_periodo[sel_periodo]
-        st.info(f"Valor: R$ {dados_p['price']:.2f}")
+        st.info(f"R$ {dados_p['price']:.2f}")
         for h in range(dados_p['start'], dados_p['end']):
             horarios_selecionados.append((f"{h:02d}:00", f"{h+1:02d}:00"))
         valor_final = dados_p['price']
-    
-    st.write("")
+    st.markdown("---")
     is_recurring = st.checkbox("Repetir por 4 semanas")
-    if st.button("Confirmar Reserva", type="primary", use_container_width=True):
-        if not horarios_selecionados: st.error("Erro."); return
+    if st.button("Confirmar", type="primary", use_container_width=True):
+        if not horarios_selecionados: st.error("Selecione horário."); return
         user = st.session_state.user
         nm = resolver_nome(user.email, user.user_metadata.get('nome'))
         agora = datetime.datetime.now()
@@ -234,38 +241,33 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
                     })
             if inserts:
                 supabase.table("reservas").insert(inserts).execute()
-                st.toast("Sucesso!", icon="✅"); time.sleep(1); st.rerun()
+                st.toast("Confirmado!", icon="✅"); time.sleep(1); st.rerun()
         except: st.error("Erro.")
 
 def render_calendar(sala, is_admin_mode=False):
-    # --- BARRA DE FERRAMENTAS SUPERIOR ---
+    # SELETOR DE DISPOSITIVO (O que você pediu)
     c1, c2, c3 = st.columns([1.5, 2, 1.5])
-    
     with c1:
-        # SELETOR DE MODO: A chave para o "Mobile" vs "Desktop"
-        mode_select = st.segmented_control(
-            "Modo", ["📱 3 Dias", "💻 7 Dias"], selection_mode="single", default="💻 7 Dias", label_visibility="collapsed"
-        )
-        if mode_select:
-            st.session_state.days_view = 3 if "3" in mode_select else 7
-    
+        # ESCOLHA: CELULAR ou PC
+        dev_mode = st.radio("Modo:", ["📱 Celular (3 Dias)", "💻 PC (7 Dias)"], horizontal=True, label_visibility="collapsed")
+        st.session_state.days_to_show = 3 if "Celular" in dev_mode else 7
+        
     with c2:
-        # NAVEGAÇÃO
+        # Navegação Mês
         cn1, cn2, cn3 = st.columns([1, 2, 1])
         cn1.button("◀", use_container_width=True, on_click=lambda: navegar('prev'))
         mes_str = st.session_state.data_ref.strftime("%B").capitalize()
         cn2.markdown(f"<div style='text-align:center; font-weight:700; font-size:18px; padding-top:5px'>{mes_str}</div>", unsafe_allow_html=True)
         cn3.button("▶", use_container_width=True, on_click=lambda: navegar('next'))
-
+    
     with c3:
-        pass # Espaço vazio ou para botão hoje
+        pass
 
-    # --- LÓGICA DA GRADE ADAPTATIVA ---
-    num_days = st.session_state.days_view
+    # Lógica de Datas
+    num_days = st.session_state.days_to_show
     ref = st.session_state.data_ref
     
-    # Se for 7 dias, alinha com a segunda-feira da semana
-    # Se for 3 dias, mostra a partir da data de referência (deslizante)
+    # Se for PC (7 dias), alinha na segunda-feira. Se for Celular (3 dias), começa do dia atual.
     if num_days == 7:
         d_start = ref - timedelta(days=ref.weekday())
     else:
@@ -273,7 +275,7 @@ def render_calendar(sala, is_admin_mode=False):
         
     d_end = d_start + timedelta(days=num_days - 1)
     
-    # Busca dados
+    # Busca Reservas
     reservas = []
     try:
         r = supabase.table("reservas").select("*").eq("sala_nome", sala).neq("status", "cancelada").gte("data_reserva", str(d_start)).lte("data_reserva", str(d_end)).execute()
@@ -285,15 +287,16 @@ def render_calendar(sala, is_admin_mode=False):
         if d not in mapa: mapa[d] = {}
         mapa[d][x['hora_inicio']] = x
 
+    # Renderiza Grade
     visiveis = [d_start + timedelta(days=i) for i in range(num_days)]
     dias_sem = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
-
-    # 1. CABEÇALHO (HORA + DIAS)
-    # Define proporção das colunas: 0.5 para Hora, 1 para cada Dia
-    ratios = [0.5] + [1]*num_days
-    cols = st.columns(ratios)
     
-    cols[0].write("") # Coluna da hora vazia no header
+    # Ratios: 0.5 (Hora) + 1 (Cada Dia)
+    ratios = [0.5] + [1]*num_days
+    
+    # 1. Cabeçalho
+    cols = st.columns(ratios)
+    cols[0].write("")
     for i, d in enumerate(visiveis):
         with cols[i+1]:
             wd = d.weekday()
@@ -301,20 +304,18 @@ def render_calendar(sala, is_admin_mode=False):
             cls_today = "cal-today" if is_today else ""
             st.markdown(f"""
             <div class='cal-header {cls_today}'>
-                <div class='cal-day-name'>{dias_sem[wd]}</div>
-                <div class='cal-day-num'>{d.day}</div>
+                <div class='cal-day'>{dias_sem[wd]}</div>
+                <div class='cal-num'>{d.day}</div>
             </div>
             """, unsafe_allow_html=True)
-
-    # 2. GRADE DE HORÁRIOS
+            
+    # 2. Corpo
     for h in range(7, 22):
         row = st.columns(ratios)
+        # Coluna Hora Fixa
+        row[0].markdown(f"<div class='time-label'>{h:02d}:00</div>", unsafe_allow_html=True)
         
-        # Coluna Hora
-        with row[0]:
-            st.markdown(f"<div class='time-col'>{h:02d}:00</div>", unsafe_allow_html=True)
-            
-        # Células
+        # Colunas Dias
         for i, d in enumerate(visiveis):
             with row[i+1]:
                 d_s = str(d)
@@ -322,36 +323,30 @@ def render_calendar(sala, is_admin_mode=False):
                 res = mapa.get(d_s, {}).get(h_s)
                 cont = st.container()
                 
-                # Estado do Slot
+                # Regras
                 agora = datetime.datetime.now()
                 dt_slot = datetime.datetime.combine(d, datetime.time(h, 0))
-                is_past = dt_slot < agora
-                is_sun = d.weekday() == 6
-                is_sat_closed = (d.weekday() == 5 and h >= 14)
+                past = dt_slot < agora
+                sun = d.weekday() == 6
+                sat_close = (d.weekday() == 5 and h >= 14)
                 
                 if res:
-                    # Ocupado
                     if res['status'] == 'bloqueado':
                         cont.markdown(f"<div class='admin-blocked'>X</div>", unsafe_allow_html=True)
                         if is_admin_mode:
-                             if cont.button("🗑️", key=f"del_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
+                             if cont.button("🗑️", key=f"d_blk_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
                     else:
                         nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
                         if is_admin_mode:
-                            c1, c2 = cont.columns([3,1])
-                            c1.markdown(f"<div class='evt-card'>{nm}</div>", unsafe_allow_html=True)
-                            if c2.button("x", key=f"d_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
+                            c_chip, c_del = cont.columns([3,1])
+                            c_chip.markdown(f"<div class='evt-card'>{nm}</div>", unsafe_allow_html=True)
+                            if c_del.button("x", key=f"d_res_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
                         else:
                             cont.markdown(f"<div class='evt-card'>{nm}</div>", unsafe_allow_html=True)
-                
-                elif is_sun or is_sat_closed or is_past:
-                    # Indisponível
+                elif sun or sat_close or past:
                     cont.markdown("<div class='blocked-slot'></div>", unsafe_allow_html=True)
-                
                 else:
-                    # Livre
                     if not is_admin_mode:
-                        # Botão invisível que revela no hover
                         if cont.button(" ", key=f"add_{d}_{h}", type="secondary", use_container_width=True):
                             modal_agendamento(sala, d, h)
                     else:
@@ -392,11 +387,9 @@ def tela_admin_master():
             for s in salas: supabase.table("reservas").delete().eq("sala_nome", s).eq("data_reserva", str(dt_block)).eq("status", "bloqueado").execute()
             st.success("Desbloqueado!")
     with tabs[3]:
-        # Relatorios mantidos
-        pass 
+        st.info("Relatórios")
     with tabs[4]:
-        # Usuarios mantidos
-        pass
+        st.info("Usuários")
 
 # --- 7. MAIN ---
 def main():
@@ -429,13 +422,14 @@ def main():
                     try: supabase.auth.sign_up({"email": em, "password": pw, "options": {"data": {"nome": nm}}}); st.success("OK!"); time.sleep(1); st.session_state.auth_mode='login'; st.rerun()
                     except: st.error("Erro")
                 if st.button("Voltar"): st.session_state.auth_mode='login'; st.rerun()
-                
+            
             elif st.session_state.auth_mode == 'forgot':
                 em = st.text_input("Email")
-                if st.button("Enviar Código"):
+                if st.button("Enviar"): 
                     try: supabase.auth.sign_in_with_otp({"email": em}); st.session_state.reset_email=em; st.session_state.auth_mode='verify_otp'; st.rerun()
                     except: st.error("Erro")
                 if st.button("Voltar"): st.session_state.auth_mode='login'; st.rerun()
+            
             elif st.session_state.auth_mode == 'verify_otp':
                 otp = st.text_input("Código")
                 if st.button("Verificar"):
@@ -443,6 +437,7 @@ def main():
                         r = supabase.auth.verify_otp({"email": st.session_state.reset_email, "token": otp, "type": "recovery"})
                         if r.user: st.session_state.user=r.user; st.session_state.auth_mode='reset_screen'; st.rerun()
                     except: st.error("Inválido")
+            
             elif st.session_state.auth_mode == 'reset_screen':
                 np = st.text_input("Nova Senha", type="password")
                 if st.button("Salvar"): supabase.auth.update_user({"password": np}); st.session_state.auth_mode='login'; st.rerun()
@@ -487,7 +482,7 @@ def main():
                         else:
                             with st.container():
                                 c1, c2 = st.columns([3,1])
-                                c1.markdown(f"**{row['data_reserva']}** às **{row['hora_inicio'][:5]}** - {row['sala_nome']}")
+                                c1.markdown(f"**{row['data_reserva']}** às {row['hora_inicio'][:5]} - {row['sala_nome']}")
                                 if dt_res > agora + timedelta(hours=24):
                                     if c2.button("Cancelar", key=f"c_{row['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", row['id']).execute(); st.rerun()
                                 else: c2.caption("🚫 <24h")
