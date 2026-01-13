@@ -31,52 +31,60 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS VISUAL (ULTRA COMPACTO / NO SCROLL) ---
+# --- 3. CSS VISUAL (ZERO SCROLL / FIT SCREEN) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     .stApp { background-color: #f8fafc; font-family: 'Inter', sans-serif; color: #1e293b; }
     
-    /* REMOVE ESPAÇOS DO TOPO DO CELULAR */
+    /* --- REMOVER CABEÇALHO DO STREAMLIT --- */
+    header[data-testid="stHeader"] { display: none !important; } /* Ganha 60px de altura */
+    
+    /* --- TOPO ZERADO --- */
     .block-container { 
-        padding-top: 10px !important; 
-        padding-bottom: 10px !important;
+        padding-top: 10px !important; /* Começa quase no topo */
+        padding-bottom: 0px !important;
         max-width: 1100px; 
     }
     
-    /* CARD DE LOGIN (Super Compacto) */
+    /* --- CARD DE LOGIN (COMPACTO) --- */
     div[data-testid="column"]:nth-of-type(2) > div { 
         background-color: #ffffff; 
-        padding: 20px 25px !important; /* Bordas internas menores */
+        padding: 15px 20px !important; /* Padding mínimo */
         border-radius: 12px; 
         box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
         border: 1px solid #f1f5f9; 
     }
 
-    /* LOGO PEQUENA */
-    div[data-testid="stImage"] { margin-bottom: 5px !important; }
-    div[data-testid="stImage"] > img { max-height: 70px !important; object-fit: contain; } 
+    /* --- LOGO E TÍTULO --- */
+    div[data-testid="stImage"] { margin-bottom: 0px !important; }
+    div[data-testid="stImage"] > img { max-height: 60px !important; object-fit: contain; } /* Logo pequena */
 
-    /* TÍTULOS APERTADOS */
     h1 { 
-        font-size: 20px !important; 
+        font-size: 18px !important; 
         font-weight: 700; 
         text-align: center; 
-        margin-bottom: 5px !important; /* Cola no form */
-        margin-top: 0px !important;
+        margin-top: 5px !important;
+        margin-bottom: 5px !important; 
+        padding: 0 !important;
     } 
 
-    /* INPUTS MAIS FINOS E COLADOS */
-    .stTextInput { margin-bottom: -15px !important; } /* Puxa o item de baixo para cima */
-    .stTextInput > div > div > input { 
+    /* --- FORMULÁRIO COLADO --- */
+    .stTextInput { margin-bottom: -15px !important; } /* Remove espaço entre inputs */
+    
+    /* Inputs */
+    .stTextInput input { 
         background-color: #f8fafc; 
-        height: 40px; /* Input mais baixo */
-        font-size: 14px;
+        border: 1px solid #e2e8f0; 
+        border-radius: 8px; 
+        padding: 0px 10px; 
+        height: 40px; 
+        font-size: 14px; 
         min-height: 40px;
     }
     
-    /* BOTÃO ENTRAR */
-    div[data-testid="stForm"] { margin-top: 10px; }
+    /* Botão Entrar */
+    div[data-testid="stForm"] { margin-top: 0px; padding-top: 5px; }
     div[data-testid="stForm"] button { 
         background: linear-gradient(180deg, #0f766e 0%, #0d9488 100%) !important; 
         border: none !important; 
@@ -87,14 +95,15 @@ st.markdown("""
         margin-top: 5px !important;
     }
     
-    /* BOTÕES SECUNDÁRIOS (CRIAR CONTA) */
+    /* Botões Secundários */
     button[kind="secondary"] { 
-        height: 38px !important; 
-        font-size: 12px !important;
+        height: 35px !important; 
+        font-size: 11px !important;
         border: 1px solid #e2e8f0 !important;
+        margin-top: 5px !important;
     }
 
-    /* CORREÇÃO VISUAL GERAL */
+    /* --- CORREÇÃO GERAL --- */
     .evt-chip { background: white; border-left: 4px solid #0d9488; box-shadow: 0 1px 2px rgba(0,0,0,0.05); color: #0f766e; font-size: 11px; font-weight: 600; padding: 6px; border-radius: 4px; margin-bottom: 4px; display: flex; align-items: center; }
     .admin-blocked { background: #334155; color: #f8fafc; border-radius: 4px; font-size: 10px; font-weight: bold; text-align: center; padding: 8px; }
     .blocked-slot { background-color: #fef2f2; height: 35px; border-radius: 6px; border: 1px solid #fecaca; opacity: 0.7; margin-bottom: 5px; }
