@@ -31,60 +31,180 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS VISUAL (CORREÇÃO DE GRADE MOBILE - SCROLL HORIZONTAL) ---
+# --- 3. CSS VISUAL (DESIGN PREMIUM) ---
 st.markdown("""
 <style>
+    /* --- FUNDO E TIPOGRAFIA GERAL --- */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-    .stApp { background-color: #f8fafc; font-family: 'Inter', sans-serif; color: #1e293b; }
-    .block-container { padding-top: 2rem !important; max-width: 1100px; }
     
-    /* --- CORREÇÃO FUNDAMENTAL PARA CELULAR --- */
-    /* Isso força as colunas a ficarem lado a lado (Grade), criando rolagem lateral */
-    div[data-testid="stHorizontalBlock"] {
-        flex-wrap: nowrap !important;
-        overflow-x: auto !important;
-        white-space: nowrap !important;
-        padding-bottom: 5px; /* Espaço para scroll */
+    .stApp {
+        background-color: #f8fafc;
+        font-family: 'Inter', sans-serif;
+        color: #1e293b;
     }
     
-    /* Garante que cada dia tenha uma largura mínima para não ficar esmagado */
-    div[data-testid="column"] {
-        min-width: 110px !important; /* Largura mínima de cada coluna de dia */
-        flex: 0 0 auto !important;
+    .block-container {
+        padding-top: 2rem !important;
+        max-width: 1100px;
     }
-    /* ------------------------------------------ */
 
-    div[data-testid="column"]:nth-of-type(2) > div { background-color: #ffffff; padding: 40px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid #f1f5f9; margin-bottom: 20px; }
-    div[data-testid="stImage"] { display: flex; justify-content: center; margin-bottom: 24px; }
-    div[data-testid="stImage"] > img { max-height: 120px; object-fit: contain; }
-    h1 { font-size: 26px; font-weight: 700; color: #0f172a; text-align: center; margin-bottom: 8px; letter-spacing: -0.5px; }
+    /* Container Principal */
+    div[data-testid="column"]:nth-of-type(2) > div {
+        background-color: #ffffff;
+        padding: 40px;
+        border-radius: 16px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        border: 1px solid #f1f5f9;
+        margin-bottom: 20px;
+    }
+
+    div[data-testid="stImage"] {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 24px;
+    }
+    div[data-testid="stImage"] > img {
+        max-height: 120px;
+        object-fit: contain;
+    }
+
+    h1 {
+        font-size: 26px;
+        font-weight: 700;
+        color: #0f172a;
+        text-align: center;
+        margin-bottom: 8px;
+        letter-spacing: -0.5px;
+    }
     h2, h3 { color: #334155; font-weight: 600; }
     p { color: #64748b; }
-    .stTextInput input { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; height: 45px; font-size: 15px; }
-    .stTextInput input:focus { border-color: #0d9488; box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2); }
-    
-    div[data-testid="stForm"] button, button[kind="primary"] { background: linear-gradient(180deg, #0f766e 0%, #0d9488 100%) !important; border: none !important; height: 45px !important; font-weight: 600 !important; border-radius: 8px !important; box-shadow: 0 2px 4px rgba(13, 148, 136, 0.2) !important; color: white !important; }
-    div[data-testid="stForm"] button:hover, button[kind="primary"]:hover { background: #0f766e !important; transform: translateY(-1px); }
-    div[data-testid="stForm"] button *, button[kind="primary"] * { color: white !important; }
-    
-    button[kind="secondary"] { background-color: white !important; border: 1px solid #cbd5e1 !important; color: #475569 !important; border-radius: 8px !important; height: 45px !important; font-weight: 500 !important; }
-    button[kind="secondary"]:hover { background-color: #f1f5f9 !important; border-color: #94a3b8 !important; }
-    
-    div[data-testid="stButton"] button { border-radius: 8px !important; border: none !important; font-weight: bold !important; }
-    div[data-testid="stVerticalBlock"] button[kind="secondary"] { background-color: #f0fdf4 !important; border: 1px solid #bbf7d0 !important; color: #15803d !important; font-size: 12px !important; font-weight: 600 !important; height: 38px !important; min-height: 38px !important; border-radius: 6px !important; box-shadow: none !important; }
-    div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover { background-color: #16a34a !important; border-color: #16a34a !important; color: white !important; }
-    div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover p { color: white !important; }
-    
-    div[data-testid="stMetric"] { background-color: #f8fafc; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; text-align: center; }
+
+    /* --- INPUTS --- */
+    .stTextInput input {
+        background-color: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 10px 12px;
+        height: 45px;
+        font-size: 15px;
+        transition: all 0.2s;
+    }
+    .stTextInput input:focus {
+        border-color: #0d9488;
+        box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2);
+    }
+
+    /* --- BOTÕES PRIMÁRIOS (VERDE TEAL) --- */
+    div[data-testid="stForm"] button, 
+    button[kind="primary"] {
+        background: linear-gradient(180deg, #0f766e 0%, #0d9488 100%) !important;
+        border: none !important;
+        height: 45px !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.5px;
+        border-radius: 8px !important;
+        box-shadow: 0 2px 4px rgba(13, 148, 136, 0.2) !important;
+        color: white !important;
+        transition: transform 0.1s ease !important;
+    }
+    div[data-testid="stForm"] button:hover, 
+    button[kind="primary"]:hover {
+        background: #0f766e !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px rgba(13, 148, 136, 0.3) !important;
+    }
+    div[data-testid="stForm"] button *, button[kind="primary"] * {
+        color: white !important;
+    }
+
+    /* --- BOTÕES SECUNDÁRIOS --- */
+    button[kind="secondary"] {
+        background-color: white !important;
+        border: 1px solid #cbd5e1 !important;
+        color: #475569 !important;
+        border-radius: 8px !important;
+        height: 45px !important;
+        font-weight: 500 !important;
+    }
+    button[kind="secondary"]:hover {
+        background-color: #f1f5f9 !important;
+        border-color: #94a3b8 !important;
+        color: #1e293b !important;
+    }
+
+    /* --- BOTÕES DO CALENDÁRIO (DIAS) --- */
+    div[data-testid="stButton"] button {
+        border-radius: 8px !important;
+        border: none !important;
+        font-weight: bold !important;
+    }
+
+    /* --- SLOT "LIVRE" --- */
+    div[data-testid="stVerticalBlock"] button[kind="secondary"] {
+        background-color: #f0fdf4 !important;
+        border: 1px solid #bbf7d0 !important;
+        color: #15803d !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        height: 38px !important;
+        min-height: 38px !important;
+        border-radius: 6px !important;
+        box-shadow: none !important;
+        transition: all 0.2s;
+    }
+    div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover {
+        background-color: #16a34a !important;
+        border-color: #16a34a !important;
+        color: white !important;
+    }
+    div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover p {
+        color: white !important;
+    }
+
+    /* --- MÉTRICAS --- */
+    div[data-testid="stMetric"] {
+        background-color: #f8fafc;
+        padding: 15px;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        text-align: center;
+    }
     div[data-testid="stMetricLabel"] { font-size: 14px !important; color: #64748b !important; }
     div[data-testid="stMetricValue"] { font-size: 24px !important; color: #0d9488 !important; font-weight: 700 !important; }
-    
-    button[help="Excluir Usuário"], button[key="logout_btn"], button[key="admin_logout"] { border-color: #fecaca !important; color: #dc2626 !important; background-color: #fef2f2 !important; }
-    button[help="Excluir Usuário"]:hover, button[key="logout_btn"]:hover { background-color: #dc2626 !important; color: white !important; border-color: #dc2626 !important; }
+
+    /* --- BOTÕES DE PERIGO --- */
+    button[help="Excluir Usuário"], button[key="logout_btn"], button[key="admin_logout"] { 
+        border-color: #fecaca !important; 
+        color: #dc2626 !important; 
+        background-color: #fef2f2 !important; 
+    }
+    button[help="Excluir Usuário"]:hover, button[key="logout_btn"]:hover {
+        background-color: #dc2626 !important;
+        color: white !important;
+        border-color: #dc2626 !important;
+    }
     button[help="Excluir Usuário"]:hover *, button[key="logout_btn"]:hover * { color: white !important; }
-    div[data-testid="stTextInput"] button { background-color: transparent !important; border: none !important; box-shadow: none !important; }
+
+    /* Olhinho da senha */
+    div[data-testid="stTextInput"] button {
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
     
-    .evt-chip { background: white; border-left: 4px solid #0d9488; box-shadow: 0 1px 2px rgba(0,0,0,0.05); color: #0f766e; font-size: 11px; font-weight: 600; padding: 6px 8px; border-radius: 4px; margin-bottom: 4px; display: flex; align-items: center; }
+    .evt-chip {
+        background: white;
+        border-left: 4px solid #0d9488;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        color: #0f766e;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 6px 8px;
+        border-radius: 4px;
+        margin-bottom: 4px;
+        display: flex;
+        align-items: center;
+    }
     .admin-blocked { background: #334155; color: #f8fafc; border-radius: 4px; font-size: 10px; font-weight: bold; text-align: center; padding: 8px; letter-spacing: 1px; }
     .blocked-slot { background-color: #fef2f2; height: 35px; border-radius: 6px; border: 1px solid #fecaca; opacity: 0.7; margin-bottom: 5px; }
 </style>
@@ -163,11 +283,11 @@ def navegar(direcao):
     else: st.session_state.data_ref += timedelta(days=delta)
 
 @st.dialog("Novo Agendamento")
-def modal_agendamento(sala_padrao, data_sugerida):
-    st.markdown("### Detalhes da Reserva")
+def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
+    st.markdown(f"### Reservar para {data_sugerida.strftime('%d/%m/%Y')}")
     config_precos = get_config_precos()
     modo = st.radio("Tipo de Cobrança", ["Por Hora", "Por Período"], horizontal=True)
-    dt = st.date_input("Data", value=data_sugerida, min_value=datetime.date.today())
+    dt = data_sugerida
     horarios_selecionados = []
     valor_final = 0.0
     if modo == "Por Hora":
@@ -175,7 +295,12 @@ def modal_agendamento(sala_padrao, data_sugerida):
         if dia_sem == 6: lista_horas = []; st.error("Domingo: Fechado")
         elif dia_sem == 5: lista_horas = [f"{h:02d}:00" for h in range(7, 14)]; st.info("Sábado: Até 14h")
         else: lista_horas = [f"{h:02d}:00" for h in range(7, 22)]
-        hr = st.selectbox("Horário de Início", lista_horas, disabled=(len(lista_horas)==0))
+        idx_padrao = 0
+        if hora_sugerida_int:
+            str_h = f"{hora_sugerida_int:02d}:00"
+            if str_h in lista_horas:
+                idx_padrao = lista_horas.index(str_h)
+        hr = st.selectbox("Horário de Início", lista_horas, index=idx_padrao, disabled=(len(lista_horas)==0))
         if hr:
             horarios_selecionados = [(hr, f"{int(hr[:2])+1:02d}:00")]
             valor_final = config_precos['preco_hora']
@@ -277,9 +402,14 @@ def render_calendar(sala, is_admin_mode=False):
                 else:
                     d_obj = datetime.date(ref.year, ref.month, day)
                     d_str = str(d_obj)
-                    bg_color = "white"
-                    if d_obj < datetime.date.today() or d_obj.weekday() == 6: bg_color = "#fef2f2"
-                    elif d_obj == datetime.date.today(): bg_color = "#f0fdf4"
+                    with cols[i]:
+                        if not is_admin_mode:
+                            if st.button(f"{day}", key=f"btn_day_{day}_{mes}_{is_admin_mode}", use_container_width=True):
+                                if d_obj < datetime.date.today(): st.toast("Data passada.", icon="🚫")
+                                elif d_obj.weekday() == 6: st.toast("Domingo fechado.", icon="🚫")
+                                else: modal_agendamento(sala, d_obj)
+                        else:
+                            st.markdown(f"<div style='text-align:center; font-weight:bold; padding:5px'>{day}</div>", unsafe_allow_html=True)
                     eventos_html = ""
                     if d_str in mapa:
                         for h in sorted(mapa[d_str].keys()):
@@ -288,7 +418,7 @@ def render_calendar(sala, is_admin_mode=False):
                             else:
                                 nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
                                 eventos_html += f"<div style='background:#ccfbf1; color:#115e59; font-size:9px; padding:2px; border-radius:3px; margin-bottom:2px; white-space:nowrap; overflow:hidden;'>{h[:5]} {nm}</div>"
-                    cols[i].markdown(f"<div style='background:{bg_color}; border:1px solid #e2e8f0; border-radius:8px; min-height:80px; padding:5px; font-size:12px;'><div style='font-weight:bold; color:#1e293b; text-align:right'>{day}</div>{eventos_html}</div>", unsafe_allow_html=True)
+                    cols[i].markdown(f"{eventos_html}", unsafe_allow_html=True)
     else:
         visiveis = [d_start + timedelta(days=i) for i in range(7 if mode == 'SEMANA' else 1)]
         ratio = [0.6] + [1]*len(visiveis)
@@ -297,7 +427,15 @@ def render_calendar(sala, is_admin_mode=False):
         d_n = ["SEG","TER","QUA","QUI","SEX","SÁB","DOM"]
         for i, d in enumerate(visiveis):
             wd = d.weekday()
-            c_h[i+1].markdown(f"<div style='text-align:center; padding-bottom:5px; border-bottom:2px solid #e2e8f0; margin-bottom:5px'><div style='font-size:10px; font-weight:bold; color:#64748b'>{d_n[wd]}</div><div style='font-size:16px; font-weight:bold; color:#1e293b'>{visiveis[i].day}</div></div>", unsafe_allow_html=True)
+            with c_h[i+1]:
+                lbl_sem = f"{d_n[wd]} {d.day}"
+                if not is_admin_mode:
+                    if st.button(lbl_sem, key=f"btn_week_{d}_{is_admin_mode}", use_container_width=True):
+                         if d < datetime.date.today(): st.toast("Data passada.", icon="🚫")
+                         elif d.weekday() == 6: st.toast("Domingo fechado.", icon="🚫")
+                         else: modal_agendamento(sala, d)
+                else:
+                    st.markdown(f"<div style='text-align:center; font-weight:bold; color:#1e293b'>{lbl_sem}</div>", unsafe_allow_html=True)
         for h in range(7, 22):
             hora = f"{h:02d}:00:00"
             row = st.columns(ratio)
@@ -325,10 +463,9 @@ def render_calendar(sala, is_admin_mode=False):
                         else: cont.markdown(f"<div class='evt-chip'>{nm}</div>", unsafe_allow_html=True)
                 elif is_sunday or is_sat_closed or is_past: cont.markdown("<div class='blocked-slot'></div>", unsafe_allow_html=True)
                 else: 
-                    # Slot Vazio -> Botão "Livre" (Para clicar e agendar)
                     if not is_admin_mode:
                         if cont.button("Livre", key=f"free_{d_s}_{h}", type="secondary", use_container_width=True):
-                            modal_agendamento(sala, d)
+                            modal_agendamento(sala, d, h)
                     else:
                         cont.markdown("<div style='height:35px; border-left:1px dashed #cbd5e1'></div>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
