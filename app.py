@@ -31,74 +31,48 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS VISUAL (CORREÇÃO ESPECÍFICA PARA CALENDÁRIO) ---
+# --- 3. CSS VISUAL (CORREÇÃO DE LAYOUT) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     .stApp { background-color: #f8fafc; font-family: 'Inter', sans-serif; color: #1e293b; }
     .block-container { padding-top: 2rem !important; max-width: 1100px; }
-
-    /* --- CORREÇÃO CIRÚRGICA PARA O CALENDÁRIO (MOBILE) --- */
     
-    /* Regra 1: Detecta se o grupo de colunas tem 7 ou mais itens (Calendário) */
-    /* Se tiver 7+, força a não quebrar linha e habilita o scroll lateral */
-    @media (max-width: 640px) {
-        div[data-testid="column"]:nth-last-child(n+7), 
-        div[data-testid="column"]:nth-last-child(n+7) ~ div[data-testid="column"] {
-            min-width: 80px !important; /* Largura mínima para ver o dia (SEG 12) */
-            flex: 0 0 auto !important;
-        }
-
-        /* Aplica rolagem apenas nos blocos que contêm essas colunas largas */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-last-child(n+7)) {
-            flex-wrap: nowrap !important;
-            overflow-x: auto !important;
-            white-space: nowrap !important;
-            padding-bottom: 5px;
-            display: flex;
-        }
-        
-        /* Fallback para navegadores antigos que não suportam :has (aplica a todos os blocos horizontais no mobile) */
-        /* Isso garante que o calendário funcione, e o login (2 colunas) apenas se ajusta */
-        div[data-testid="stHorizontalBlock"] {
-            overflow-x: auto; 
-        }
+    /* --- CORREÇÃO DO CALENDÁRIO MÊS (FORÇAR LINHA) --- */
+    /* Impede que as colunas empilhem, mantendo o formato de grade */
+    div[data-testid="stHorizontalBlock"] {
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
     }
-    /* ----------------------------------------------------- */
+    /* Ajuste para que as colunas do mês não fiquem esmagadas */
+    div[data-testid="column"] {
+        min-width: 0px !important;
+        flex: 1 0 auto !important;
+    }
 
+    /* --- ESTILO GERAL --- */
     div[data-testid="column"]:nth-of-type(2) > div { background-color: #ffffff; padding: 40px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid #f1f5f9; margin-bottom: 20px; }
     div[data-testid="stImage"] { display: flex; justify-content: center; margin-bottom: 24px; }
     div[data-testid="stImage"] > img { max-height: 120px; object-fit: contain; }
     h1 { font-size: 26px; font-weight: 700; color: #0f172a; text-align: center; margin-bottom: 8px; letter-spacing: -0.5px; }
-    h2, h3 { color: #334155; font-weight: 600; }
-    p { color: #64748b; }
+    
+    /* Inputs e Botões */
     .stTextInput input { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; height: 45px; font-size: 15px; }
-    .stTextInput input:focus { border-color: #0d9488; box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2); }
-    
-    div[data-testid="stForm"] button, button[kind="primary"] { background: linear-gradient(180deg, #0f766e 0%, #0d9488 100%) !important; border: none !important; height: 45px !important; font-weight: 600 !important; border-radius: 8px !important; box-shadow: 0 2px 4px rgba(13, 148, 136, 0.2) !important; color: white !important; }
-    div[data-testid="stForm"] button:hover, button[kind="primary"]:hover { background: #0f766e !important; transform: translateY(-1px); }
-    div[data-testid="stForm"] button *, button[kind="primary"] * { color: white !important; }
-    
+    div[data-testid="stForm"] button, button[kind="primary"] { background: linear-gradient(180deg, #0f766e 0%, #0d9488 100%) !important; border: none !important; height: 45px !important; font-weight: 600 !important; border-radius: 8px !important; color: white !important; }
     button[kind="secondary"] { background-color: white !important; border: 1px solid #cbd5e1 !important; color: #475569 !important; border-radius: 8px !important; height: 45px !important; font-weight: 500 !important; }
-    button[kind="secondary"]:hover { background-color: #f1f5f9 !important; border-color: #94a3b8 !important; }
     
-    div[data-testid="stButton"] button { border-radius: 8px !important; border: none !important; font-weight: bold !important; }
-    div[data-testid="stVerticalBlock"] button[kind="secondary"] { background-color: #f0fdf4 !important; border: 1px solid #bbf7d0 !important; color: #15803d !important; font-size: 12px !important; font-weight: 600 !important; height: 38px !important; min-height: 38px !important; border-radius: 6px !important; box-shadow: none !important; }
-    div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover { background-color: #16a34a !important; border-color: #16a34a !important; color: white !important; }
-    div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover p { color: white !important; }
+    /* Botões da Grade "Livre" */
+    div[data-testid="stVerticalBlock"] button[kind="secondary"] { 
+        background-color: #f0fdf4 !important; border: 1px solid #bbf7d0 !important; color: #15803d !important; 
+        font-size: 12px !important; font-weight: 600 !important; height: 40px !important; border-radius: 6px !important; width: 100% !important;
+    }
     
-    div[data-testid="stMetric"] { background-color: #f8fafc; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; text-align: center; }
-    div[data-testid="stMetricLabel"] { font-size: 14px !important; color: #64748b !important; }
-    div[data-testid="stMetricValue"] { font-size: 24px !important; color: #0d9488 !important; font-weight: 700 !important; }
+    /* Chips de Agendamento */
+    .evt-chip { background: white; border-left: 4px solid #0d9488; box-shadow: 0 1px 2px rgba(0,0,0,0.05); color: #0f766e; font-size: 12px; font-weight: 600; padding: 10px; border-radius: 4px; margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between; border: 1px solid #e2e8f0;}
+    .admin-blocked { background: #334155; color: #f8fafc; border-radius: 4px; font-size: 10px; font-weight: bold; text-align: center; padding: 8px; }
     
+    /* Botões Perigo */
     button[help="Excluir Usuário"], button[key="logout_btn"], button[key="admin_logout"] { border-color: #fecaca !important; color: #dc2626 !important; background-color: #fef2f2 !important; }
-    button[help="Excluir Usuário"]:hover, button[key="logout_btn"]:hover { background-color: #dc2626 !important; color: white !important; border-color: #dc2626 !important; }
-    button[help="Excluir Usuário"]:hover *, button[key="logout_btn"]:hover * { color: white !important; }
-    div[data-testid="stTextInput"] button { background-color: transparent !important; border: none !important; box-shadow: none !important; }
-    
-    .evt-chip { background: white; border-left: 4px solid #0d9488; box-shadow: 0 1px 2px rgba(0,0,0,0.05); color: #0f766e; font-size: 11px; font-weight: 600; padding: 6px 8px; border-radius: 4px; margin-bottom: 4px; display: flex; align-items: center; }
-    .admin-blocked { background: #334155; color: #f8fafc; border-radius: 4px; font-size: 10px; font-weight: bold; text-align: center; padding: 8px; letter-spacing: 1px; }
-    .blocked-slot { background-color: #fef2f2; height: 35px; border-radius: 6px; border: 1px solid #fecaca; opacity: 0.7; margin-bottom: 5px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -111,7 +85,6 @@ def resolver_nome(email, nome_meta=None, nome_banco=None):
     if "cesar_unib" in email: return "Cesar"
     if "thascaranalle" in email: return "Thays"
     nome_completo = nome_banco or nome_meta or email.split('@')[0]
-    if nome_completo is None: return "Usuário"
     return str(nome_completo).strip().split(' ')[0].title()
 
 def get_config_precos():
@@ -136,7 +109,7 @@ def gerar_pdf_fatura(df, nome_usuario, mes_referencia):
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
     pdf.set_text_color(13, 148, 136)
-    pdf.cell(0, 10, "LOCAPSICO - Extrato Detalhado", ln=True, align="C")
+    pdf.cell(0, 10, "LOCAPSICO - Extrato", ln=True, align="C")
     pdf.set_font("Arial", "", 12)
     pdf.set_text_color(50, 50, 50)
     pdf.ln(5)
@@ -176,43 +149,43 @@ def navegar(direcao):
 
 @st.dialog("Novo Agendamento")
 def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
-    st.markdown(f"### Reservar para {data_sugerida.strftime('%d/%m/%Y')}")
+    st.markdown(f"### {data_sugerida.strftime('%d/%m/%Y')}")
     config_precos = get_config_precos()
-    modo = st.radio("Tipo de Cobrança", ["Por Hora", "Por Período"], horizontal=True)
+    modo = st.radio("Tipo", ["Por Hora", "Por Período"], horizontal=True)
     dt = data_sugerida
     horarios_selecionados = []
     valor_final = 0.0
     if modo == "Por Hora":
         dia_sem = dt.weekday()
-        if dia_sem == 6: lista_horas = []; st.error("Domingo: Fechado")
-        elif dia_sem == 5: lista_horas = [f"{h:02d}:00" for h in range(7, 14)]; st.info("Sábado: Até 14h")
+        if dia_sem == 6: lista_horas = []; st.error("Domingo Fechado")
+        elif dia_sem == 5: lista_horas = [f"{h:02d}:00" for h in range(7, 14)]; st.info("Sábado até 14h")
         else: lista_horas = [f"{h:02d}:00" for h in range(7, 22)]
         idx_padrao = 0
         if hora_sugerida_int:
             str_h = f"{hora_sugerida_int:02d}:00"
-            if str_h in lista_horas:
-                idx_padrao = lista_horas.index(str_h)
-        hr = st.selectbox("Horário de Início", lista_horas, index=idx_padrao, disabled=(len(lista_horas)==0))
+            if str_h in lista_horas: idx_padrao = lista_horas.index(str_h)
+        hr = st.selectbox("Horário", lista_horas, index=idx_padrao, disabled=(len(lista_horas)==0))
         if hr:
             horarios_selecionados = [(hr, f"{int(hr[:2])+1:02d}:00")]
             valor_final = config_precos['preco_hora']
     else:
         opcoes_periodo = {
-            "Manhã (07h - 12h)": {"start": 7, "end": 12, "price": config_precos['preco_manha']},
-            "Tarde (13h - 18h)": {"start": 13, "end": 18, "price": config_precos['preco_tarde']},
-            "Noite (18h - 22h)": {"start": 18, "end": 22, "price": config_precos['preco_noite']},
-            "Diária (07h - 22h)": {"start": 7, "end": 22, "price": config_precos['preco_diaria']}
+            "Manhã (07h-12h)": {"start": 7, "end": 12, "price": config_precos['preco_manha']},
+            "Tarde (13h-18h)": {"start": 13, "end": 18, "price": config_precos['preco_tarde']},
+            "Noite (18h-22h)": {"start": 18, "end": 22, "price": config_precos['preco_noite']},
+            "Diária (07h-22h)": {"start": 7, "end": 22, "price": config_precos['preco_diaria']}
         }
-        sel_periodo = st.selectbox("Escolha o Período", list(opcoes_periodo.keys()))
+        sel_periodo = st.selectbox("Período", list(opcoes_periodo.keys()))
         dados_p = opcoes_periodo[sel_periodo]
-        st.info(f"Reservando das {dados_p['start']}:00 às {dados_p['end']}:00 - Valor: R$ {dados_p['price']:.2f}")
+        st.info(f"Valor: R$ {dados_p['price']:.2f}")
         for h in range(dados_p['start'], dados_p['end']):
             horarios_selecionados.append((f"{h:02d}:00", f"{h+1:02d}:00"))
         valor_final = dados_p['price']
+    
     st.markdown("---")
-    is_recurring = st.checkbox("🔄 Repetir nas próximas 4 semanas (Mensal)")
-    if st.button("Confirmar Agendamento", type="primary", use_container_width=True):
-        if not horarios_selecionados: st.error("Nenhum horário selecionado."); return
+    is_recurring = st.checkbox("🔄 Repetir por 4 semanas")
+    if st.button("Confirmar", type="primary", use_container_width=True):
+        if not horarios_selecionados: st.error("Selecione horário."); return
         user = st.session_state.user
         nm = resolver_nome(user.email, user.user_metadata.get('nome'))
         agora = datetime.datetime.now()
@@ -222,70 +195,69 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
         try:
             inserts = []
             for d_res in datas_to_book:
-                if d_res.weekday() == 6: st.warning(f"Ignorado {d_res} (Domingo)."); continue
+                if d_res.weekday() == 6: continue
                 for h_start, h_end in horarios_selecionados:
                     dt_check = datetime.datetime.combine(d_res, datetime.datetime.strptime(h_start, "%H:%M").time())
-                    if dt_check < agora: st.error(f"Horário {h_start} em {d_res} já passou."); return
-                    if d_res.weekday() == 5 and int(h_start[:2]) >= 14: st.error(f"Sábado {d_res} fecha às 14h."); return
+                    if dt_check < agora: st.error("Horário já passou."); return
+                    if d_res.weekday() == 5 and int(h_start[:2]) >= 14: st.error("Sábado fecha 14h."); return
                     chk = supabase.table("reservas").select("id").eq("sala_nome", sala_padrao).eq("data_reserva", str(d_res)).eq("hora_inicio", f"{h_start}:00").neq("status", "cancelada").execute()
-                    if chk.data: st.error(f"Conflito: {d_res} às {h_start} já está ocupado."); return 
-                    val_to_save = 0.0
-                    if (h_start, h_end) == horarios_selecionados[0]: val_to_save = valor_final
-                    elif modo == "Por Hora": val_to_save = valor_final 
+                    if chk.data: st.error("Já ocupado."); return 
+                    val_to_save = valor_final if (h_start, h_end) == horarios_selecionados[0] or modo == "Por Hora" else 0.0
                     inserts.append({
                         "sala_nome": sala_padrao, "data_reserva": str(d_res), "hora_inicio": f"{h_start}:00", "hora_fim": f"{h_end}:00",
                         "user_id": user.id, "email_profissional": user.email, "nome_profissional": nm, "valor_cobrado": val_to_save, "status": "confirmada"
                     })
             if inserts:
                 supabase.table("reservas").insert(inserts).execute()
-                st.toast("Agendamento(s) realizado(s)!", icon="✅"); time.sleep(1); st.rerun()
-        except Exception as e: st.error(f"Erro técnico: {e}")
+                st.toast("Confirmado!", icon="✅"); time.sleep(1); st.rerun()
+        except: st.error("Erro técnico.")
 
 def render_calendar(sala, is_admin_mode=False):
+    # Controles de Navegação
     c_L, c_R = st.columns([1, 1])
     with c_L: 
         if st.button("◀ Anterior", use_container_width=True, key=f"nav_prev_{is_admin_mode}"): navegar('prev'); st.rerun()
     with c_R: 
         if st.button("Próximo ▶", use_container_width=True, key=f"nav_next_{is_admin_mode}"): navegar('next'); st.rerun()
+    
+    # Seletor de Modo
     mode = st.session_state.view_mode
     def set_mode(m): st.session_state.view_mode = m
     bt_sty = lambda m: "primary" if mode == m else "secondary"
-    b1, b2, b3 = st.columns(3)
+    b1, b2 = st.columns(2)
     with b1: 
-        if st.button("Dia", type=bt_sty('DIA'), use_container_width=True, key=f"v_dia_{is_admin_mode}"): set_mode('DIA'); st.rerun()
-    with b2: 
         if st.button("Semana", type=bt_sty('SEMANA'), use_container_width=True, key=f"v_sem_{is_admin_mode}"): set_mode('SEMANA'); st.rerun()
-    with b3: 
+    with b2: 
         if st.button("Mês", type=bt_sty('MÊS'), use_container_width=True, key=f"v_mes_{is_admin_mode}"): set_mode('MÊS'); st.rerun()
+    
     ref = st.session_state.data_ref
     mes_str = ref.strftime("%B").capitalize()
+    
+    # --- MODO MÊS (Agora com CSS forçando linha) ---
     if mode == 'MÊS':
         ano, mes = ref.year, ref.month
         last_day = calendar.monthrange(ano, mes)[1]
         d_start, d_end = datetime.date(ano, mes, 1), datetime.date(ano, mes, last_day)
-        lbl = f"{mes_str} {ano}"
-    elif mode == 'SEMANA':
-        d_start = ref - timedelta(days=ref.weekday())
-        d_end = d_start + timedelta(days=6)
-        lbl = f"{d_start.day} - {d_end.day} {mes_str}"
-    else: 
-        d_start = d_end = ref
-        lbl = f"{ref.day} de {mes_str}"
-    st.markdown(f"<div style='text-align:center; font-weight:800; color:#334155; margin:10px 0'>{lbl}</div>", unsafe_allow_html=True)
-    reservas = []
-    try:
-        r = supabase.table("reservas").select("*").eq("sala_nome", sala).neq("status", "cancelada").gte("data_reserva", str(d_start)).lte("data_reserva", str(d_end)).execute()
-        reservas = r.data
-    except: pass
-    mapa = {}
-    for x in reservas:
-        d = x['data_reserva']
-        if d not in mapa: mapa[d] = {}
-        mapa[d][x['hora_inicio']] = x
-    if mode == 'MÊS':
+        st.markdown(f"<div style='text-align:center; font-weight:800; color:#334155; margin:10px 0'>{mes_str} {ano}</div>", unsafe_allow_html=True)
+        
+        # Busca dados do mês
+        reservas = []
+        try:
+            r = supabase.table("reservas").select("*").eq("sala_nome", sala).neq("status", "cancelada").gte("data_reserva", str(d_start)).lte("data_reserva", str(d_end)).execute()
+            reservas = r.data
+        except: pass
+        mapa = {}
+        for x in reservas:
+            d = x['data_reserva']
+            if d not in mapa: mapa[d] = {}
+            mapa[d][x['hora_inicio']] = x
+
+        # Cabeçalho dos Dias
         cols = st.columns(7)
-        dias = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
-        for i, d in enumerate(dias): cols[i].markdown(f"<div style='text-align:center; font-weight:bold; color:#64748b; font-size:12px; margin-bottom:5px'>{d}</div>", unsafe_allow_html=True)
+        dias_nomes = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
+        for i, d in enumerate(dias_nomes): cols[i].markdown(f"<div style='text-align:center; font-weight:bold; color:#64748b; font-size:12px; margin-bottom:5px'>{d}</div>", unsafe_allow_html=True)
+        
+        # Dias do Mês
         cal_matrix = calendar.monthcalendar(ref.year, ref.month)
         for week in cal_matrix:
             cols = st.columns(7)
@@ -294,63 +266,95 @@ def render_calendar(sala, is_admin_mode=False):
                 else:
                     d_obj = datetime.date(ref.year, ref.month, day)
                     d_str = str(d_obj)
-                    bg_color = "white"
-                    if d_obj < datetime.date.today() or d_obj.weekday() == 6: bg_color = "#fef2f2"
-                    elif d_obj == datetime.date.today(): bg_color = "#f0fdf4"
+                    bg = "#f0fdf4" if d_obj == datetime.date.today() else "white"
+                    
                     eventos_html = ""
                     if d_str in mapa:
-                        for h in sorted(mapa[d_str].keys()):
-                            res = mapa[d_str][h]
-                            if res['status'] == 'bloqueado': eventos_html += f"<div style='background:#1e293b; color:white; font-size:9px; padding:2px; border-radius:3px; margin-bottom:2px;'>⛔ BLOQ</div>"
-                            else:
-                                nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
-                                eventos_html += f"<div style='background:#ccfbf1; color:#115e59; font-size:9px; padding:2px; border-radius:3px; margin-bottom:2px; white-space:nowrap; overflow:hidden;'>{h[:5]} {nm}</div>"
-                    cols[i].markdown(f"<div style='background:{bg_color}; border:1px solid #e2e8f0; border-radius:8px; min-height:80px; padding:5px; font-size:12px;'><div style='font-weight:bold; color:#1e293b; text-align:right'>{day}</div>{eventos_html}</div>", unsafe_allow_html=True)
+                        qtde = len(mapa[d_str])
+                        eventos_html = f"<div style='color:#0d9488; font-size:10px;'>• {qtde} reservas</div>"
+                    
+                    cols[i].markdown(f"<div style='background:{bg}; border:1px solid #e2e8f0; border-radius:8px; min-height:60px; padding:5px; font-size:12px;'><div style='font-weight:bold; color:#1e293b; text-align:right'>{day}</div>{eventos_html}</div>", unsafe_allow_html=True)
+
+    # --- MODO SEMANA (COM ABAS/TABS PARA MOBILE) ---
     else:
-        visiveis = [d_start + timedelta(days=i) for i in range(7 if mode == 'SEMANA' else 1)]
-        ratio = [0.6] + [1]*len(visiveis)
-        c_h = st.columns(ratio)
-        c_h[0].write("")
-        d_n = ["SEG","TER","QUA","QUI","SEX","SÁB","DOM"]
-        for i, d in enumerate(visiveis):
-            wd = d.weekday()
-            c_h[i+1].markdown(f"<div style='text-align:center; padding-bottom:5px; border-bottom:2px solid #e2e8f0; margin-bottom:5px'><div style='font-size:10px; font-weight:bold; color:#64748b'>{d_n[wd]}</div><div style='font-size:16px; font-weight:bold; color:#1e293b'>{visiveis[i].day}</div></div>", unsafe_allow_html=True)
-        for h in range(7, 22):
-            hora = f"{h:02d}:00:00"
-            row = st.columns(ratio)
-            row[0].markdown(f"<div style='font-size:11px; color:#94a3b8; text-align:right; margin-top:10px'>{h:02d}:00</div>", unsafe_allow_html=True)
-            for i, d in enumerate(visiveis):
+        d_start = ref - timedelta(days=ref.weekday())
+        d_end = d_start + timedelta(days=6)
+        st.markdown(f"<div style='text-align:center; font-weight:800; color:#334155; margin:10px 0'>{d_start.day} - {d_end.day} {mes_str}</div>", unsafe_allow_html=True)
+        
+        reservas = []
+        try:
+            r = supabase.table("reservas").select("*").eq("sala_nome", sala).neq("status", "cancelada").gte("data_reserva", str(d_start)).lte("data_reserva", str(d_end)).execute()
+            reservas = r.data
+        except: pass
+        mapa = {}
+        for x in reservas:
+            d = x['data_reserva']
+            if d not in mapa: mapa[d] = {}
+            mapa[d][x['hora_inicio']] = x
+
+        # CRIAÇÃO DAS ABAS (TABS) - Solução do "Clicar no dia"
+        visiveis = [d_start + timedelta(days=i) for i in range(7)]
+        dias_sem = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
+        nomes_tabs = [f"{dias_sem[d.weekday()]} {d.day}" for d in visiveis]
+        
+        tabs = st.tabs(nomes_tabs)
+        
+        # Conteúdo de cada aba (Um dia por vez)
+        for i, aba in enumerate(tabs):
+            with aba:
+                d = visiveis[i]
                 d_s = str(d)
-                res = mapa.get(d_s, {}).get(hora)
-                cont = row[i+1].container()
-                dt_slot = datetime.datetime.combine(d, datetime.time(h, 0))
-                agora = datetime.datetime.now()
-                is_sunday = d.weekday() == 6
-                is_sat_closed = (d.weekday() == 5 and h >= 14)
-                is_past = dt_slot < agora
-                if res:
-                    if res['status'] == 'bloqueado':
-                        cont.markdown(f"<div class='admin-blocked'>⛔ FECHADO</div>", unsafe_allow_html=True)
-                        if is_admin_mode:
-                             if cont.button("🗑️", key=f"del_blk_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
-                    else:
-                        nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
-                        if is_admin_mode:
-                            c_chip, c_del = cont.columns([3,1])
-                            c_chip.markdown(f"<div class='evt-chip'>{nm}</div>", unsafe_allow_html=True)
-                            if c_del.button("🗑️", key=f"del_res_{res['id']}", help="Excluir"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
-                        else: cont.markdown(f"<div class='evt-chip'>{nm}</div>", unsafe_allow_html=True)
-                elif is_sunday or is_sat_closed or is_past: cont.markdown("<div class='blocked-slot'></div>", unsafe_allow_html=True)
-                else: 
-                    if not is_admin_mode:
-                        if cont.button("Livre", key=f"free_{d_s}_{h}", type="secondary", use_container_width=True):
-                            modal_agendamento(sala, d, h)
-                    else:
-                        cont.markdown("<div style='height:35px; border-left:1px dashed #cbd5e1'></div>", unsafe_allow_html=True)
+                
+                if d.weekday() == 6:
+                    st.info("Domingo: Fechado")
+                else:
+                    # Lista de horários
+                    hora_range = range(7, 14) if d.weekday() == 5 else range(7, 22)
+                    for h in hora_range:
+                        h_s = f"{h:02d}:00:00"
+                        res = mapa.get(d_s, {}).get(h_s)
+                        
+                        cont = st.container()
+                        cols_h = cont.columns([1, 4]) # Coluna hora, Coluna info
+                        
+                        # Coluna Hora
+                        cols_h[0].markdown(f"<div style='font-size:14px; font-weight:bold; padding-top:10px; color:#64748b'>{h:02d}:00</div>", unsafe_allow_html=True)
+                        
+                        # Coluna Ação
+                        with cols_h[1]:
+                            agora = datetime.datetime.now()
+                            dt_slot = datetime.datetime.combine(d, datetime.time(h, 0))
+                            
+                            if res:
+                                if res['status'] == 'bloqueado':
+                                    st.markdown(f"<div class='admin-blocked'>⛔ FECHADO</div>", unsafe_allow_html=True)
+                                    if is_admin_mode:
+                                         if st.button("Desbloquear", key=f"dblk_{d}_{h}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
+                                else:
+                                    nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
+                                    st.markdown(f"""
+                                    <div class='evt-chip'>
+                                        <span>{nm}</span>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                    if is_admin_mode:
+                                        if st.button("Cancelar", key=f"cancel_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
+                            
+                            elif dt_slot < agora:
+                                st.markdown("<div style='color:#cbd5e1; padding:10px; font-style:italic'>Indisponível</div>", unsafe_allow_html=True)
+                            
+                            else:
+                                if not is_admin_mode:
+                                    if st.button("Livre (Agendar)", key=f"livre_{d}_{h}", type="secondary", use_container_width=True):
+                                        modal_agendamento(sala, d, h)
+                                else:
+                                    st.markdown("<div style='border:1px dashed #cbd5e1; padding:10px; text-align:center; border-radius:6px; color:#94a3b8'>Livre</div>", unsafe_allow_html=True)
+                        st.divider()
+
     st.markdown("<br>", unsafe_allow_html=True)
 
 def tela_admin_master():
-    tabs = st.tabs(["💰 Config", "📅 Visualizar/Excluir", "🚫 Bloqueios", "📄 Relatórios", "👥 Usuários"])
+    tabs = st.tabs(["💰 Config", "📅 Visualizar", "🚫 Bloqueios", "📄 Relatórios", "👥 Usuários"])
     with tabs[0]: 
         cf = get_config_precos()
         st.markdown("### Configuração de Preços")
@@ -385,17 +389,15 @@ def tela_admin_master():
         if c_act_1.button("🔒 Bloquear Data", type="primary", use_container_width=True):
             salas_to_block = ["Sala 1", "Sala 2"] if sala_block == "Ambas" else [sala_block]
             try:
-                # 1. Limpa o dia para não duplicar ou conflitar
                 for s in salas_to_block:
                     supabase.table("reservas").update({"status": "cancelada"}).eq("sala_nome", s).eq("data_reserva", str(dt_block)).neq("status", "cancelada").execute()
                 
-                # 2. Insere bloqueio (CORREÇÃO DE UUID APLICADA)
                 inserts = []
                 for s in salas_to_block:
                     for h in range(7, 22):
                         inserts.append({
                             "sala_nome": s, "data_reserva": str(dt_block), "hora_inicio": f"{h:02d}:00", "hora_fim": f"{h+1:02d}:00",
-                            "user_id": st.session_state.user.id, # USA O ID DO ADMIN
+                            "user_id": st.session_state.user.id,
                             "email_profissional": st.session_state.user.email,
                             "nome_profissional": "BLOQUEIO ADM",
                             "valor_cobrado": 0, "status": "bloqueado"
@@ -409,7 +411,6 @@ def tela_admin_master():
             salas_to_block = ["Sala 1", "Sala 2"] if sala_block == "Ambas" else [sala_block]
             try:
                 for s in salas_to_block:
-                    # Remove APENAS os bloqueios (status='bloqueado'), preserva reservas reais se houver
                     supabase.table("reservas").delete().eq("sala_nome", s).eq("data_reserva", str(dt_block)).eq("status", "bloqueado").execute()
                 st.success(f"Dia {dt_block} desbloqueado!")
                 time.sleep(1)
