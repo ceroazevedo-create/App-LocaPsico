@@ -31,29 +31,40 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS VISUAL (COM CORREÇÃO PARA CELULAR) ---
+# --- 3. CSS VISUAL (CORREÇÃO ESPECÍFICA PARA CALENDÁRIO) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     .stApp { background-color: #f8fafc; font-family: 'Inter', sans-serif; color: #1e293b; }
     .block-container { padding-top: 2rem !important; max-width: 1100px; }
+
+    /* --- CORREÇÃO CIRÚRGICA PARA O CALENDÁRIO (MOBILE) --- */
     
-    /* --- CORREÇÃO DA GRADE (MOBILE) --- */
-    /* Força as colunas a ficarem lado a lado, criando rolagem lateral */
-    div[data-testid="stHorizontalBlock"] {
-        flex-wrap: nowrap !important;
-        overflow-x: auto !important;
-        white-space: nowrap !important;
-        padding-bottom: 5px; /* Espaço para o dedo rolar */
+    /* Regra 1: Detecta se o grupo de colunas tem 7 ou mais itens (Calendário) */
+    /* Se tiver 7+, força a não quebrar linha e habilita o scroll lateral */
+    @media (max-width: 640px) {
+        div[data-testid="column"]:nth-last-child(n+7), 
+        div[data-testid="column"]:nth-last-child(n+7) ~ div[data-testid="column"] {
+            min-width: 80px !important; /* Largura mínima para ver o dia (SEG 12) */
+            flex: 0 0 auto !important;
+        }
+
+        /* Aplica rolagem apenas nos blocos que contêm essas colunas largas */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-last-child(n+7)) {
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            white-space: nowrap !important;
+            padding-bottom: 5px;
+            display: flex;
+        }
+        
+        /* Fallback para navegadores antigos que não suportam :has (aplica a todos os blocos horizontais no mobile) */
+        /* Isso garante que o calendário funcione, e o login (2 colunas) apenas se ajusta */
+        div[data-testid="stHorizontalBlock"] {
+            overflow-x: auto; 
+        }
     }
-    
-    /* Define largura mínima para as colunas não ficarem esmagadas */
-    div[data-testid="column"] {
-        flex: 0 0 auto !important;
-        width: auto !important;
-        min-width: 100px !important; /* Cada dia terá no mínimo 100px de largura */
-    }
-    /* ---------------------------------- */
+    /* ----------------------------------------------------- */
 
     div[data-testid="column"]:nth-of-type(2) > div { background-color: #ffffff; padding: 40px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid #f1f5f9; margin-bottom: 20px; }
     div[data-testid="stImage"] { display: flex; justify-content: center; margin-bottom: 24px; }
