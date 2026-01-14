@@ -33,128 +33,109 @@ supabase = init_connection()
 
 # --- 3. CSS "DOIS UNIVERSOS" ---
 
-# CSS BASE
+# CSS BASE (Sempre ativo)
 CSS_BASE = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     .stApp { background-color: #ffffff; font-family: 'Inter', sans-serif; color: #1e293b; }
+    
+    /* Remove tralha nativa */
     header, footer, [data-testid="stToolbar"] { display: none !important; }
+    
+    /* Botões Gerais */
     div[data-testid="stForm"] button, button[kind="primary"] { 
         background: #0f766e !important; color: white !important; border: none; border-radius: 6px; 
     }
 </style>
 """
 
-# CSS 1: LOGIN (MANTÉM O TAMANHO NORMAL)
+# CSS 1: LOGIN (RESPONSIVO E BONITO)
 CSS_LOGIN_MOBILE = """
 <style>
     @media only screen and (max-width: 768px) {
-        .block-container { max-width: 100% !important; padding: 2rem 1rem !important; }
+        .block-container { 
+            max-width: 100% !important; 
+            padding: 2rem 1rem !important; 
+            transform: none !important; /* Garante que não tenha escala no login */
+            width: 100% !important;
+        }
         button { min-height: 50px !important; }
     }
 </style>
 """
 
-# CSS 2: AGENDA (A PRENSA HIDRÁULICA - MICRO GRID)
+# CSS 2: AGENDA (A SIMULAÇÃO DE REALIDADE - SCALE FORCE)
+# Aqui forçamos a tela a ser gigante (180%) e depois encolhemos (0.55)
 CSS_AGENDA_WIDE = """
 <style>
     /* ============================================================ */
-    /* 🔬 PROTOCOLO MICRO GRID (< 768px)                            */
-    /* ZOOM 60% + ALTURA FORÇADA DE 25PX.                           */
+    /* 🛰️ PROTOCOLO ORBITAL VIEW (< 768px)                          */
+    /* Estratégia: Renderizar virtualmente largo e escalar visual.  */
     /* ============================================================ */
     
     @media only screen and (max-width: 768px) {
         
-        /* 1. O ZOOM AGRESSIVO */
+        /* 1. O HACK DE ESCALA */
         .block-container {
-            width: 100% !important;
-            max-width: 100% !important;
-            padding: 2px !important;
-            zoom: 0.60 !important; /* REDUZ TUDO EM 40% */
+            width: 180% !important;            /* Cria uma tela virtual quase 2x maior */
+            max-width: 180% !important;
+            
+            transform: scale(0.55) !important; /* Encolhe tudo para caber na tela real */
+            transform-origin: top left !important; /* Ancora no canto superior esquerdo */
+            
+            padding: 0 5px !important;
+            margin-bottom: -100% !important;   /* Remove o espaço vazio gerado pelo scale */
+            overflow-x: hidden !important;
         }
 
-        /* 2. FORÇA LINHA ÚNICA (SEM QUEBRA) */
+        /* 2. FORÇA HORIZONTAL REAL */
         div[data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
-            overflow-x: auto !important;
-            gap: 0px !important;
-            margin: 0 !important;
-            padding: 0 !important;
+            gap: 0 !important;
         }
 
-        /* 3. COLUNAS ESMAGADAS */
+        /* 3. COLUNAS COMPACTAS NA TELA VIRTUAL */
         div[data-testid="column"] {
-            flex: 0 0 auto !important;
-            min-width: 65px !important; /* Garante largura mínima legível no zoom */
-            width: 14% !important;
-            padding: 0 !important;
+            min-width: 0 !important;
+            flex: 1 1 0 !important;
+            padding: 0 1px !important;
         }
         
-        /* 4. COLUNA DA HORA */
-        div[data-testid="column"]:first-child {
-            width: 35px !important;
-            min-width: 35px !important;
-            position: sticky !important;
-            left: 0;
-            background: white;
-            z-index: 100;
-            border-right: 1px solid #ddd;
-        }
-
-        /* 5. ESMAGAMENTO VERTICAL (O SEGREDO DO "GRANDE") */
-        /* O Streamlit força 40px+ de altura. Vamos quebrar isso. */
+        /* 4. ALTURA E TAMANHO (Visualmente ficará metade disso) */
+        /* Como estamos numa tela "virtual" grande, podemos usar tamanhos normais */
+        /* Ao aplicar o scale 0.55, um botão de 40px parecerá ter 22px */
         
-        div[data-testid="stVerticalBlock"] {
-            gap: 0px !important; /* Remove espaço entre linhas verticais */
-        }
-        
-        div[data-testid="stVerticalBlock"] > div {
-            margin-bottom: 0px !important; /* Cola um bloco no outro */
-        }
-
-        /* Botões "Livre" - Altura Microscópica */
         div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-            height: 25px !important;       /* FORÇA BRUTA */
-            min-height: 25px !important;   /* VENCE O PADRÃO */
+            height: 40px !important;       
+            min-height: 40px !important;
             padding: 0 !important;
-            line-height: 1 !important;
-            font-size: 9px !important;
-            margin: 0 !important;
+            font-size: 11px !important; /* Vai parecer minúsculo (6px) */
             border: 1px solid #eee !important;
         }
         
-        /* Card de Evento Mobile */
+        /* Ajuste do Card */
         .evt-card {
-            height: 25px !important;
-            min-height: 25px !important;
-            font-size: 9px !important;
-            padding: 0 2px !important;
-            line-height: 25px !important;
-            margin: 0 !important;
+            height: 38px !important;
+            font-size: 11px !important;
         }
         
-        /* Bloco Admin */
-        .admin-blocked { height: 25px !important; min-height: 25px !important; font-size: 8px !important; }
+        /* Cabeçalhos */
+        .day-header-num { font-size: 24px !important; } /* Vai parecer 13px */
+        .day-header-name { font-size: 12px !important; }
         
-        /* Cabeçalho compactado */
-        .day-header-num { font-size: 16px !important; }
-        .day-header-name { font-size: 9px !important; margin-bottom: 0 !important; }
-        .day-header-box { padding: 2px !important; margin: 0 !important; }
-        
-        /* Ajuste fino na hora */
-        .time-label { top: 5px !important; font-size: 9px !important; }
+        /* Garante que o usuário não precise rolar horizontalmente a janela */
+        .stApp { overflow-x: hidden !important; }
     }
 
-    /* --- ESTILOS VISUAIS GERAIS --- */
+    /* --- ESTILOS GERAIS (DESKTOP) --- */
     
     div[data-testid="stVerticalBlock"] button[kind="secondary"] {
         background: transparent !important; border: none !important;
         border-right: 1px solid #f1f5f9 !important; border-bottom: 1px solid #f1f5f9 !important;
         border-radius: 0 !important; width: 100% !important; margin: 0 !important;
-        /* No desktop mantém altura normal */
-        height: 40px; 
+        height: 45px; 
     }
     @media (min-width: 769px) {
         div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover { background: #f8fafc !important; }
@@ -163,26 +144,26 @@ CSS_AGENDA_WIDE = """
     .evt-card {
         background-color: #e0f2fe; color: #0369a1; 
         font-size: 11px; font-weight: 700; 
-        padding: 0 4px; border-radius: 0px; border-left: 3px solid #0284c7;
+        padding: 0 4px; border-radius: 2px; border-left: 3px solid #0284c7;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         display: flex; align-items: center; cursor: pointer;
-        height: 40px; /* Desktop height */
+        height: 42px;
     }
     
     .admin-blocked { 
-        background: #f1f5f9; color: #94a3b8; font-size: 9px;
+        background: #f1f5f9; color: #94a3b8; font-size: 10px;
         display: flex; align-items: center; justify-content: center;
         height: 100%; width: 100%;
     }
 
-    .day-header-box { text-align: center; border-bottom: 1px solid #cbd5e1; background: #fff; }
-    .day-header-name { font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; }
-    .day-header-num { font-size: 18px; font-weight: 800; color: #1e293b; line-height: 1; }
+    .day-header-box { text-align: center; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; background: #fff; }
+    .day-header-name { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; }
+    .day-header-num { font-size: 20px; font-weight: 800; color: #1e293b; line-height: 1; }
     .today-hl { color: #0284c7; }
     
     .time-label { 
-        font-size: 10px; font-weight: 600; color: #94a3b8; 
-        text-align: right; padding-right: 4px; position: relative; top: 10px; 
+        font-size: 11px; font-weight: 600; color: #94a3b8; 
+        text-align: right; padding-right: 6px; position: relative; top: 12px; 
     }
 </style>
 """
@@ -394,7 +375,7 @@ def render_calendar(sala, is_admin_mode=False):
                         if is_admin_mode:
                              if cont.button("x", key=f"d_res_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
                 elif is_sun or is_sat_close:
-                    # Div vazia mas com altura definida pelo CSS
+                    # Removemos o br aqui para não criar altura extra
                     st.markdown("<div style='height:100%;'></div>", unsafe_allow_html=True)
                 else:
                     if not is_admin_mode:
@@ -565,7 +546,7 @@ def main():
             if c_b.button("Recuperar"): st.session_state.auth_mode = 'forgot'; st.rerun()
         return
 
-    # MODO AGENDA: CSS DE AGENDA (MICRO GRID)
+    # MODO AGENDA: CSS DE AGENDA (ORBITAL VIEW)
     st.markdown(CSS_AGENDA_WIDE, unsafe_allow_html=True)
 
     u = st.session_state['user']
