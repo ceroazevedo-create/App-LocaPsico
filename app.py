@@ -31,89 +31,123 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS HARDCORE (FLEX ROW FORCE) ---
+# --- 3. CSS GLOBAL DESTRUCTIVE (MOBILE GRID ENFORCER) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     .stApp { background-color: #ffffff; font-family: 'Inter', sans-serif; color: #1e293b; }
     
-    /* Container Global */
-    .block-container { padding-top: 1rem !important; max-width: 100% !important; padding-left: 2px; padding-right: 2px; }
+    /* Remove padding lateral global para ganhar espaço */
+    .block-container { 
+        padding-top: 1rem !important; 
+        max-width: 100% !important; 
+        padding-left: 2px !important; 
+        padding-right: 2px !important; 
+    }
 
     /* ============================================================ */
-    /* 🧨 CSS HARDCORE OVERRIDE (MOBILE < 768px)                    */
-    /* Objetivo: Impedir flex-direction: column a todo custo.       */
+    /* ☢️ PROTOCOLO GLOBAL: DITADURA DO FLEX-ROW (< 768px)          */
+    /* "Se é um bloco horizontal, será uma linha com scroll. Ponto." */
     /* ============================================================ */
     
     @media only screen and (max-width: 768px) {
         
-        /* 1. O PAI (BLOCK HORIZONTAL) */
-        /* Usamos :has para garantir que só afete o calendário (que tem 8 colunas) */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) {
+        /* 1. O PAI: FORÇA FLUXO HORIZONTAL EM TUDO */
+        div[data-testid="stHorizontalBlock"] {
             display: flex !important;
-            flex-direction: row !important;     /* CRÍTICO: Impede empilhar */
-            flex-wrap: nowrap !important;       /* CRÍTICO: Impede quebra */
-            overflow-x: auto !important;        /* CRÍTICO: Scroll lateral */
+            flex-direction: row !important;     /* NUNCA EMPILHAR */
+            flex-wrap: nowrap !important;       /* NUNCA QUEBRAR LINHA */
+            overflow-x: auto !important;        /* SCROLL SE ESTOURAR */
             align-items: stretch !important;
             width: 100% !important;
-            padding-bottom: 10px;               /* Área para toque do scroll */
-            gap: 2px !important;
+            gap: 1px !important;
+            padding-bottom: 5px;                /* Espaço para dedo no scroll */
         }
 
-        /* 2. OS FILHOS (COLUNAS) */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"] {
-            flex: 0 0 auto !important;          /* Não encolher nem crescer */
-            width: 110px !important;            /* TAMANHO FIXO RÍGIDO */
-            min-width: 110px !important;        /* GARANTIA DE TAMANHO */
-            padding: 0 2px !important;          /* Padding reduzido */
+        /* 2. AS COLUNAS: LARGURA MÍNIMA OBRIGATÓRIA */
+        div[data-testid="column"] {
+            flex: 0 0 auto !important;          /* Tamanho Rígido */
+            width: auto !important;
+            min-width: 100px !important;        /* OBRIGA SCROLL SE TIVER MUITAS COLUNAS */
+            padding: 0 1px !important;
         }
         
-        /* 3. COLUNA DA HORA (1ª Coluna) - Reduzida mas visível (ou oculta se preferir) */
-        /* Aqui deixamos ela menor (40px) para não comer espaço dos dias */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"]:first-child {
+        /* 3. A COLUNA DE HORA (A PRIMEIRA): FIXA E ESTREITA */
+        /* Isso cria o efeito "Frozen Pane" do Excel */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child {
+            position: sticky !important;
+            left: 0 !important;
+            z-index: 99 !important;             /* Fica por cima dos dias ao rolar */
+            background-color: #ffffff !important; 
+            min-width: 40px !important;         /* Bem estreita */
             width: 40px !important;
-            min-width: 40px !important;
-            position: sticky;
-            left: 0;
-            background: white;
-            z-index: 10;
-            border-right: 1px solid #e2e8f0;
+            border-right: 1px solid #e2e8f0 !important;
         }
 
-        /* 4. VISUAL (MINIATURIZAÇÃO) */
-        /* Reduz fontes para caber no card de 110px */
-        .day-header-name { font-size: 10px !important; }
-        .day-header-num { font-size: 14px !important; }
-        .time-label { font-size: 10px !important; }
-        .evt-card-desktop { font-size: 9px !important; height: 35px !important; padding: 2px !important; }
+        /* 4. CONTEÚDO DUAL (VISIBILIDADE) */
+        .desktop-content { display: none !important; }
+        .mobile-content { display: block !important; }
+
+        /* 5. AJUSTES VISUAIS MICRO (Para caber em 100px) */
+        .day-header-name { font-size: 9px !important; text-align: center; }
+        .day-header-num { font-size: 14px !important; text-align: center; font-weight: 700; }
+        .time-label { font-size: 10px !important; text-align: center; padding-right: 2px; }
         
-        /* Botões de Agendar */
+        /* Botões de Slot "Fantasmas" no Mobile */
         div[data-testid="stVerticalBlock"] button[kind="secondary"] {
             height: 35px !important;
             min-height: 35px !important;
             padding: 0 !important;
-            font-size: 10px !important;
+            border: 1px dashed #e2e8f0 !important;
+            font-size: 9px !important; /* Texto bem pequeno se houver */
+        }
+        
+        /* Oculta Cabeçalho/Rodapé Nativo */
+        header { display: none !important; }
+        footer { display: none !important; }
+    }
+
+    /* ============================================================ */
+    /* 💻 DESKTOP RULES (> 768px)                                   */
+    /* ============================================================ */
+    @media only screen and (min-width: 769px) {
+        .desktop-content { display: block !important; }
+        .mobile-content { display: none !important; }
+        
+        div[data-testid="column"]:first-child {
+            min-width: 60px !important;
         }
     }
 
-    /* --- ESTILOS GERAIS (BASE) --- */
+    /* --- ESTILOS GERAIS --- */
     
-    /* Login Limpo (Protegido do CSS acima pelo seletor :has) */
+    /* Login Limpo */
     div[data-testid="column"]:nth-of-type(2) > div { 
         background-color: #ffffff; padding: 25px; border-radius: 12px; border: 1px solid #e2e8f0; 
         box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
     }
     
-    /* Cards de Evento */
+    /* Cards de Evento (Desktop) */
     .evt-card-desktop {
         background: #e0f2fe; border-left: 3px solid #0284c7; color: #0369a1;
-        padding: 4px; font-size: 11px; font-weight: 600; border-radius: 3px;
+        padding: 4px; font-size: 10px; font-weight: 600; border-radius: 3px;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        height: 40px; line-height: 1.2; margin-bottom: 2px; display: block;
+        height: 38px; line-height: 1.2; margin-bottom: 2px;
     }
     
-    .admin-blocked { background: #334155; color: #f8fafc; border-radius: 3px; font-size: 10px; padding: 4px; text-align: center; height: 40px; display: flex; align-items: center; justify-content: center; }
-    .blocked-slot { background-color: #fef2f2; height: 40px; border-radius: 4px; opacity: 0.6; }
+    /* Barra Mobile (Minimalista) */
+    .evt-bar-mobile {
+        background-color: #0ea5e9; /* Azul */
+        height: 100%; width: 100%;
+        min-height: 35px;
+        border-radius: 2px;
+        /* Texto dentro da barra mobile se couber */
+        color: white; font-size: 8px; display: flex; align-items: center; justify-content: center;
+        overflow: hidden;
+    }
+    
+    .evt-blocked-desktop { background: #334155; color: white; font-size: 10px; padding: 4px; border-radius: 3px; height: 38px; text-align: center; display: flex; align-items: center; justify-content: center; }
+    .evt-blocked-mobile { background-color: #334155; height: 100%; min-height: 35px; width: 100%; border-radius: 2px; }
 
     /* Headers */
     .day-header-box { text-align: center; border-bottom: 1px solid #e2e8f0; margin-bottom: 5px; padding-bottom: 5px; }
@@ -125,19 +159,20 @@ st.markdown("""
     div[data-testid="stForm"] button, button[kind="primary"] { background: #0f766e !important; color: white !important; border: none; height: 45px; }
     .stTextInput input { background: #f8fafc; border: 1px solid #e2e8f0; height: 45px; }
     
-    /* Slot Livre */
-    div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-        background-color: #ffffff !important; border: 1px solid #e2e8f0 !important; color: transparent !important;
-        height: 40px !important; width: 100%; transition: all 0.2s;
-    }
+    /* Slot Livre Desktop */
     @media (min-width: 769px) {
+        div[data-testid="stVerticalBlock"] button[kind="secondary"] {
+            background-color: #ffffff !important; border: 1px solid #e2e8f0 !important; color: transparent !important;
+            height: 40px !important; width: 100%; transition: all 0.2s;
+        }
         div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover {
             border-color: #0d9488 !important; background-color: #f0fdf4 !important; color: #0d9488 !important;
         }
     }
     
+    /* Hora lateral */
     .time-label { font-size: 11px; font-weight: 600; color: #94a3b8; text-align: right; margin-top: 12px; padding-right: 5px;}
-    header {display: none;} footer {display: none;}
+    
 </style>
 """, unsafe_allow_html=True)
 
@@ -323,6 +358,8 @@ def render_calendar(sala, is_admin_mode=False):
     # LINHAS DE HORÁRIO
     for h in range(7, 22):
         row = st.columns([0.3, 1, 1, 1, 1, 1, 1, 1])
+        
+        # Coluna Hora (Fixa no mobile via CSS)
         row[0].markdown(f"<div class='time-label'>{h:02d}:00</div>", unsafe_allow_html=True)
         
         for i, d in enumerate(dias_visiveis):
@@ -340,15 +377,15 @@ def render_calendar(sala, is_admin_mode=False):
                 if res:
                     nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
                     if res['status'] == 'bloqueado':
-                        st.markdown(f"""<div class='evt-card-desktop admin-blocked'>BLOQ</div>""", unsafe_allow_html=True)
+                        st.markdown(f"""<div class='desktop-content admin-blocked'>BLOQ</div><div class='mobile-content evt-blocked-mobile'></div>""", unsafe_allow_html=True)
                         if is_admin_mode:
                              if cont.button("🗑️", key=f"d_blk_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
                     else:
-                        st.markdown(f"""<div class='evt-card-desktop' title='{nm}'>{nm}</div>""", unsafe_allow_html=True)
+                        st.markdown(f"""<div class='desktop-content evt-card-desktop' title='{nm}'>{nm}</div><div class='mobile-content evt-bar-mobile'>{nm}</div>""", unsafe_allow_html=True)
                         if is_admin_mode:
                              if cont.button("x", key=f"d_res_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
                 elif is_sun or is_sat_close:
-                    cont.markdown("<div class='blocked-slot'></div>", unsafe_allow_html=True)
+                    st.markdown("<div class='blocked-slot'></div>", unsafe_allow_html=True)
                 else:
                     if not is_admin_mode:
                         if cont.button(" ", key=f"add_{d}_{h}", type="secondary", use_container_width=True):
