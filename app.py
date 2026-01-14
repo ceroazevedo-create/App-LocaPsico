@@ -55,82 +55,115 @@ CSS_LOGIN_MOBILE = """
 </style>
 """
 
-# CSS 2: AGENDA (PROTOCOLO GRIDIRON - CSS GRID RÍGIDO)
+# CSS 2: AGENDA (PROTOCOLO POLISHED DIAMOND)
 CSS_AGENDA_WIDE = """
 <style>
     /* ============================================================ */
-    /* 🏗️ PROTOCOLO GRIDIRON (< 768px)                              */
-    /* Abandona Flexbox. Usa CSS Grid para forçar tabela perfeita.  */
+    /* 💎 PROTOCOLO POLISHED DIAMOND (< 768px)                      */
+    /* Grid Rígido para Agenda + Flex Normal para Cabeçalho.        */
     /* ============================================================ */
     
     @media only screen and (max-width: 768px) {
         
         /* 1. CONTAINER COM SCROLL */
         .block-container {
-            padding: 0 !important;
+            padding: 10px 5px !important; /* Um pouco de margem para o header não colar */
             max-width: 100vw !important;
             overflow-x: auto !important;
         }
 
-        /* 2. FORÇA O GRID LAYOUT NOS BLOCOS HORIZONTAIS */
-        div[data-testid="stHorizontalBlock"] {
+        /* 2. PROTEÇÃO DO CABEÇALHO DO APP (Logo e Sair) */
+        /* Se o bloco tiver MENOS de 8 colunas (ex: cabeçalho), ele age normal */
+        div[data-testid="stHorizontalBlock"]:not(:has(> div[data-testid="column"]:nth-child(8))) {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            width: 100% !important;
+            margin-bottom: 20px !important;
+        }
+        
+        /* Ajuste do botão sair para não ficar gigante */
+        div[data-testid="stHorizontalBlock"]:not(:has(> div[data-testid="column"]:nth-child(8))) button {
+            height: 35px !important;
+            min-height: 35px !important;
+            padding: 0 10px !important;
+        }
+
+        /* 3. A AGENDA (O GRID DE AÇO) */
+        /* Só aplica o grid se detectar 8 colunas (Hora + 7 Dias) */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) {
             display: grid !important;
-            /* 1ª Coluna: 35px | Resto: 7 colunas iguais */
-            grid-template-columns: 35px repeat(7, 1fr) !important; 
+            /* 1ª Coluna: 40px | Resto: 7 colunas de tamanho igual */
+            grid-template-columns: 40px repeat(7, 1fr) !important; 
             min-width: 800px !important; /* LARGURA MÍNIMA DA TABELA */
             gap: 0px !important;
             border-bottom: 1px solid #f1f5f9;
         }
 
-        /* 3. COLUNA DA HORA (FIXA) */
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child {
+        /* 4. COLUNA DA HORA (FIXA) */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"]:first-child {
             position: sticky !important;
             left: 0 !important;
             z-index: 50 !important;
             background: white !important;
             border-right: 2px solid #e2e8f0 !important;
-            width: 100% !important; /* Ocupa a célula do grid */
+            width: 100% !important;
             min-width: 0 !important;
         }
 
-        /* 4. AS OUTRAS COLUNAS */
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
-            min-width: 0 !important; /* O Grid controla a largura, não o elemento */
+        /* 5. AS OUTRAS COLUNAS (DIAS) */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"] {
+            min-width: 0 !important; 
             width: 100% !important;
             padding: 0 !important;
         }
         
-        /* 5. REMOVE GAPS VERTICAIS */
+        /* 6. REMOVE GAPS VERTICAIS */
         div[data-testid="stVerticalBlock"] { gap: 0 !important; }
         div[data-testid="element-container"] { margin: 0 !important; }
         
-        /* 6. COMPACTAÇÃO EXTREMA DE CONTEÚDO */
+        /* 7. CÉLULAS E BOTÕES (AGORA COM 50PX DE ALTURA) */
         
         /* Botões Invisíveis */
         div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-            height: 35px !important;
-            min-height: 35px !important;
+            height: 50px !important;        /* MAIS ALTO PARA NÃO ESPREMER */
+            min-height: 50px !important;
             padding: 0 !important;
             border: none !important;
             border-right: 1px solid #f8fafc !important;
+            border-bottom: 1px solid #f8fafc !important;
         }
         
         /* Eventos */
         .evt-card {
-            height: 33px !important;
-            font-size: 9px !important;
-            padding: 0 2px !important;
-            line-height: 33px !important;
-            margin: 1px 0 !important;
+            height: 46px !important;        /* Acompanha a altura */
+            font-size: 10px !important;
+            padding: 0 4px !important;
+            line-height: 1.1 !important;
+            margin: 2px 0 !important;
+            white-space: normal !important; /* Permite quebra de texto */
+            display: flex !important;
+            align-items: center !important;
         }
         
         /* Admin Block */
-        .admin-blocked { height: 33px !important; font-size: 8px !important; }
+        .admin-blocked { height: 48px !important; font-size: 8px !important; }
         
-        /* Cabeçalhos */
-        .day-header-num { font-size: 14px !important; }
-        .day-header-name { font-size: 9px !important; margin-bottom: 0 !important; }
-        .time-label { font-size: 9px !important; top: 10px !important; padding-right: 4px !important; }
+        /* Cabeçalhos dos Dias */
+        .day-header-box {
+            height: 50px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: center !important;
+            background: #f8fafc !important;
+            border-bottom: 2px solid #e2e8f0 !important;
+        }
+        .day-header-text { font-size: 12px !important; font-weight: 700 !important; color: #334155; }
+        
+        .time-label { 
+            font-size: 10px !important; 
+            top: 18px !important; /* Centraliza verticalmente nos 50px */
+            padding-right: 4px !important; 
+        }
         
         /* Esconde Header App */
         .stApp > header { display: none !important; }
@@ -141,28 +174,23 @@ CSS_AGENDA_WIDE = """
         div[data-testid="stVerticalBlock"] button[kind="secondary"] {
             background: transparent !important; border: none !important;
             border-right: 1px solid #f1f5f9 !important; border-bottom: 1px solid #f1f5f9 !important;
-            border-radius: 0 !important; width: 100% !important; margin: 0 !important; height: 45px; 
+            border-radius: 0 !important; width: 100% !important; margin: 0 !important; height: 50px; 
         }
         div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover { background: #f8fafc !important; }
-        .evt-card { height: 42px; font-size: 11px; padding: 0 4px; }
+        .evt-card { height: 46px; font-size: 11px; padding: 0 4px; }
     }
 
     /* --- COMUNS --- */
     .evt-card {
         background-color: #e0f2fe; color: #0369a1; font-weight: 700; 
-        border-radius: 2px; border-left: 3px solid #0284c7;
+        border-radius: 4px; border-left: 3px solid #0284c7;
         overflow: hidden; cursor: pointer; display: block;
-        white-space: nowrap; text-overflow: ellipsis;
     }
     .admin-blocked { 
         background: #f1f5f9; color: #94a3b8; font-size: 9px;
         display: flex; align-items: center; justify-content: center;
         width: 100%;
     }
-    .day-header-box { text-align: center; border-bottom: 1px solid #cbd5e1; padding: 2px 0; background: #fff; }
-    .day-header-name { font-weight: 700; color: #64748b; text-transform: uppercase; }
-    .day-header-num { font-weight: 800; color: #1e293b; line-height: 1; }
-    .today-hl { color: #0284c7; }
     .time-label { 
         font-weight: 600; color: #94a3b8; 
         text-align: right; position: relative;
@@ -335,18 +363,18 @@ def render_calendar(sala, is_admin_mode=False):
     dias_visiveis = [d_start + timedelta(days=i) for i in range(7)]
     dias_sem = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
     
-    # Ratios (O CSS GRID VAI IGNORAR ISSO E USAR A REGRA 35px + 1fr)
+    # Ratios
     cols = st.columns([0.3, 1, 1, 1, 1, 1, 1, 1])
     cols[0].write("") # Espaço hora
     
     for i, d in enumerate(dias_visiveis):
         with cols[i+1]:
             is_hj = (d == datetime.date.today())
-            cls_hj = "today-hl" if is_hj else ""
+            cls_hj = "color:#0284c7;" if is_hj else "color:#1e293b;"
+            # AQUI ESTÁ A CORREÇÃO DO CABEÇALHO (DIA + NÚMERO JUNTO)
             st.markdown(f"""
             <div class='day-header-box'>
-                <div class='day-header-name'>{dias_sem[d.weekday()]}</div>
-                <div class='day-header-num {cls_hj}'>{d.day}</div>
+                <div class='day-header-text' style='{cls_hj}'>{dias_sem[d.weekday()]} {d.day}</div>
             </div>""", unsafe_allow_html=True)
 
     # LINHAS DE HORÁRIO
@@ -377,13 +405,13 @@ def render_calendar(sala, is_admin_mode=False):
                         if is_admin_mode:
                              if cont.button("x", key=f"d_res_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
                 elif is_sun or is_sat_close:
-                    st.markdown("<div style='height:35px; background:#f9fafb;'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='height:50px; background:#f9fafb;'></div>", unsafe_allow_html=True)
                 else:
                     if not is_admin_mode:
                         if cont.button(" ", key=f"add_{d}_{h}", type="secondary", use_container_width=True):
                             modal_agendamento(sala, d, h)
                     else:
-                        st.markdown("<div style='height:35px; border-right:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
+                        st.markdown("<div style='height:50px; border-right:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
 
 def tela_admin_master():
     tabs = st.tabs(["💰 Config", "📅 Visualizar", "🚫 Bloqueios", "📄 Relatórios", "👥 Usuários"])
@@ -547,7 +575,7 @@ def main():
             if c_b.button("Recuperar"): st.session_state.auth_mode = 'forgot'; st.rerun()
         return
 
-    # MODO AGENDA: CSS DE AGENDA (PROTOCOL: GRIDIRON)
+    # MODO AGENDA: CSS DE AGENDA (PROTOCOL: POLISHED DIAMOND)
     st.markdown(CSS_AGENDA_WIDE, unsafe_allow_html=True)
 
     u = st.session_state['user']
@@ -562,7 +590,9 @@ def main():
         tela_admin_master()
     else:
         nm = resolver_nome(u.email, u.user_metadata.get('nome'))
-        c_head_text, c_head_btn = st.columns([5, 1])
+        
+        # AJUSTE NO CABEÇALHO PARA DAR ESPAÇO AO NOME
+        c_head_text, c_head_btn = st.columns([4, 1]) # Mais espaço para o texto
         with c_head_text: st.markdown(f"<h3 style='color:#0d9488; margin:0'>LocaPsico | {nm}</h3>", unsafe_allow_html=True)
         with c_head_btn: 
             if st.button("Sair"): supabase.auth.sign_out(); st.session_state.clear(); st.rerun()
