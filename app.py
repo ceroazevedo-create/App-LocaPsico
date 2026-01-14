@@ -350,7 +350,7 @@ def render_calendar(sala, is_admin_mode=False):
     dias_visiveis = [d_start + timedelta(days=i) for i in range(7)]
     dias_sem = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
     
-    # Ratios (O CSS vai sobrescrever isso no mobile, mas mantemos para desktop)
+    # Ratios
     cols = st.columns([0.3, 1, 1, 1, 1, 1, 1, 1])
     cols[0].write("") # Espaço hora
     
