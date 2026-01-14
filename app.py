@@ -31,66 +31,80 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS "DESKTOP FIDELITY" (SCROLL HORIZONTAL PURO) ---
+# --- 3. CSS HARDCORE (FLEX ROW FORCE) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     .stApp { background-color: #ffffff; font-family: 'Inter', sans-serif; color: #1e293b; }
     
-    /* Container Padrão */
-    .block-container { padding-top: 1rem !important; max-width: 100% !important; padding-left: 5px; padding-right: 5px; }
+    /* Container Global */
+    .block-container { padding-top: 1rem !important; max-width: 100% !important; padding-left: 2px; padding-right: 2px; }
 
     /* ============================================================ */
-    /* 📜 MOBILE SCROLL VIEW (FORÇA VISUALIZAÇÃO DESKTOP)           */
+    /* 🧨 CSS HARDCORE OVERRIDE (MOBILE < 768px)                    */
+    /* Objetivo: Impedir flex-direction: column a todo custo.       */
     /* ============================================================ */
     
     @media only screen and (max-width: 768px) {
         
-        /* 1. SELETOR INTELIGENTE: Pega o bloco do calendário (que tem 8 cols) */
+        /* 1. O PAI (BLOCK HORIZONTAL) */
+        /* Usamos :has para garantir que só afete o calendário (que tem 8 colunas) */
         div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) {
             display: flex !important;
-            flex-wrap: nowrap !important;       /* PROIBIDO QUEBRAR LINHA */
-            overflow-x: auto !important;        /* Scroll Lateral Habilitado */
-            -webkit-overflow-scrolling: touch;  /* Scroll suave iOS */
+            flex-direction: row !important;     /* CRÍTICO: Impede empilhar */
+            flex-wrap: nowrap !important;       /* CRÍTICO: Impede quebra */
+            overflow-x: auto !important;        /* CRÍTICO: Scroll lateral */
+            align-items: stretch !important;
             width: 100% !important;
-            
-            /* TRUQUE DO ESPAÇO VIRTUAL: */
-            /* Força o container a ter largura de "mini tablet" para caber tudo */
-            min-width: 800px !important; 
-            padding-bottom: 10px;
+            padding-bottom: 10px;               /* Área para toque do scroll */
+            gap: 2px !important;
         }
 
-        /* 2. COLUNAS (DIAS): Respeitam o espaço do container virtual */
+        /* 2. OS FILHOS (COLUNAS) */
         div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"] {
-            flex: 1 0 auto !important;
-            width: auto !important;
-            min-width: 90px !important; /* Largura mínima confortável para ler */
+            flex: 0 0 auto !important;          /* Não encolher nem crescer */
+            width: 110px !important;            /* TAMANHO FIXO RÍGIDO */
+            min-width: 110px !important;        /* GARANTIA DE TAMANHO */
+            padding: 0 2px !important;          /* Padding reduzido */
         }
         
-        /* 3. MICRO AJUSTES (SCALE DOWN) PARA MOBILE */
-        /* Reduz fontes para caber mais informação */
+        /* 3. COLUNA DA HORA (1ª Coluna) - Reduzida mas visível (ou oculta se preferir) */
+        /* Aqui deixamos ela menor (40px) para não comer espaço dos dias */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"]:first-child {
+            width: 40px !important;
+            min-width: 40px !important;
+            position: sticky;
+            left: 0;
+            background: white;
+            z-index: 10;
+            border-right: 1px solid #e2e8f0;
+        }
+
+        /* 4. VISUAL (MINIATURIZAÇÃO) */
+        /* Reduz fontes para caber no card de 110px */
         .day-header-name { font-size: 10px !important; }
-        .day-header-num { font-size: 16px !important; }
-        .evt-card-desktop { font-size: 9px !important; height: 35px !important; }
+        .day-header-num { font-size: 14px !important; }
         .time-label { font-size: 10px !important; }
+        .evt-card-desktop { font-size: 9px !important; height: 35px !important; padding: 2px !important; }
         
-        /* Botões de Agendar (Slot Livre) */
+        /* Botões de Agendar */
         div[data-testid="stVerticalBlock"] button[kind="secondary"] {
             height: 35px !important;
             min-height: 35px !important;
+            padding: 0 !important;
             font-size: 10px !important;
         }
     }
 
-    /* --- ESTILOS GERAIS (DESKTOP E BASE) --- */
+    /* --- ESTILOS GERAIS (BASE) --- */
     
-    /* Login Limpo (Não afetado pelo scroll acima) */
+    /* Login Limpo (Protegido do CSS acima pelo seletor :has) */
     div[data-testid="column"]:nth-of-type(2) > div { 
         background-color: #ffffff; padding: 25px; border-radius: 12px; border: 1px solid #e2e8f0; 
         box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
     }
     
-    /* Cards de Evento (Visual Desktop Original) */
+    /* Cards de Evento */
     .evt-card-desktop {
         background: #e0f2fe; border-left: 3px solid #0284c7; color: #0369a1;
         padding: 4px; font-size: 11px; font-weight: 600; border-radius: 3px;
@@ -98,7 +112,6 @@ st.markdown("""
         height: 40px; line-height: 1.2; margin-bottom: 2px; display: block;
     }
     
-    /* Bloqueados */
     .admin-blocked { background: #334155; color: #f8fafc; border-radius: 3px; font-size: 10px; padding: 4px; text-align: center; height: 40px; display: flex; align-items: center; justify-content: center; }
     .blocked-slot { background-color: #fef2f2; height: 40px; border-radius: 4px; opacity: 0.6; }
 
@@ -108,26 +121,22 @@ st.markdown("""
     .day-header-num { font-size: 20px; font-weight: 700; color: #1e293b; }
     .today-hl { color: #0284c7; }
 
-    /* Botões Padrão */
+    /* Inputs e Botões */
     div[data-testid="stForm"] button, button[kind="primary"] { background: #0f766e !important; color: white !important; border: none; height: 45px; }
     .stTextInput input { background: #f8fafc; border: 1px solid #e2e8f0; height: 45px; }
     
-    /* Slot Livre (Botão Transparente) */
+    /* Slot Livre */
     div[data-testid="stVerticalBlock"] button[kind="secondary"] {
         background-color: #ffffff !important; border: 1px solid #e2e8f0 !important; color: transparent !important;
         height: 40px !important; width: 100%; transition: all 0.2s;
     }
-    /* Hover (Só desktop) */
     @media (min-width: 769px) {
         div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover {
             border-color: #0d9488 !important; background-color: #f0fdf4 !important; color: #0d9488 !important;
         }
     }
     
-    /* Hora lateral */
     .time-label { font-size: 11px; font-weight: 600; color: #94a3b8; text-align: right; margin-top: 12px; padding-right: 5px;}
-    
-    /* Limpeza */
     header {display: none;} footer {display: none;}
 </style>
 """, unsafe_allow_html=True)
@@ -327,7 +336,6 @@ def render_calendar(sala, is_admin_mode=False):
                 agora = datetime.datetime.now()
                 is_sun = d.weekday() == 6
                 is_sat_close = (d.weekday() == 5 and h >= 14)
-                is_past = dt_slot < agora
                 
                 if res:
                     nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
@@ -336,18 +344,17 @@ def render_calendar(sala, is_admin_mode=False):
                         if is_admin_mode:
                              if cont.button("🗑️", key=f"d_blk_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
                     else:
-                        # MOSTRA O CONTEÚDO ORIGINAL (TEXTO), O CSS CUIDA DE REDUZIR A FONTE/SCROLL
                         st.markdown(f"""<div class='evt-card-desktop' title='{nm}'>{nm}</div>""", unsafe_allow_html=True)
                         if is_admin_mode:
                              if cont.button("x", key=f"d_res_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
-                elif is_sun or is_sat_close or is_past:
+                elif is_sun or is_sat_close:
                     cont.markdown("<div class='blocked-slot'></div>", unsafe_allow_html=True)
                 else:
                     if not is_admin_mode:
                         if cont.button(" ", key=f"add_{d}_{h}", type="secondary", use_container_width=True):
                             modal_agendamento(sala, d, h)
                     else:
-                        st.markdown("<div style='height:40px; border-right:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
+                        st.markdown("<div style='height:35px; border-right:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
 
 def tela_admin_master():
