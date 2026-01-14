@@ -31,23 +31,21 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS "DOIS UNIVERSOS" (LOGIN RESPONSIVO + AGENDA COMPACTA) ---
+# --- 3. CSS "DOIS UNIVERSOS" ---
 
-# CSS BASE (Sempre ativo)
+# CSS BASE
 CSS_BASE = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     .stApp { background-color: #ffffff; font-family: 'Inter', sans-serif; color: #1e293b; }
     header, footer, [data-testid="stToolbar"] { display: none !important; }
-    
-    /* Botões Gerais (Fora da Agenda) */
     div[data-testid="stForm"] button, button[kind="primary"] { 
         background: #0f766e !important; color: white !important; border: none; border-radius: 6px; 
     }
 </style>
 """
 
-# CSS 1: LOGIN (Bonito e Responsivo)
+# CSS 1: LOGIN (MANTÉM O TAMANHO NORMAL)
 CSS_LOGIN_MOBILE = """
 <style>
     @media only screen and (max-width: 768px) {
@@ -57,115 +55,134 @@ CSS_LOGIN_MOBILE = """
 </style>
 """
 
-# CSS 2: AGENDA (A COMPACTAÇÃO BRUTAL)
-# Aqui removemos GAPS e MARGENS para colar tudo como uma tabela
+# CSS 2: AGENDA (A PRENSA HIDRÁULICA - MICRO GRID)
 CSS_AGENDA_WIDE = """
 <style>
     /* ============================================================ */
-    /* 🧱 PROTOCOLO VACUUM SEAL (< 768px)                           */
-    /* Objetivo: Eliminar espaço em branco (GAPS) e forçar tabela.  */
+    /* 🔬 PROTOCOLO MICRO GRID (< 768px)                            */
+    /* ZOOM 60% + ALTURA FORÇADA DE 25PX.                           */
     /* ============================================================ */
     
     @media only screen and (max-width: 768px) {
         
-        /* 1. O CONTAINER PRINCIPAL */
+        /* 1. O ZOOM AGRESSIVO */
         .block-container {
-            padding-left: 2px !important;
-            padding-right: 2px !important;
+            width: 100% !important;
             max-width: 100% !important;
-            overflow-x: hidden !important;
+            padding: 2px !important;
+            zoom: 0.60 !important; /* REDUZ TUDO EM 40% */
         }
 
-        /* 2. A LINHA HORIZONTAL (LINHA DA TABELA) */
+        /* 2. FORÇA LINHA ÚNICA (SEM QUEBRA) */
         div[data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
-            overflow-x: auto !important;    /* Scroll lateral ATIVADO */
-            gap: 0px !important;            /* ZERO ESPAÇO ENTRE COLUNAS */
-            margin-bottom: 0px !important;  /* Cola as linhas verticalmente */
-            padding-bottom: 2px !important; /* Pequeno espaço pro dedo */
+            overflow-x: auto !important;
+            gap: 0px !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }
 
-        /* 3. AS COLUNAS (CÉLULAS DA TABELA) */
+        /* 3. COLUNAS ESMAGADAS */
         div[data-testid="column"] {
-            flex: 0 0 auto !important;      /* Tamanho rígido */
-            width: 14vw !important;         /* Tenta usar % da tela */
-            min-width: 50px !important;     /* Tamanho mínimo de segurança */
-            max-width: 60px !important;     /* Impede ficar gigante */
-            padding: 0 !important;          /* Zero padding interno */
+            flex: 0 0 auto !important;
+            min-width: 65px !important; /* Garante largura mínima legível no zoom */
+            width: 14% !important;
+            padding: 0 !important;
         }
         
-        /* 4. COLUNA DA HORA (PRIMEIRA) */
+        /* 4. COLUNA DA HORA */
         div[data-testid="column"]:first-child {
-            width: 30px !important;
-            min-width: 30px !important;
+            width: 35px !important;
+            min-width: 35px !important;
             position: sticky !important;
             left: 0;
             background: white;
-            z-index: 50;
+            z-index: 100;
             border-right: 1px solid #ddd;
         }
 
-        /* 5. TEXTOS E BOTÕES MICRO */
-        p, span, div, button { font-size: 9px !important; }
-        .day-header-num { font-size: 14px !important; }
+        /* 5. ESMAGAMENTO VERTICAL (O SEGREDO DO "GRANDE") */
+        /* O Streamlit força 40px+ de altura. Vamos quebrar isso. */
         
-        /* Ajuste fino nos botões da grade para mobile */
+        div[data-testid="stVerticalBlock"] {
+            gap: 0px !important; /* Remove espaço entre linhas verticais */
+        }
+        
+        div[data-testid="stVerticalBlock"] > div {
+            margin-bottom: 0px !important; /* Cola um bloco no outro */
+        }
+
+        /* Botões "Livre" - Altura Microscópica */
         div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-            height: 30px !important;       /* Altura reduzida */
-            min-height: 30px !important;
+            height: 25px !important;       /* FORÇA BRUTA */
+            min-height: 25px !important;   /* VENCE O PADRÃO */
+            padding: 0 !important;
+            line-height: 1 !important;
+            font-size: 9px !important;
+            margin: 0 !important;
+            border: 1px solid #eee !important;
         }
         
         /* Card de Evento Mobile */
         .evt-card {
-            height: 28px !important;
-            font-size: 8px !important;
+            height: 25px !important;
+            min-height: 25px !important;
+            font-size: 9px !important;
             padding: 0 2px !important;
-            line-height: 28px !important;
+            line-height: 25px !important;
+            margin: 0 !important;
         }
+        
+        /* Bloco Admin */
+        .admin-blocked { height: 25px !important; min-height: 25px !important; font-size: 8px !important; }
+        
+        /* Cabeçalho compactado */
+        .day-header-num { font-size: 16px !important; }
+        .day-header-name { font-size: 9px !important; margin-bottom: 0 !important; }
+        .day-header-box { padding: 2px !important; margin: 0 !important; }
+        
+        /* Ajuste fino na hora */
+        .time-label { top: 5px !important; font-size: 9px !important; }
     }
 
-    /* --- ESTILOS GERAIS DA GRADE (DESKTOP + BASE) --- */
+    /* --- ESTILOS VISUAIS GERAIS --- */
     
-    /* Grade Limpa (Tira o estilo de botão padrão) */
     div[data-testid="stVerticalBlock"] button[kind="secondary"] {
         background: transparent !important; border: none !important;
         border-right: 1px solid #f1f5f9 !important; border-bottom: 1px solid #f1f5f9 !important;
         border-radius: 0 !important; width: 100% !important; margin: 0 !important;
-        height: 45px; /* Desktop height */
+        /* No desktop mantém altura normal */
+        height: 40px; 
     }
     @media (min-width: 769px) {
         div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover { background: #f8fafc !important; }
     }
 
-    /* Card Evento */
     .evt-card {
         background-color: #e0f2fe; color: #0369a1; 
         font-size: 11px; font-weight: 700; 
-        padding: 2px 4px; border-radius: 2px; border-left: 3px solid #0284c7;
+        padding: 0 4px; border-radius: 0px; border-left: 3px solid #0284c7;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        display: block; cursor: pointer;
-        /* Altura é controlada pelo media query acima no mobile */
+        display: flex; align-items: center; cursor: pointer;
+        height: 40px; /* Desktop height */
     }
     
-    /* Bloqueio */
     .admin-blocked { 
         background: #f1f5f9; color: #94a3b8; font-size: 9px;
         display: flex; align-items: center; justify-content: center;
         height: 100%; width: 100%;
     }
 
-    /* Cabeçalho do Dia */
-    .day-header-box { text-align: center; border-bottom: 1px solid #cbd5e1; padding: 2px 0; background: #fff; }
+    .day-header-box { text-align: center; border-bottom: 1px solid #cbd5e1; background: #fff; }
     .day-header-name { font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; }
     .day-header-num { font-size: 18px; font-weight: 800; color: #1e293b; line-height: 1; }
     .today-hl { color: #0284c7; }
     
-    /* Hora */
     .time-label { 
         font-size: 10px; font-weight: 600; color: #94a3b8; 
-        text-align: right; padding-right: 4px; position: relative; top: 5px; 
+        text-align: right; padding-right: 4px; position: relative; top: 10px; 
     }
 </style>
 """
@@ -377,7 +394,7 @@ def render_calendar(sala, is_admin_mode=False):
                         if is_admin_mode:
                              if cont.button("x", key=f"d_res_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
                 elif is_sun or is_sat_close:
-                    # Removemos o br aqui para não criar altura extra
+                    # Div vazia mas com altura definida pelo CSS
                     st.markdown("<div style='height:100%;'></div>", unsafe_allow_html=True)
                 else:
                     if not is_admin_mode:
@@ -385,8 +402,6 @@ def render_calendar(sala, is_admin_mode=False):
                             modal_agendamento(sala, d, h)
                     else:
                         st.markdown("<div style='height:100%; border-right:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
-    # Removemos o br final para colar as linhas
-    # st.markdown("<br>", unsafe_allow_html=True) <-- REMOVIDO
 
 def tela_admin_master():
     tabs = st.tabs(["💰 Config", "📅 Visualizar", "🚫 Bloqueios", "📄 Relatórios", "👥 Usuários"])
@@ -550,7 +565,7 @@ def main():
             if c_b.button("Recuperar"): st.session_state.auth_mode = 'forgot'; st.rerun()
         return
 
-    # MODO AGENDA: CSS DE AGENDA (COMPACTO SEM GAPS)
+    # MODO AGENDA: CSS DE AGENDA (MICRO GRID)
     st.markdown(CSS_AGENDA_WIDE, unsafe_allow_html=True)
 
     u = st.session_state['user']
