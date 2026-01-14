@@ -30,7 +30,8 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS GLOBAL (BÁSICO) ---
+# --- 3. CSS "MARTELO DE THOR" ---
+# Força bruta: Tudo vira linha, nada empilha.
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -46,6 +47,97 @@ st.markdown("""
         .block-container { padding: 2rem 1rem !important; max-width: 100% !important; }
         button { min-height: 50px !important; }
     }
+
+    /* ============================================================ */
+    /* 🔨 PROTOCOLO UNIVERSAL SCROLL (< 768px)                      */
+    /* Aplica regra geral para impedir column-stacking no mobile.     */
+    /* ============================================================ */
+    
+    @media only screen and (max-width: 768px) {
+        
+        /* 1. CONTAINER PRINCIPAL */
+        .block-container {
+            padding: 10px 2px !important;
+            max-width: 100vw !important;
+            overflow-x: hidden !important;
+        }
+
+        /* 2. FORÇA LINHA HORIZONTAL EM TUDO */
+        /* Ignora seletores específicos. Se é bloco horizontal, é LINHA. */
+        div[data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important;     /* AQUI ESTÁ A CHAVE: ROW, NÃO COLUMN */
+            flex-wrap: nowrap !important;       /* PROIBIDO QUEBRAR */
+            overflow-x: auto !important;        /* SCROLL SE NÃO COUBER */
+            width: 100% !important;
+            align-items: stretch !important;
+            gap: 2px !important;
+            padding-bottom: 5px !important;
+        }
+
+        /* 3. COLUNAS DO DIA (Tamanho Fixo) */
+        /* Forçamos uma largura mínima para obrigar o scroll a aparecer */
+        div[data-testid="column"] {
+            flex: 0 0 auto !important;
+            min-width: 90px !important;
+            max-width: 90px !important;
+            width: 90px !important;
+        }
+        
+        /* 4. EXCEÇÃO: COLUNA DA HORA (1ª filha) */
+        /* Precisamos resetar a largura para a primeira coluna ser menor */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child {
+            min-width: 40px !important;
+            max-width: 40px !important;
+            width: 40px !important;
+            position: sticky !important;
+            left: 0 !important;
+            background: white !important;
+            z-index: 50 !important;
+            border-right: 1px solid #e2e8f0 !important;
+        }
+
+        /* 5. AJUSTE PARA O CABEÇALHO (LOGO/SAIR) */
+        /* Como o regra acima afeta tudo, o cabeçalho ficaria com colunas de 90px.
+           Tentamos ajustar o primeiro bloco horizontal da página (geralmente o header) */
+        div.block-container > div > div > div > div:first-child div[data-testid="column"] {
+             min-width: auto !important;
+             max-width: none !important;
+             width: auto !important;
+        }
+
+        /* 6. BOTÕES DA GRADE */
+        div[data-testid="stVerticalBlock"] button[kind="secondary"] {
+            height: 50px !important;
+            min-height: 50px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: 1px solid #f1f5f9 !important;
+            color: transparent !important; /* Texto invisível */
+        }
+        
+        /* 7. CABEÇALHO DO DIA */
+        .day-header-box { 
+            height: 45px !important; 
+            display: flex; align-items: center; justify-content: center; 
+            background: #f8fafc; border-bottom: 2px solid #e2e8f0;
+            font-size: 10px !important; text-align: center;
+        }
+        
+        .time-label { top: 18px !important; position: relative; font-size: 10px !important; }
+        
+        /* Oculta Header App */
+        .stApp > header { display: none !important; }
+    }
+    
+    /* GERAL / DESKTOP */
+    .evt-card {
+        background-color: #e0f2fe; border-left: 3px solid #0284c7; color: #0369a1; font-weight: 700; 
+        border-radius: 4px; overflow: hidden; cursor: pointer; display: flex; align-items: center; padding: 2px;
+        height: 46px; font-size: 10px; line-height: 1.1; white-space: normal;
+    }
+    .blocked { background: #f1f5f9; color: #94a3b8; justify-content: center; border-left: 3px solid #cbd5e1; }
+    
 </style>
 """, unsafe_allow_html=True)
 
@@ -184,96 +276,9 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
                 st.toast("Sucesso!", icon="✅"); time.sleep(1); st.rerun()
         except: st.error("Erro.")
 
-# --- 6. RENDERIZADOR DA AGENDA (COM CSS COMPACTADOR) ---
+# --- 6. RENDERIZADOR PYTHON NATIVO (COM CSS MARTELO) ---
 def render_calendar_interface(sala, is_admin_mode=False):
-    
-    # CSS ESPÉCIFICO E AGRESSIVO PARA A AGENDA
-    st.markdown("""
-    <style>
-    @media only screen and (max-width: 768px) {
-        
-        /* 1. CONTAINER PRINCIPAL */
-        .block-container {
-            padding: 10px 5px !important;
-            max-width: 100vw !important;
-            overflow-x: hidden !important;
-        }
-
-        /* 2. FORÇA A LINHA HORIZONTAL A TER LARGURA FIXA E SCROLL */
-        /* Identifica o bloco que tem 8 colunas (nossa agenda) */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) {
-            display: flex !important;
-            flex-direction: row !important;     /* LINHA OBRIGATÓRIA */
-            flex-wrap: nowrap !important;       /* PROIBIDO QUEBRAR */
-            overflow-x: auto !important;        /* SCROLL LATERAL */
-            width: 100% !important;
-            gap: 2px !important;
-            padding-bottom: 5px !important;
-            align-items: stretch !important;    /* Altura igual */
-        }
-
-        /* 3. COLUNAS DO DIA (TAMANHO FIXO E PEQUENO) */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"] {
-            flex: 0 0 auto !important;          /* NÃO ENCOLHE, NÃO ESTICA */
-            width: 90px !important;             /* LARGURA FIXA 90PX */
-            min-width: 90px !important;
-            max-width: 90px !important;
-        }
-        
-        /* 4. COLUNA DA HORA (MENOR E FIXA) */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"]:first-child {
-            width: 35px !important;
-            min-width: 35px !important;
-            position: sticky !important;
-            left: 0 !important;
-            background: white !important;
-            z-index: 50 !important;
-            border-right: 1px solid #ddd !important;
-        }
-
-        /* 5. BOTÕES (ALTURA E ESTILO) */
-        div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-            height: 45px !important;
-            min-height: 45px !important;
-            width: 100% !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            border: 1px solid #f1f5f9 !important;
-            /* Texto invisível para parecer célula vazia, mas clicável */
-            color: transparent !important; 
-        }
-        
-        /* 6. CABEÇALHOS */
-        .day-header-box { 
-            height: 40px !important; 
-            display: flex; align-items: center; justify-content: center; 
-            background: #f8fafc; border-bottom: 2px solid #e2e8f0;
-            font-size: 10px !important;
-            text-align: center;
-        }
-        
-        .time-label { 
-            font-size: 9px !important; 
-            top: 15px !important; 
-            position: relative; 
-        }
-        
-        /* Oculta Header do App para ganhar espaço */
-        .stApp > header { display: none !important; }
-    }
-    
-    /* GERAL / DESKTOP */
-    .evt-card {
-        background-color: #e0f2fe; border-left: 3px solid #0284c7; color: #0369a1; font-weight: 700; 
-        border-radius: 4px; overflow: hidden; cursor: pointer; display: flex; align-items: center; padding: 2px;
-        height: 43px; font-size: 10px; line-height: 1.1; white-space: normal;
-    }
-    .blocked { background: #f1f5f9; color: #94a3b8; justify-content: center; border-left: 3px solid #cbd5e1; }
-    
-    </style>
-    """, unsafe_allow_html=True)
-
-    # NAVEGAÇÃO
+    # Navegação
     c1, c2, c3 = st.columns([1, 4, 1])
     c1.button("❮", on_click=lambda: navegar('prev'), use_container_width=True)
     c3.button("❯", on_click=lambda: navegar('next'), use_container_width=True)
@@ -284,7 +289,7 @@ def render_calendar_interface(sala, is_admin_mode=False):
     mes_nome = d_start.strftime("%b").upper()
     c2.markdown(f"<div style='text-align:center; font-weight:bold; margin-top:5px'>{mes_nome} {d_start.day}-{d_end.day}</div>", unsafe_allow_html=True)
 
-    # DADOS
+    # Dados
     reservas = []
     try:
         r = supabase.table("reservas").select("*").eq("sala_nome", sala).neq("status", "cancelada").gte("data_reserva", str(d_start)).lte("data_reserva", str(d_end)).execute()
@@ -342,7 +347,6 @@ def render_calendar_interface(sala, is_admin_mode=False):
                 elif is_past or is_sunday or is_sat_closed:
                     st.markdown("<div style='height:45px; background:#f9fafb; border-radius:4px;'></div>", unsafe_allow_html=True)
                 else:
-                    # BOTÃO NATIVO: Texto "Agendar" escondido pelo CSS no mobile para economizar espaço
                     if cont.button("Agendar", key=f"btn_{d}_{h}", type="secondary", use_container_width=True):
                         modal_agendamento(sala, d, h)
 
@@ -476,7 +480,6 @@ def tela_admin_master():
 # --- 7. MAIN ---
 def main():
     if not st.session_state.user:
-        # MODO LOGIN
         c1, c2, c3 = st.columns([1, 1.2, 1])
         with c2:
             st.write("") 
@@ -502,7 +505,6 @@ def main():
             if c_b.button("Recuperar"): st.session_state.auth_mode = 'forgot'; st.rerun()
         return
 
-    # LOGADO
     u = st.session_state['user']
     if u is None: st.session_state.auth_mode = 'login'; st.rerun(); return
 
