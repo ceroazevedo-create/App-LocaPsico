@@ -31,9 +31,30 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS "DOIS UNIVERSOS" ---
+# --- 3. CSS & JS HACKS ---
 
-# CSS BASE (Sempre ativo)
+# JAVASCRIPT NUCLEAR: FORÇA VIEWPORT DE DESKTOP
+# Este script roda invisível e altera a meta tag do navegador
+JS_FORCE_DESKTOP = """
+<script>
+    function forceDesktop() {
+        var meta = document.querySelector('meta[name="viewport"]');
+        if (meta) {
+            meta.content = 'width=1024, initial-scale=0.4, maximum-scale=2.0, user-scalable=yes';
+        } else {
+            var newMeta = document.createElement('meta');
+            newMeta.name = 'viewport';
+            newMeta.content = 'width=1024, initial-scale=0.4, maximum-scale=2.0, user-scalable=yes';
+            document.getElementsByTagName('head')[0].appendChild(newMeta);
+        }
+    }
+    // Tenta aplicar imediatamente e a cada 1s para garantir
+    forceDesktop();
+    setInterval(forceDesktop, 1000);
+</script>
+"""
+
+# CSS BASE
 CSS_BASE = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -49,139 +70,66 @@ CSS_BASE = """
 </style>
 """
 
-# CSS 1: LOGIN (RESPONSIVO E BONITO)
-CSS_LOGIN_MOBILE = """
+# CSS LOGIN (MANTÉM RESPONSIVIDADE ORIGINAL)
+CSS_LOGIN = """
 <style>
-    @media only screen and (max-width: 768px) {
-        .block-container { 
-            max-width: 100% !important; 
-            padding: 2rem 1rem !important; 
-            width: 100% !important;
-        }
-        button { min-height: 50px !important; }
-    }
+    /* No login, queremos comportamento padrão responsivo */
+    .block-container { max-width: 100% !important; padding: 2rem 1rem; }
 </style>
 """
 
-# CSS 2: AGENDA (PROTOCOL: TRENCH RUN - SCROLL RÍGIDO)
-CSS_AGENDA_WIDE = """
+# CSS AGENDA (ESTILOS VISUAIS PARA O MODO "DESKTOP FORÇADO")
+CSS_AGENDA_DESKTOP_LOOK = """
 <style>
-    /* ============================================================ */
-    /* 🛤️ PROTOCOLO TRENCH RUN (< 768px)                           */
-    /* Estratégia: Coluna da Hora Fixa + Dias com Scroll Lateral.   */
-    /* Sem zoom, sem scale. Apenas larguras fixas em pixels.        */
-    /* ============================================================ */
+    /* Como forçamos o viewport para 1024px, usamos estilos de Desktop aqui */
     
-    @media only screen and (max-width: 768px) {
-        
-        /* 1. CONTAINER GERAL */
-        .block-container {
-            padding: 0 !important;
-            max-width: 100% !important;
-            overflow-x: hidden !important; /* O scroll é nos blocos internos */
-        }
-
-        /* 2. FORÇA LINHA HORIZONTAL (O TRILHO) */
-        div[data-testid="stHorizontalBlock"] {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;       /* PROIBIDO QUEBRAR LINHA */
-            overflow-x: auto !important;        /* HABILITA SCROLL */
-            width: 100vw !important;            /* Ocupa a tela toda */
-            gap: 0 !important;                  /* Sem buracos */
-            border-bottom: 1px solid #f1f5f9;   /* Guia visual */
-        }
-
-        /* 3. A COLUNA DA HORA (FIXA NA ESQUERDA) */
-        /* Seleciona o primeiro filho do bloco horizontal */
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child {
-            position: sticky !important;
-            left: 0 !important;
-            z-index: 100 !important;
-            background-color: #ffffff !important;
-            border-right: 2px solid #e2e8f0 !important; /* Divisória forte */
-            min-width: 45px !important;
-            max-width: 45px !important;
-            width: 45px !important;
-            flex: 0 0 45px !important;
-            box-shadow: 2px 0 5px -2px rgba(0,0,0,0.1); /* Sombra pra dar profundidade */
-        }
-
-        /* 4. AS COLUNAS DOS DIAS (MÓVEIS) */
-        /* Seleciona do segundo filho em diante */
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(n+2) {
-            min-width: 100px !important;        /* LARGURA FIXA DO DIA */
-            max-width: 100px !important;
-            width: 100px !important;
-            flex: 0 0 100px !important;
-            border-right: 1px solid #f8fafc;
-        }
-        
-        /* 5. ELIMINA ESPAÇOS VERTICAIS DO STREAMLIT */
-        div[data-testid="stVerticalBlock"] { gap: 0 !important; }
-        div[data-testid="element-container"] { margin-bottom: 0 !important; }
-        
-        /* 6. CONTEÚDO DENTRO DAS CÉLULAS */
-        /* Botões Invisíveis da Grade */
-        div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-            height: 40px !important;
-            min-height: 40px !important;
-            padding: 0 !important;
-            border: none !important;
-            border-bottom: 1px solid #f1f5f9 !important;
-        }
-        
-        /* Card de Evento */
-        .evt-card {
-            height: 38px !important;
-            font-size: 10px !important;
-            line-height: 1.1 !important;
-            padding: 2px !important;
-            white-space: normal !important; /* Permite quebra de texto se precisar */
-        }
-        
-        /* Cabeçalhos */
-        .day-header-num { font-size: 16px !important; }
-        .day-header-name { font-size: 9px !important; }
-        .time-label { font-size: 10px !important; top: 12px !important; right: 5px !important; }
-        
-        /* Esconde Header do App para ganhar altura */
-        .stApp > header { display: none !important; }
+    /* Container ajustado para a largura forçada */
+    .block-container {
+        max-width: 1200px !important;
+        padding-top: 1rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
     }
 
-    /* --- ESTILOS DESKTOP (MANTIDOS ORIGINAIS) --- */
-    @media (min-width: 769px) {
-        div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-            background: transparent !important; border: none !important;
-            border-right: 1px solid #f1f5f9 !important; border-bottom: 1px solid #f1f5f9 !important;
-            border-radius: 0 !important; width: 100% !important; margin: 0 !important; height: 45px; 
-        }
-        div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover { background: #f8fafc !important; }
-        .evt-card {
-            height: 42px; font-size: 11px; padding: 0 4px;
-        }
+    /* Grade Limpa */
+    div[data-testid="stVerticalBlock"] button[kind="secondary"] {
+        background: transparent !important; border: none !important;
+        border-right: 1px solid #f1f5f9 !important; border-bottom: 1px solid #f1f5f9 !important;
+        border-radius: 0 !important; width: 100% !important; margin: 0 !important;
+        height: 45px !important; /* Altura confortável pois a tela "é grande" */
     }
+    div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover { background: #f8fafc !important; }
 
-    /* --- ESTILOS VISUAIS COMUNS --- */
+    /* Card Evento */
     .evt-card {
-        background-color: #e0f2fe; color: #0369a1; font-weight: 700; 
-        border-radius: 2px; border-left: 3px solid #0284c7;
-        overflow: hidden; cursor: pointer; display: flex; align-items: center;
-        margin: 1px 0;
+        background-color: #e0f2fe; color: #0369a1; 
+        font-size: 11px; font-weight: 700; 
+        padding: 0 4px; border-radius: 2px; border-left: 3px solid #0284c7;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        display: flex; align-items: center; cursor: pointer;
+        height: 42px;
     }
+    
+    /* Bloqueio */
     .admin-blocked { 
-        background: #f1f5f9; color: #94a3b8; font-size: 9px;
+        background: #f1f5f9; color: #94a3b8; font-size: 10px;
         display: flex; align-items: center; justify-content: center;
         height: 100%; width: 100%;
     }
+
+    /* Cabeçalhos */
     .day-header-box { text-align: center; border-bottom: 1px solid #cbd5e1; padding: 5px 0; background: #fff; }
-    .day-header-name { font-weight: 700; color: #64748b; text-transform: uppercase; }
-    .day-header-num { font-weight: 800; color: #1e293b; line-height: 1; }
+    .day-header-name { font-weight: 700; color: #64748b; text-transform: uppercase; font-size: 12px; }
+    .day-header-num { font-weight: 800; color: #1e293b; line-height: 1; font-size: 24px; }
     .today-hl { color: #0284c7; }
+    
     .time-label { 
-        font-weight: 600; color: #94a3b8; 
-        text-align: right; position: relative;
+        font-weight: 600; color: #94a3b8; font-size: 12px;
+        text-align: right; padding-right: 8px; position: relative; top: 12px;
     }
+    
+    /* Força colunas a não quebrarem, só por garantia */
+    div[data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; }
 </style>
 """
 
@@ -535,7 +483,7 @@ def main():
 
     if not st.session_state.user:
         # MODO LOGIN: CSS DE LOGIN (RESPONSIVO)
-        st.markdown(CSS_LOGIN_MOBILE, unsafe_allow_html=True)
+        st.markdown(CSS_LOGIN, unsafe_allow_html=True)
         
         c1, c2, c3 = st.columns([1, 1.2, 1])
         with c2:
@@ -562,8 +510,9 @@ def main():
             if c_b.button("Recuperar"): st.session_state.auth_mode = 'forgot'; st.rerun()
         return
 
-    # MODO AGENDA: CSS DE AGENDA (PROTOCOL: TRENCH RUN)
-    st.markdown(CSS_AGENDA_WIDE, unsafe_allow_html=True)
+    # MODO AGENDA: CSS DE AGENDA (DESKTOP LOOK FORÇADO VIA JS)
+    components.html(JS_FORCE_DESKTOP, height=0) # INJETA O SCRIPT NUCLEAR
+    st.markdown(CSS_AGENDA_DESKTOP_LOOK, unsafe_allow_html=True)
 
     u = st.session_state['user']
     if u is None: st.session_state.auth_mode = 'login'; st.rerun(); return
