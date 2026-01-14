@@ -45,7 +45,7 @@ CSS_BASE = """
 </style>
 """
 
-# CSS 1: LOGIN (MANTÉM RESPONSIVO)
+# CSS 1: LOGIN (RESPONSIVO PADRÃO)
 CSS_LOGIN_MOBILE = """
 <style>
     @media only screen and (max-width: 768px) {
@@ -55,118 +55,100 @@ CSS_LOGIN_MOBILE = """
 </style>
 """
 
-# CSS 2: AGENDA (PROTOCOLO POLISHED DIAMOND)
+# CSS 2: AGENDA (PROTOCOLO ANTI-GRAVITY)
 CSS_AGENDA_WIDE = """
 <style>
     /* ============================================================ */
-    /* 💎 PROTOCOLO POLISHED DIAMOND (< 768px)                      */
-    /* Grid Rígido para Agenda + Flex Normal para Cabeçalho.        */
+    /* 🛸 PROTOCOLO ANTI-GRAVITY (< 768px)                          */
+    /* Proíbe quebra de linha (wrap) e força scroll horizontal.     */
     /* ============================================================ */
     
     @media only screen and (max-width: 768px) {
         
-        /* 1. CONTAINER COM SCROLL */
+        /* 1. CONTAINER DA PÁGINA */
         .block-container {
-            padding: 10px 5px !important; /* Um pouco de margem para o header não colar */
+            padding: 10px 5px !important;
             max-width: 100vw !important;
-            overflow-x: auto !important;
+            overflow-x: hidden !important; /* O scroll é interno nos blocos */
         }
 
-        /* 2. PROTEÇÃO DO CABEÇALHO DO APP (Logo e Sair) */
-        /* Se o bloco tiver MENOS de 8 colunas (ex: cabeçalho), ele age normal */
-        div[data-testid="stHorizontalBlock"]:not(:has(> div[data-testid="column"]:nth-child(8))) {
-            display: flex !important;
-            flex-wrap: wrap !important;
-            width: 100% !important;
-            margin-bottom: 20px !important;
-        }
-        
-        /* Ajuste do botão sair para não ficar gigante */
-        div[data-testid="stHorizontalBlock"]:not(:has(> div[data-testid="column"]:nth-child(8))) button {
-            height: 35px !important;
-            min-height: 35px !important;
-            padding: 0 10px !important;
-        }
-
-        /* 3. A AGENDA (O GRID DE AÇO) */
-        /* Só aplica o grid se detectar 8 colunas (Hora + 7 Dias) */
+        /* 2. O BLOCO DO CALENDÁRIO (Identificado por ter 8 colunas) */
+        /* AQUI ESTÁ A MÁGICA: flex-wrap: nowrap !important */
         div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) {
-            display: grid !important;
-            /* 1ª Coluna: 40px | Resto: 7 colunas de tamanho igual */
-            grid-template-columns: 40px repeat(7, 1fr) !important; 
-            min-width: 800px !important; /* LARGURA MÍNIMA DA TABELA */
-            gap: 0px !important;
-            border-bottom: 1px solid #f1f5f9;
+            display: flex !important;
+            flex-direction: row !important;     /* FORÇA LINHA - NUNCA COLUNA */
+            flex-wrap: nowrap !important;       /* PROIBIDO QUEBRAR PARA BAIXO */
+            overflow-x: auto !important;        /* HABILITA SCROLL LATERAL */
+            gap: 2px !important;                /* Pequeno espaço entre dias */
+            padding-bottom: 5px !important;
+            margin-bottom: 5px !important;
+            align-items: stretch !important;
         }
 
-        /* 4. COLUNA DA HORA (FIXA) */
+        /* 3. A COLUNA DA HORA (1ª) */
         div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"]:first-child {
-            position: sticky !important;
+            min-width: 40px !important;
+            width: 40px !important;
+            flex: 0 0 40px !important;
+            position: sticky !important;        /* Tenta fixar */
             left: 0 !important;
-            z-index: 50 !important;
+            z-index: 50;
             background: white !important;
-            border-right: 2px solid #e2e8f0 !important;
-            width: 100% !important;
-            min-width: 0 !important;
+            border-right: 2px solid #e2e8f0;
         }
 
-        /* 5. AS OUTRAS COLUNAS (DIAS) */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"] {
-            min-width: 0 !important; 
-            width: 100% !important;
-            padding: 0 !important;
+        /* 4. AS COLUNAS DOS DIAS (2ª a 8ª) */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"]:nth-child(n+2) {
+            min-width: 95px !important;         /* LARGURA IDEAL PARA "SEG 12" */
+            width: 95px !important;
+            flex: 0 0 95px !important;          /* NÃO ENCOLHE */
         }
         
-        /* 6. REMOVE GAPS VERTICAIS */
+        /* 5. ELIMINA ESPAÇOS VERTICAIS */
         div[data-testid="stVerticalBlock"] { gap: 0 !important; }
         div[data-testid="element-container"] { margin: 0 !important; }
         
-        /* 7. CÉLULAS E BOTÕES (AGORA COM 50PX DE ALTURA) */
-        
-        /* Botões Invisíveis */
+        /* 6. CONTEÚDO (BOTÕES E CARDS) */
         div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-            height: 50px !important;        /* MAIS ALTO PARA NÃO ESPREMER */
-            min-height: 50px !important;
+            height: 45px !important;            /* ALTURA CONFORTÁVEL */
+            min-height: 45px !important;
             padding: 0 !important;
-            border: none !important;
-            border-right: 1px solid #f8fafc !important;
-            border-bottom: 1px solid #f8fafc !important;
+            border: 1px solid #f1f5f9 !important;
+            margin: 0 !important;
         }
         
-        /* Eventos */
         .evt-card {
-            height: 46px !important;        /* Acompanha a altura */
+            height: 43px !important;
             font-size: 10px !important;
-            padding: 0 4px !important;
             line-height: 1.1 !important;
-            margin: 2px 0 !important;
-            white-space: normal !important; /* Permite quebra de texto */
+            margin: 1px 0 !important;
+            white-space: normal !important;
+        }
+        
+        /* Cabeçalhos - AGORA ESTILIZADOS */
+        .day-header-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 5px 0 !important;
+            text-align: center;
+            height: 40px !important;
             display: flex !important;
             align-items: center !important;
-        }
-        
-        /* Admin Block */
-        .admin-blocked { height: 48px !important; font-size: 8px !important; }
-        
-        /* Cabeçalhos dos Dias */
-        .day-header-box {
-            height: 50px !important;
-            display: flex !important;
-            flex-direction: column !important;
             justify-content: center !important;
-            background: #f8fafc !important;
-            border-bottom: 2px solid #e2e8f0 !important;
         }
-        .day-header-text { font-size: 12px !important; font-weight: 700 !important; color: #334155; }
+        .day-header-text {
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            color: #334155;
+            text-transform: uppercase;
+        }
         
         .time-label { 
             font-size: 10px !important; 
-            top: 18px !important; /* Centraliza verticalmente nos 50px */
-            padding-right: 4px !important; 
+            top: 15px !important; 
+            right: 4px !important; 
         }
-        
-        /* Esconde Header App */
-        .stApp > header { display: none !important; }
     }
 
     /* --- ESTILOS DESKTOP --- */
@@ -184,7 +166,7 @@ CSS_AGENDA_WIDE = """
     .evt-card {
         background-color: #e0f2fe; color: #0369a1; font-weight: 700; 
         border-radius: 4px; border-left: 3px solid #0284c7;
-        overflow: hidden; cursor: pointer; display: block;
+        overflow: hidden; cursor: pointer; display: flex; align-items: center;
     }
     .admin-blocked { 
         background: #f1f5f9; color: #94a3b8; font-size: 9px;
@@ -370,8 +352,8 @@ def render_calendar(sala, is_admin_mode=False):
     for i, d in enumerate(dias_visiveis):
         with cols[i+1]:
             is_hj = (d == datetime.date.today())
-            cls_hj = "color:#0284c7;" if is_hj else "color:#1e293b;"
-            # AQUI ESTÁ A CORREÇÃO DO CABEÇALHO (DIA + NÚMERO JUNTO)
+            cls_hj = "color:#0284c7;" if is_hj else "color:#334155;"
+            # ESTILO REFORÇADO PARA O CABEÇALHO
             st.markdown(f"""
             <div class='day-header-box'>
                 <div class='day-header-text' style='{cls_hj}'>{dias_sem[d.weekday()]} {d.day}</div>
@@ -405,13 +387,13 @@ def render_calendar(sala, is_admin_mode=False):
                         if is_admin_mode:
                              if cont.button("x", key=f"d_res_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
                 elif is_sun or is_sat_close:
-                    st.markdown("<div style='height:50px; background:#f9fafb;'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='height:45px; background:#f9fafb;'></div>", unsafe_allow_html=True)
                 else:
                     if not is_admin_mode:
                         if cont.button(" ", key=f"add_{d}_{h}", type="secondary", use_container_width=True):
                             modal_agendamento(sala, d, h)
                     else:
-                        st.markdown("<div style='height:50px; border-right:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
+                        st.markdown("<div style='height:45px; border-right:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
 
 def tela_admin_master():
     tabs = st.tabs(["💰 Config", "📅 Visualizar", "🚫 Bloqueios", "📄 Relatórios", "👥 Usuários"])
@@ -575,7 +557,7 @@ def main():
             if c_b.button("Recuperar"): st.session_state.auth_mode = 'forgot'; st.rerun()
         return
 
-    # MODO AGENDA: CSS DE AGENDA (PROTOCOL: POLISHED DIAMOND)
+    # MODO AGENDA: CSS DE AGENDA (PROTOCOL: ANTI-GRAVITY)
     st.markdown(CSS_AGENDA_WIDE, unsafe_allow_html=True)
 
     u = st.session_state['user']
@@ -591,8 +573,8 @@ def main():
     else:
         nm = resolver_nome(u.email, u.user_metadata.get('nome'))
         
-        # AJUSTE NO CABEÇALHO PARA DAR ESPAÇO AO NOME
-        c_head_text, c_head_btn = st.columns([4, 1]) # Mais espaço para o texto
+        # HEADER PROTEGIDO PARA NÃO QUEBRAR
+        c_head_text, c_head_btn = st.columns([4, 1]) 
         with c_head_text: st.markdown(f"<h3 style='color:#0d9488; margin:0'>LocaPsico | {nm}</h3>", unsafe_allow_html=True)
         with c_head_btn: 
             if st.button("Sair"): supabase.auth.sign_out(); st.session_state.clear(); st.rerun()
