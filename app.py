@@ -31,67 +31,61 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS NUCLEAR (GRID MATEMÁTICO RÍGIDO) ---
+# --- 3. CSS "MARTELO DE THOR" (FORÇA BRUTA DE LAYOUT) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     .stApp { background-color: #ffffff; font-family: 'Inter', sans-serif; color: #1e293b; }
-    .block-container { padding-top: 1rem !important; max-width: 100% !important; padding-left: 2px !important; padding-right: 2px !important; }
+    .block-container { padding-top: 1rem !important; max-width: 100% !important; padding-left: 2px; padding-right: 2px; }
 
-    /* ================================================================================= */
-    /* ☢️ NUCLEAR MOBILE GRID SYSTEM (< 768px)                                         */
-    /* A matemática: 100% largura / 7 dias = 14.28% por coluna. Sem exceções.          */
-    /* ================================================================================= */
+    /* ============================================================ */
+    /* ☢️ PROTOCOLO FORÇA BRUTA: MOBILE GRID OVERRIDE (< 768px)     */
+    /* ============================================================ */
     
     @media only screen and (max-width: 768px) {
         
-        /* 1. CONTAINER PAI (Identifica blocos com 8 colunas -> Calendário) */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) {
+        /* 1. O MARTELO NO CONTAINER: Obriga fluxo horizontal */
+        div[data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;       /* PROIBIDO QUEBRAR LINHA */
             align-items: stretch !important;
+            overflow-x: auto !important;        /* Scroll se necessário */
             width: 100% !important;
-            gap: 0px !important;                /* Zero gap para caber tudo */
-            overflow-x: hidden !important;      /* Tenta não rolar, encaixar */
+            gap: 1px !important;
         }
 
-        /* 2. COLUNAS FILHAS (DIAS) - A MÁGICA DOS 14.28% */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"] {
-            flex: 0 0 14.28% !important;        /* Tamanho rígido */
-            width: 14.28% !important;           /* Reforço de largura */
-            min-width: 0 !important;            /* Permite encolher abaixo do conteúdo */
-            max-width: 14.28% !important;
-            padding: 0 1px !important;          /* Padding mínimo */
-            overflow: hidden !important;        /* Corta qualquer coisa que vaze */
-        }
-        
-        /* 3. COLUNA DA HORA (1ª Coluna): Exterminada no mobile */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"]:first-child {
-            display: none !important; 
-            width: 0 !important;
-            flex: 0 0 0 !important;
+        /* 2. O RESET NAS COLUNAS: Remove proteções de largura */
+        div[data-testid="column"] {
+            min-width: 0px !important;          /* A CHAVE: Permite esmagar */
+            width: auto !important;
+            flex: 1 1 auto !important;          /* Distribui espaço igual */
+            padding: 0 1px !important;          /* Padding quase zero */
+            overflow: hidden !important;        /* Corta excessos */
         }
 
-        /* 4. CONTEÚDO DUAL (VISIBILIDADE) */
+        /* 3. COLUNA DA HORA (Primeira filha): Desaparece no mobile */
+        /* Isso libera 15-20% de tela para os dias */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child {
+            display: none !important;
+        }
+
+        /* 4. VISIBILIDADE DO CONTEÚDO (DUAL) */
         .desktop-content { display: none !important; }
         .mobile-content { display: block !important; }
 
-        /* 5. CABEÇALHO DOS DIAS (ESMAGADO) */
-        .day-header-box { padding: 0 !important; border: none !important; text-align: center; }
-        .day-header-name { font-size: 7px !important; font-weight: 700; color: #94a3b8; letter-spacing: -0.5px; }
-        .day-header-num { font-size: 11px !important; font-weight: 700; line-height: 1; }
+        /* 5. AJUSTES VISUAIS MICRO */
+        .day-header-box { padding: 2px 0 !important; border: none !important; }
+        .day-header-name { font-size: 8px !important; text-align: center; }
+        .day-header-num { font-size: 14px !important; text-align: center; line-height: 1; }
         
-        /* 6. BOTÕES DE SLOT (ESTILO FANTASMA) */
-        /* Tornamos o texto transparente e removemos padding para virar apenas um bloco de clique */
+        /* Botões de Slot "Fantasmas" */
         div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-            color: transparent !important;
-            background-color: transparent !important;
-            border: 1px solid #f1f5f9 !important;
-            height: 30px !important;
-            min-height: 0 !important;
+            height: 35px !important;
+            min-height: 35px !important;
             padding: 0 !important;
-            margin-bottom: 1px !important;
+            border: 1px dashed #e2e8f0 !important;
+            color: transparent !important; /* Texto invisível */
         }
     }
 
@@ -102,21 +96,22 @@ st.markdown("""
         .desktop-content { display: block !important; }
         .mobile-content { display: none !important; }
         
+        /* Garante hora visível */
         div[data-testid="column"]:first-child {
             display: block !important;
             min-width: 50px !important;
         }
     }
 
-    /* --- ESTILOS VISUAIS GERAIS --- */
+    /* --- ESTILOS GERAIS --- */
     
-    /* Login Limpo */
+    /* Login */
     div[data-testid="column"]:nth-of-type(2) > div { 
         background-color: #ffffff; padding: 25px; border-radius: 12px; border: 1px solid #e2e8f0; 
         box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
     }
     
-    /* Eventos Desktop (Card Completo) */
+    /* Card Desktop */
     .evt-card-desktop {
         background: #e0f2fe; border-left: 3px solid #0284c7; color: #0369a1;
         padding: 4px; font-size: 10px; font-weight: 600; border-radius: 3px;
@@ -124,28 +119,33 @@ st.markdown("""
         height: 38px; line-height: 1.2; margin-bottom: 2px;
     }
     
-    /* Eventos Mobile (Barra Pura) */
+    /* Barra Mobile (Otimizada) */
     .evt-bar-mobile {
         background-color: #0ea5e9; /* Azul */
-        height: 6px; width: 100%;
+        height: 100%; width: 100%;
+        min-height: 35px;
         border-radius: 2px;
-        margin-top: 12px; /* Centraliza visualmente no slot */
+        /* Sem margem, ocupa o slot todo */
     }
     .evt-blocked-mobile {
-        background-color: #334155; /* Cinza Escuro */
-        height: 6px; width: 100%;
+        background-color: #334155; 
+        height: 100%; width: 100%;
+        min-height: 35px;
         border-radius: 2px;
-        margin-top: 12px;
     }
 
-    /* Bloqueado Desktop */
     .admin-blocked { background: #334155; color: #f8fafc; border-radius: 3px; font-size: 10px; padding: 4px; text-align: center; height: 38px; }
+    
+    .day-header-box { text-align: center; border-bottom: 1px solid #e2e8f0; margin-bottom: 5px; padding-bottom: 5px; }
+    .day-header-name { font-size: 11px; font-weight: 600; color: #64748b; }
+    .day-header-num { font-size: 20px; font-weight: 700; color: #1e293b; }
+    .today-hl { color: #0284c7; }
 
-    /* Botões Padrão */
+    /* Inputs e Botões */
     div[data-testid="stForm"] button, button[kind="primary"] { background: #0f766e !important; color: white !important; border: none; height: 45px; }
     .stTextInput input { background: #f8fafc; border: 1px solid #e2e8f0; height: 45px; }
     
-    /* Desktop Cells */
+    /* Desktop Slot Button */
     @media (min-width: 769px) {
         div[data-testid="stVerticalBlock"] button[kind="secondary"] {
             background-color: #ffffff !important; border: 1px solid #e2e8f0 !important; color: transparent !important;
@@ -156,10 +156,7 @@ st.markdown("""
         }
     }
     
-    /* Hora lateral */
     .time-label { font-size: 11px; font-weight: 600; color: #94a3b8; text-align: right; margin-top: 12px; padding-right: 5px;}
-    
-    /* Limpeza */
     header {display: none;} footer {display: none;}
 </style>
 """, unsafe_allow_html=True)
@@ -197,7 +194,7 @@ def gerar_pdf_fatura(df, nome_usuario, mes_referencia):
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
     pdf.set_text_color(13, 148, 136)
-    pdf.cell(0, 10, "LOCAPSICO - Extrato Detalhado", ln=True, align="C")
+    pdf.cell(0, 10, "LOCAPSICO - Extrato", ln=True, align="C")
     pdf.set_font("Arial", "", 12)
     pdf.set_text_color(50, 50, 50)
     pdf.ln(5)
@@ -325,23 +322,22 @@ def render_calendar(sala, is_admin_mode=False):
         if d not in mapa: mapa[d] = {}
         mapa[d][x['hora_inicio']] = x
 
-    # --- GRADE MATEMÁTICA ---
+    # GRADE (8 Colunas: 1 Hora + 7 Dias)
     dias_visiveis = [d_start + timedelta(days=i) for i in range(7)]
     dias_sem = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
     
-    # Ratios: 0.3 para hora + 1 para cada dia
-    # No mobile, o CSS esconde a col 0 e força as outras 7 a terem 14.28%
+    # Ratios: 0.3 Hora + 1.0 Cada Dia (No mobile o CSS força 14.28% e esconde a hora)
     cols = st.columns([0.3, 1, 1, 1, 1, 1, 1, 1])
     cols[0].write("") # Espaço hora
     
     for i, d in enumerate(dias_visiveis):
         with cols[i+1]:
             is_hj = (d == datetime.date.today())
-            st_hj = "color:#0284c7;" if is_hj else ""
+            cls_hj = "today-hl" if is_hj else ""
             st.markdown(f"""
             <div class='day-header-box'>
                 <div class='day-header-name'>{dias_sem[d.weekday()]}</div>
-                <div class='day-header-num' style='{st_hj}'>{d.day}</div>
+                <div class='day-header-num {cls_hj}'>{d.day}</div>
             </div>""", unsafe_allow_html=True)
 
     # LINHAS DE HORÁRIO
@@ -356,8 +352,6 @@ def render_calendar(sala, is_admin_mode=False):
                 res = mapa.get(d_s, {}).get(h_s)
                 
                 cont = st.container()
-                
-                # Regras de tempo
                 dt_slot = datetime.datetime.combine(d, datetime.time(h, 0))
                 agora = datetime.datetime.now()
                 is_sun = d.weekday() == 6
@@ -370,17 +364,18 @@ def render_calendar(sala, is_admin_mode=False):
                         if is_admin_mode:
                              if cont.button("🗑️", key=f"d_blk_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
                     else:
+                        # DUAL RENDERING: Texto no Desktop / Barra Vazia no Mobile
                         st.markdown(f"""<div class='desktop-content evt-card-desktop' title='{nm}'>{nm}</div><div class='mobile-content evt-bar-mobile'></div>""", unsafe_allow_html=True)
                         if is_admin_mode:
                              if cont.button("x", key=f"d_res_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
                 elif is_sun or is_sat_close:
-                    st.markdown("<div style='background:#f8fafc; height:30px; opacity:0.6'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='background:#f8fafc; height:35px; opacity:0.6'></div>", unsafe_allow_html=True)
                 else:
                     if not is_admin_mode:
-                        if cont.button("Livre", key=f"add_{d}_{h}", type="secondary", use_container_width=True):
+                        if cont.button(" ", key=f"add_{d}_{h}", type="secondary", use_container_width=True):
                             modal_agendamento(sala, d, h)
                     else:
-                        st.markdown("<div style='height:30px; border-right:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
+                        st.markdown("<div style='height:35px; border-right:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
 
 def tela_admin_master():
@@ -518,7 +513,7 @@ def main():
         with c2:
             st.write("") 
             if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
-            else: st.markdown("<h1 style='color:#0d9488; text-align:center'>LocaPsico</h1>", unsafe_allow_html=True)
+            else: st.markdown("<h1 style='text-align:center; color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
             
             if st.session_state.auth_mode == 'login':
                 with st.form("login"):
@@ -532,8 +527,10 @@ def main():
                                 st.session_state.is_admin = (email == "admin@admin.com.br")
                                 st.rerun()
                         except Exception as e:
+                            # CORREÇÃO ERRO FALSO LOGIN
                             if "StopException" not in str(type(e)):
                                 st.error("Erro login.")
+                                
                 c_a, c_b = st.columns(2)
                 if c_a.button("Criar Conta"): st.session_state.auth_mode = 'register'; st.rerun()
                 if c_b.button("Recuperar"): st.session_state.auth_mode = 'forgot'; st.rerun()
