@@ -33,22 +33,22 @@ supabase = init_connection()
 
 # --- 3. CSS & JS HACKS ---
 
-# JAVASCRIPT NUCLEAR: FORÇA VIEWPORT DE DESKTOP
-# Este script roda invisível e altera a meta tag do navegador
+# JAVASCRIPT NUCLEAR: FORÇA VIEWPORT "ULTRA WIDE"
+# Aumentamos para 1400px e reduzimos a escala para 0.30. 
+# Isso obriga o celular a "afastar a câmera", deixando tudo menor e fitando a semana.
 JS_FORCE_DESKTOP = """
 <script>
     function forceDesktop() {
         var meta = document.querySelector('meta[name="viewport"]');
         if (meta) {
-            meta.content = 'width=1024, initial-scale=0.4, maximum-scale=2.0, user-scalable=yes';
+            meta.content = 'width=1400, initial-scale=0.30, maximum-scale=2.0, user-scalable=yes';
         } else {
             var newMeta = document.createElement('meta');
             newMeta.name = 'viewport';
-            newMeta.content = 'width=1024, initial-scale=0.4, maximum-scale=2.0, user-scalable=yes';
+            newMeta.content = 'width=1400, initial-scale=0.30, maximum-scale=2.0, user-scalable=yes';
             document.getElementsByTagName('head')[0].appendChild(newMeta);
         }
     }
-    // Tenta aplicar imediatamente e a cada 1s para garantir
     forceDesktop();
     setInterval(forceDesktop, 1000);
 </script>
@@ -73,62 +73,66 @@ CSS_BASE = """
 # CSS LOGIN (MANTÉM RESPONSIVIDADE ORIGINAL)
 CSS_LOGIN = """
 <style>
-    /* No login, queremos comportamento padrão responsivo */
     .block-container { max-width: 100% !important; padding: 2rem 1rem; }
 </style>
 """
 
-# CSS AGENDA (ESTILOS VISUAIS PARA O MODO "DESKTOP FORÇADO")
+# CSS AGENDA (ESTILO "SLIM" PARA CABER NO MODO 1400PX)
 CSS_AGENDA_DESKTOP_LOOK = """
 <style>
-    /* Como forçamos o viewport para 1024px, usamos estilos de Desktop aqui */
+    /* Ajustes para a tela "gigante" de 1400px parecer compacta */
     
-    /* Container ajustado para a largura forçada */
     .block-container {
-        max-width: 1200px !important;
-        padding-top: 1rem !important;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
+        max-width: 1350px !important; /* Aproveita a largura forçada pelo JS */
+        padding-top: 10px !important;
+        padding-left: 10px !important;
+        padding-right: 10px !important;
     }
 
-    /* Grade Limpa */
+    /* Redução Geral de Fontes (Para ficar proporcional ao Scale 0.30) */
+    html, body, p, div, span, button {
+        font-size: 12px !important; /* Levemente menor para caber mais */
+    }
+
+    /* Botões da Grade (Altura Reduzida) */
     div[data-testid="stVerticalBlock"] button[kind="secondary"] {
         background: transparent !important; border: none !important;
         border-right: 1px solid #f1f5f9 !important; border-bottom: 1px solid #f1f5f9 !important;
         border-radius: 0 !important; width: 100% !important; margin: 0 !important;
-        height: 45px !important; /* Altura confortável pois a tela "é grande" */
+        height: 35px !important; /* Mais fino que os 45px originais */
+        min-height: 35px !important;
     }
     div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover { background: #f8fafc !important; }
 
-    /* Card Evento */
+    /* Card Evento Compacto */
     .evt-card {
         background-color: #e0f2fe; color: #0369a1; 
-        font-size: 11px; font-weight: 700; 
+        font-size: 10px; font-weight: 700; 
         padding: 0 4px; border-radius: 2px; border-left: 3px solid #0284c7;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         display: flex; align-items: center; cursor: pointer;
-        height: 42px;
+        height: 33px; /* Acompanha a altura da célula */
     }
     
-    /* Bloqueio */
+    /* Bloqueio Compacto */
     .admin-blocked { 
-        background: #f1f5f9; color: #94a3b8; font-size: 10px;
+        background: #f1f5f9; color: #94a3b8; font-size: 9px;
         display: flex; align-items: center; justify-content: center;
-        height: 100%; width: 100%;
+        height: 33px; width: 100%;
     }
 
     /* Cabeçalhos */
-    .day-header-box { text-align: center; border-bottom: 1px solid #cbd5e1; padding: 5px 0; background: #fff; }
-    .day-header-name { font-weight: 700; color: #64748b; text-transform: uppercase; font-size: 12px; }
-    .day-header-num { font-weight: 800; color: #1e293b; line-height: 1; font-size: 24px; }
+    .day-header-box { text-align: center; border-bottom: 1px solid #cbd5e1; padding: 4px 0; background: #fff; }
+    .day-header-name { font-weight: 700; color: #64748b; text-transform: uppercase; font-size: 11px; }
+    .day-header-num { font-weight: 800; color: #1e293b; line-height: 1; font-size: 20px; }
     .today-hl { color: #0284c7; }
     
     .time-label { 
-        font-weight: 600; color: #94a3b8; font-size: 12px;
-        text-align: right; padding-right: 8px; position: relative; top: 12px;
+        font-weight: 600; color: #94a3b8; font-size: 11px;
+        text-align: right; padding-right: 8px; position: relative; top: 10px;
     }
     
-    /* Força colunas a não quebrarem, só por garantia */
+    /* Garante alinhamento */
     div[data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; }
 </style>
 """
@@ -340,13 +344,13 @@ def render_calendar(sala, is_admin_mode=False):
                         if is_admin_mode:
                              if cont.button("x", key=f"d_res_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
                 elif is_sun or is_sat_close:
-                    st.markdown("<div style='height:40px; background:#f9fafb;'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='height:35px; background:#f9fafb;'></div>", unsafe_allow_html=True)
                 else:
                     if not is_admin_mode:
                         if cont.button(" ", key=f"add_{d}_{h}", type="secondary", use_container_width=True):
                             modal_agendamento(sala, d, h)
                     else:
-                        st.markdown("<div style='height:40px; border-right:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
+                        st.markdown("<div style='height:35px; border-right:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
 
 def tela_admin_master():
     tabs = st.tabs(["💰 Config", "📅 Visualizar", "🚫 Bloqueios", "📄 Relatórios", "👥 Usuários"])
