@@ -31,184 +31,25 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS DEFINIDO EM VARIÁVEIS (CORREÇÃO DO ERRO) ---
-
-# 3.1 CSS GERAL
-CSS_BASE = """
+# --- CSS APENAS PARA LOGIN E GERAL ---
+st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     .stApp { background-color: #ffffff; font-family: 'Inter', sans-serif; color: #1e293b; }
-    
-    /* Remove tralha nativa */
     header, footer, [data-testid="stToolbar"] { display: none !important; }
     
     /* Botões Gerais */
     div[data-testid="stForm"] button, button[kind="primary"] { 
         background: #0f766e !important; color: white !important; border: none; border-radius: 6px; 
     }
-</style>
-"""
-
-# 3.2 CSS LOGIN (RESPONSIVO)
-CSS_LOGIN_MOBILE = """
-<style>
+    
+    /* Login Responsivo */
     @media only screen and (max-width: 768px) {
-        .block-container { 
-            max-width: 100% !important; 
-            padding: 2rem 1rem !important; 
-            width: 100% !important;
-            overflow-x: hidden !important;
-        }
+        .block-container { padding: 2rem 1rem !important; }
         button { min-height: 50px !important; }
     }
 </style>
-"""
-
-# 3.3 CSS AGENDA (PROTOCOLO GRID DE AÇO)
-# Aqui usamos CSS GRID para obrigar a estrutura de tabela e impedir empilhamento
-CSS_AGENDA_WIDE = """
-<style>
-    /* ============================================================ */
-    /* ☢️ PROTOCOLO GRID DE AÇO (< 768px)                           */
-    /* Substitui Flex por Grid. Impede quebra de linha.             */
-    /* ============================================================ */
-    
-    @media only screen and (max-width: 768px) {
-        
-        /* 1. CONTAINER GERAL COM SCROLL */
-        .block-container {
-            padding: 10px 5px !important;
-            max-width: 100vw !important;
-            overflow-x: hidden !important;
-        }
-
-        /* 2. FORÇA O GRID LAYOUT (8 Colunas Rígidas) */
-        /* Identifica o bloco do calendário */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) {
-            display: grid !important;
-            grid-template-columns: 45px repeat(7, 100px) !important; /* 45px Hora + 7 Dias de 100px */
-            min-width: 745px !important; /* Soma das larguras acima */
-            width: max-content !important;
-            gap: 0px !important;
-            margin-bottom: 0px !important;
-            
-            /* Permite scroll se o pai limitar, mas o wrap abaixo garante */
-            overflow-x: visible !important; 
-        }
-        
-        /* 3. WRAPPER DE ROLAGEM (Importante para o Grid funcionar no mobile) */
-        div[data-testid="stVerticalBlock"] > div:has(div[data-testid="stHorizontalBlock"]) {
-            overflow-x: auto !important;
-            display: block !important;
-            width: 100vw !important;
-        }
-
-        /* 4. COLUNA DA HORA (STICKY) */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"]:nth-of-type(1) {
-            position: sticky !important;
-            left: 0 !important;
-            z-index: 100 !important;
-            background: white !important;
-            border-right: 2px solid #e2e8f0 !important;
-            width: 100% !important;
-            min-width: 0 !important;
-        }
-
-        /* 5. AS OUTRAS COLUNAS */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"] {
-            min-width: 0 !important; /* Grid controla o tamanho */
-            width: 100% !important;
-            display: flex !important;
-            flex-direction: column !important;
-        }
-
-        /* 6. REMOVE GAPS VERTICAIS */
-        div[data-testid="stVerticalBlock"] { gap: 0 !important; }
-        div[data-testid="element-container"] { margin: 0 !important; }
-
-        /* --- ESTÉTICA MOBILE --- */
-        
-        /* Botões Invisíveis */
-        div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-            height: 50px !important;
-            min-height: 50px !important;
-            padding: 0 !important;
-            border: none !important;
-            border-bottom: 1px solid #f1f5f9 !important;
-            border-right: 1px solid #f8fafc !important;
-            margin: 0 !important;
-            width: 100% !important;
-        }
-        
-        /* Eventos */
-        .evt-card {
-            height: 46px !important;
-            font-size: 10px !important;
-            line-height: 1.1 !important;
-            padding: 2px !important;
-            margin: 2px 0 !important;
-            white-space: normal !important;
-            display: flex !important;
-            align-items: center !important;
-        }
-        
-        /* Bloqueio */
-        .admin-blocked { height: 48px !important; font-size: 9px !important; }
-        
-        /* Cabeçalho do Dia */
-        .day-header-box {
-            height: 50px !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            background: #f8fafc !important;
-            border-bottom: 2px solid #e2e8f0 !important;
-            border-right: 1px solid #f1f5f9 !important;
-        }
-        .day-header-text { font-size: 11px !important; font-weight: 700 !important; color: #334155; text-align: center; }
-        
-        /* Hora */
-        .time-label { 
-            font-size: 10px !important; 
-            top: 18px !important; 
-            padding-right: 4px !important; 
-        }
-        
-        /* Header App Escondido */
-        .stApp > header { display: none !important; }
-    }
-
-    /* --- DESKTOP --- */
-    @media (min-width: 769px) {
-        div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-            background: transparent !important; border: none !important;
-            border-right: 1px solid #f1f5f9 !important; border-bottom: 1px solid #f1f5f9 !important;
-            border-radius: 0 !important; width: 100% !important; margin: 0 !important; height: 50px; 
-        }
-        div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover { background: #f8fafc !important; }
-        .evt-card { height: 46px; font-size: 11px; padding: 0 4px; }
-    }
-
-    /* --- COMUNS --- */
-    .evt-card {
-        background-color: #e0f2fe; color: #0369a1; font-weight: 700; 
-        border-radius: 4px; border-left: 3px solid #0284c7;
-        overflow: hidden; cursor: pointer; display: block;
-    }
-    .admin-blocked { 
-        background: #f1f5f9; color: #94a3b8; font-size: 9px;
-        display: flex; align-items: center; justify-content: center;
-        width: 100%;
-    }
-    .time-label { 
-        font-weight: 600; color: #94a3b8; 
-        text-align: right; position: relative;
-    }
-</style>
-"""
-
-# Javascript Cleaner
-components.html("""<script>try{const doc=window.parent.document;const style=doc.createElement('style');style.innerHTML=`header, footer, .stApp > header { display: none !important; } [data-testid="stToolbar"] { display: none !important; } .viewerBadge_container__1QSob { display: none !important; }`;doc.head.appendChild(style);}catch(e){}</script>""", height=0)
+""", unsafe_allow_html=True)
 
 # --- 4. FUNÇÕES DE SUPORTE ---
 def resolver_nome(email, nome_meta=None, nome_banco=None):
@@ -344,7 +185,159 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
                 st.toast("Sucesso!", icon="✅"); time.sleep(1); st.rerun()
         except: st.error("Erro.")
 
-def render_calendar(sala, is_admin_mode=False):
+# --- MÁQUINA DE HTML PURO (PROTOCOL: ISOLATION CHAMBER) ---
+def render_calendar_html(sala, is_admin_mode=False):
+    # Lógica de Dados (Python)
+    ref = st.session_state.data_ref
+    d_start = ref - timedelta(days=ref.weekday())
+    d_end = d_start + timedelta(days=6)
+    
+    reservas = []
+    try:
+        r = supabase.table("reservas").select("*").eq("sala_nome", sala).neq("status", "cancelada").gte("data_reserva", str(d_start)).lte("data_reserva", str(d_end)).execute()
+        reservas = r.data
+    except: pass
+    
+    mapa = {}
+    for x in reservas:
+        d_r = x['data_reserva']
+        if d_r not in mapa: mapa[d_r] = {}
+        mapa[d_r][x['hora_inicio']] = x
+
+    dias_visiveis = [d_start + timedelta(days=i) for i in range(7)]
+    dias_sem = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
+
+    # Construção do HTML
+    html = """
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        .calendar-container {
+            width: 100%;
+            overflow-x: auto; /* SCROLL LATERAL NATIVO DO HTML */
+            white-space: nowrap;
+            padding-bottom: 10px;
+        }
+        .calendar-table {
+            border-collapse: separate;
+            border-spacing: 0;
+            width: max-content; /* A MÁGICA: A largura é o conteúdo */
+            min-width: 800px;   /* Força largura mínima */
+        }
+        th, td {
+            border-bottom: 1px solid #f1f5f9;
+            border-right: 1px solid #f8fafc;
+            padding: 0; margin: 0;
+            box-sizing: border-box;
+        }
+        
+        /* Coluna da Hora Fixa */
+        .col-time {
+            position: sticky;
+            left: 0;
+            background: white;
+            z-index: 10;
+            width: 45px; min-width: 45px;
+            border-right: 2px solid #e2e8f0;
+            text-align: right;
+            padding-right: 5px;
+            font-size: 11px; color: #94a3b8; font-weight: 600;
+            vertical-align: middle;
+        }
+        
+        /* Colunas dos Dias */
+        .col-day {
+            width: 105px; min-width: 105px;
+            vertical-align: top;
+        }
+        
+        /* Cabeçalho */
+        .header-cell {
+            text-align: center;
+            height: 40px;
+            background: #f8fafc;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        .day-name { font-size: 11px; font-weight: 700; color: #64748b; display: block; }
+        .day-num { font-size: 16px; font-weight: 800; color: #1e293b; display: block; }
+        .today { color: #0284c7 !important; }
+        
+        /* Célula de Agendamento */
+        .slot-cell { height: 50px; position: relative; }
+        
+        /* Botão de Adicionar (Overlay invisível) */
+        .add-btn {
+            display: block; width: 100%; height: 100%;
+            background: transparent; border: none; cursor: pointer;
+        }
+        .add-btn:hover { background: #f0fdf4; }
+        
+        /* Card de Evento */
+        .evt-card {
+            background: #e0f2fe; border-left: 3px solid #0284c7; color: #0369a1;
+            font-size: 10px; font-weight: 700;
+            padding: 2px 4px; margin: 2px;
+            border-radius: 3px;
+            height: 44px;
+            display: flex; align-items: center;
+            white-space: normal; line-height: 1.1;
+            overflow: hidden;
+        }
+        .blocked { background: #f1f5f9; color: #94a3b8; justify-content: center; }
+    </style>
+    
+    <div class="calendar-container">
+        <table class="calendar-table">
+            <thead>
+                <tr>
+                    <th class="col-time"></th>
+    """
+    
+    # Cabeçalhos
+    for d in dias_visiveis:
+        is_hj = (d == datetime.date.today())
+        cls = "today" if is_hj else ""
+        html += f"""
+            <th class="col-day header-cell">
+                <span class="day-name {cls}">{dias_sem[d.weekday()]}</span>
+                <span class="day-num {cls}">{d.day}</span>
+            </th>
+        """
+    html += "</tr></thead><tbody>"
+    
+    # Linhas de Horário
+    for h in range(7, 22):
+        html += f"""<tr><td class="col-time">{h:02d}:00</td>"""
+        
+        for d in dias_visiveis:
+            d_s = str(d)
+            h_s = f"{h:02d}:00:00"
+            res = mapa.get(d_s, {}).get(h_s)
+            
+            html += "<td class='slot-cell'>"
+            
+            if res:
+                nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
+                if res['status'] == 'bloqueado':
+                    html += f"<div class='evt-card blocked'>BLOQ</div>"
+                else:
+                    html += f"<div class='evt-card'>{nm}</div>"
+            else:
+                # Slot Livre - Como não podemos chamar Python daqui, usamos um truque visual
+                # O usuário verá "Livre". Para agendar, ele tem que usar a interface nativa
+                # SOLUÇÃO HÍBRIDA: Mostramos o calendário bonito aqui, mas o clique é complexo.
+                # Vamos simplificar: O usuário vê aqui, mas clica num botão embaixo se quiser agendar?
+                # NÃO. Vamos tentar comunicar de volta é difícil.
+                # VAMOS USAR O BOTÃO NATIVO DO STREAMLIT EM CIMA OU EMBAIXO PARA "ADICIONAR"
+                pass 
+            
+            html += "</td>"
+        html += "</tr>"
+    
+    html += "</tbody></table></div>"
+    
+    return html
+
+def render_calendar_interface(sala, is_admin_mode=False):
     # NAVEGAÇÃO
     c1, c2, c3 = st.columns([1, 4, 1])
     c1.button("❮", on_click=lambda: navegar('prev'), use_container_width=True)
@@ -356,71 +349,23 @@ def render_calendar(sala, is_admin_mode=False):
     mes_nome = d_start.strftime("%b").upper()
     c2.markdown(f"<div style='text-align:center; font-weight:bold; margin-top:5px'>{mes_nome} {d_start.day}-{d_end.day}</div>", unsafe_allow_html=True)
 
-    # DADOS
-    reservas = []
-    try:
-        r = supabase.table("reservas").select("*").eq("sala_nome", sala).neq("status", "cancelada").gte("data_reserva", str(d_start)).lte("data_reserva", str(d_end)).execute()
-        reservas = r.data
-    except: pass
-    mapa = {}
-    for x in reservas:
-        d = x['data_reserva']
-        if d not in mapa: mapa[d] = {}
-        mapa[d][x['hora_inicio']] = x
-
-    # GRADE (8 Colunas: 1 Hora + 7 Dias)
-    dias_visiveis = [d_start + timedelta(days=i) for i in range(7)]
-    dias_sem = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
+    # 1. RENDERIZA O HTML BLINDADO (VISUALIZAÇÃO PERFEITA)
+    html_code = render_calendar_html(sala, is_admin_mode)
+    components.html(html_code, height=600, scrolling=False) # Scrolling false no iframe, mas o CSS dentro tem overflow
     
-    # Ratios
-    cols = st.columns([0.3, 1, 1, 1, 1, 1, 1, 1])
-    cols[0].write("") # Espaço hora
-    
-    for i, d in enumerate(dias_visiveis):
-        with cols[i+1]:
-            is_hj = (d == datetime.date.today())
-            cls_hj = "color:#0284c7;" if is_hj else "color:#334155;"
-            # ESTILO REFORÇADO PARA O CABEÇALHO
-            st.markdown(f"""
-            <div class='day-header-box'>
-                <div class='day-header-text' style='{cls_hj}'>{dias_sem[d.weekday()]} {d.day}</div>
-            </div>""", unsafe_allow_html=True)
+    # 2. BOTÃO DE AGENDAMENTO FLUTUANTE (WORKAROUND PARA INTERATIVIDADE)
+    # Como o iframe isola os cliques, colocamos um botão mestre de ação.
+    st.info("👆 Arraste para o lado para ver todos os dias.")
+    if st.button("➕ Novo Agendamento / Bloqueio", type="primary", use_container_width=True):
+        # Abre modal com seletores de Data e Hora, já que clicar na célula é difícil no iframe
+        modal_agendamento_manual(sala)
 
-    # LINHAS DE HORÁRIO
-    for h in range(7, 22):
-        row = st.columns([0.3, 1, 1, 1, 1, 1, 1, 1])
-        row[0].markdown(f"<div class='time-label'>{h:02d}:00</div>", unsafe_allow_html=True)
-        
-        for i, d in enumerate(dias_visiveis):
-            with row[i+1]:
-                d_s = str(d)
-                h_s = f"{h:02d}:00:00"
-                res = mapa.get(d_s, {}).get(h_s)
-                
-                cont = st.container()
-                dt_slot = datetime.datetime.combine(d, datetime.time(h, 0))
-                agora = datetime.datetime.now()
-                is_sun = d.weekday() == 6
-                is_sat_close = (d.weekday() == 5 and h >= 14)
-                
-                if res:
-                    nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
-                    if res['status'] == 'bloqueado':
-                        st.markdown(f"""<div class='admin-blocked'>BLOQ</div>""", unsafe_allow_html=True)
-                        if is_admin_mode:
-                             if cont.button("🗑️", key=f"d_blk_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
-                    else:
-                        st.markdown(f"""<div class='evt-card' title='{nm}'>{nm}</div>""", unsafe_allow_html=True)
-                        if is_admin_mode:
-                             if cont.button("x", key=f"d_res_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
-                elif is_sun or is_sat_close:
-                    st.markdown("<div style='height:50px; background:#f9fafb;'></div>", unsafe_allow_html=True)
-                else:
-                    if not is_admin_mode:
-                        if cont.button(" ", key=f"add_{d}_{h}", type="secondary", use_container_width=True):
-                            modal_agendamento(sala, d, h)
-                    else:
-                        st.markdown("<div style='height:50px; border-right:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
+@st.dialog("Agendar")
+def modal_agendamento_manual(sala_padrao):
+    d = st.date_input("Data", value=st.session_state.data_ref)
+    h = st.selectbox("Horário", [f"{i:02d}:00" for i in range(7, 22)])
+    h_int = int(h.split(':')[0])
+    modal_agendamento(sala_padrao, d, h_int) # Chama a lógica original
 
 def tela_admin_master():
     tabs = st.tabs(["💰 Config", "📅 Visualizar", "🚫 Bloqueios", "📄 Relatórios", "👥 Usuários"])
@@ -439,7 +384,7 @@ def tela_admin_master():
                 st.success("Salvo!")
     with tabs[1]:
         sala_adm = st.radio("Sala", ["Sala 1", "Sala 2"], horizontal=True)
-        render_calendar(sala_adm, is_admin_mode=True)
+        render_calendar_interface(sala_adm, is_admin_mode=True)
     with tabs[2]:
         c_dt, c_sl = st.columns(2)
         dt_block = c_dt.date_input("Data")
@@ -552,13 +497,8 @@ def tela_admin_master():
 
 # --- 7. MAIN (INJEÇÃO SELETIVA DE CSS) ---
 def main():
-    # 1. INJETA CSS BASE SEMPRE
-    st.markdown(CSS_BASE, unsafe_allow_html=True)
-
     if not st.session_state.user:
-        # MODO LOGIN: CSS DE LOGIN (RESPONSIVO)
-        st.markdown(CSS_LOGIN_MOBILE, unsafe_allow_html=True)
-        
+        # MODO LOGIN
         c1, c2, c3 = st.columns([1, 1.2, 1])
         with c2:
             st.write("") 
@@ -584,9 +524,7 @@ def main():
             if c_b.button("Recuperar"): st.session_state.auth_mode = 'forgot'; st.rerun()
         return
 
-    # MODO AGENDA: CSS DE AGENDA (PROTOCOL: GRID DE AÇO)
-    st.markdown(CSS_AGENDA_WIDE, unsafe_allow_html=True)
-
+    # MODO AGENDA
     u = st.session_state['user']
     if u is None: st.session_state.auth_mode = 'login'; st.rerun(); return
 
@@ -600,7 +538,6 @@ def main():
     else:
         nm = resolver_nome(u.email, u.user_metadata.get('nome'))
         
-        # HEADER PROTEGIDO
         c_head_text, c_head_btn = st.columns([4, 1]) 
         with c_head_text: st.markdown(f"<h3 style='color:#0d9488; margin:0'>LocaPsico | {nm}</h3>", unsafe_allow_html=True)
         with c_head_btn: 
@@ -611,7 +548,8 @@ def main():
         
         with tabs[0]:
             sala = st.radio("Local", ["Sala 1", "Sala 2"], horizontal=True)
-            render_calendar(sala)
+            # AQUI ESTÁ A MUDANÇA: USAMOS O RENDERIZADOR HTML ISOLADO
+            render_calendar_interface(sala)
             
         with tabs[1]:
             st.markdown("### Meus Agendamentos")
