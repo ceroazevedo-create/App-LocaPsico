@@ -30,8 +30,7 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS "MARTELO DE THOR" ---
-# Força bruta: Tudo vira linha, nada empilha.
+# --- 3. CSS GLOBAL ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -47,97 +46,6 @@ st.markdown("""
         .block-container { padding: 2rem 1rem !important; max-width: 100% !important; }
         button { min-height: 50px !important; }
     }
-
-    /* ============================================================ */
-    /* 🔨 PROTOCOLO UNIVERSAL SCROLL (< 768px)                      */
-    /* Aplica regra geral para impedir column-stacking no mobile.     */
-    /* ============================================================ */
-    
-    @media only screen and (max-width: 768px) {
-        
-        /* 1. CONTAINER PRINCIPAL */
-        .block-container {
-            padding: 10px 2px !important;
-            max-width: 100vw !important;
-            overflow-x: hidden !important;
-        }
-
-        /* 2. FORÇA LINHA HORIZONTAL EM TUDO */
-        /* Ignora seletores específicos. Se é bloco horizontal, é LINHA. */
-        div[data-testid="stHorizontalBlock"] {
-            display: flex !important;
-            flex-direction: row !important;     /* AQUI ESTÁ A CHAVE: ROW, NÃO COLUMN */
-            flex-wrap: nowrap !important;       /* PROIBIDO QUEBRAR */
-            overflow-x: auto !important;        /* SCROLL SE NÃO COUBER */
-            width: 100% !important;
-            align-items: stretch !important;
-            gap: 2px !important;
-            padding-bottom: 5px !important;
-        }
-
-        /* 3. COLUNAS DO DIA (Tamanho Fixo) */
-        /* Forçamos uma largura mínima para obrigar o scroll a aparecer */
-        div[data-testid="column"] {
-            flex: 0 0 auto !important;
-            min-width: 90px !important;
-            max-width: 90px !important;
-            width: 90px !important;
-        }
-        
-        /* 4. EXCEÇÃO: COLUNA DA HORA (1ª filha) */
-        /* Precisamos resetar a largura para a primeira coluna ser menor */
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child {
-            min-width: 40px !important;
-            max-width: 40px !important;
-            width: 40px !important;
-            position: sticky !important;
-            left: 0 !important;
-            background: white !important;
-            z-index: 50 !important;
-            border-right: 1px solid #e2e8f0 !important;
-        }
-
-        /* 5. AJUSTE PARA O CABEÇALHO (LOGO/SAIR) */
-        /* Como o regra acima afeta tudo, o cabeçalho ficaria com colunas de 90px.
-           Tentamos ajustar o primeiro bloco horizontal da página (geralmente o header) */
-        div.block-container > div > div > div > div:first-child div[data-testid="column"] {
-             min-width: auto !important;
-             max-width: none !important;
-             width: auto !important;
-        }
-
-        /* 6. BOTÕES DA GRADE */
-        div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-            height: 50px !important;
-            min-height: 50px !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            border: 1px solid #f1f5f9 !important;
-            color: transparent !important; /* Texto invisível */
-        }
-        
-        /* 7. CABEÇALHO DO DIA */
-        .day-header-box { 
-            height: 45px !important; 
-            display: flex; align-items: center; justify-content: center; 
-            background: #f8fafc; border-bottom: 2px solid #e2e8f0;
-            font-size: 10px !important; text-align: center;
-        }
-        
-        .time-label { top: 18px !important; position: relative; font-size: 10px !important; }
-        
-        /* Oculta Header App */
-        .stApp > header { display: none !important; }
-    }
-    
-    /* GERAL / DESKTOP */
-    .evt-card {
-        background-color: #e0f2fe; border-left: 3px solid #0284c7; color: #0369a1; font-weight: 700; 
-        border-radius: 4px; overflow: hidden; cursor: pointer; display: flex; align-items: center; padding: 2px;
-        height: 46px; font-size: 10px; line-height: 1.1; white-space: normal;
-    }
-    .blocked { background: #f1f5f9; color: #94a3b8; justify-content: center; border-left: 3px solid #cbd5e1; }
-    
 </style>
 """, unsafe_allow_html=True)
 
@@ -276,9 +184,102 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
                 st.toast("Sucesso!", icon="✅"); time.sleep(1); st.rerun()
         except: st.error("Erro.")
 
-# --- 6. RENDERIZADOR PYTHON NATIVO (COM CSS MARTELO) ---
+# --- 6. RENDERIZADOR PYTHON NATIVO (COM CSS "NANO") ---
 def render_calendar_interface(sala, is_admin_mode=False):
-    # Navegação
+    
+    # CSS: O PODER DO ZOOM NO MOBILE
+    st.markdown("""
+    <style>
+    @media only screen and (max-width: 768px) {
+        
+        /* 1. CONTAINER: APLICA ZOOM PARA TUDO FICAR PEQUENO */
+        .block-container {
+            padding: 5px 2px !important;
+            max-width: 100vw !important;
+            overflow-x: hidden !important;
+        }
+        
+        /* 2. FORÇA A LINHA A SER RÍGIDA E ROLÁVEL */
+        /* Usa 'display: flex' e 'flex-wrap: nowrap' com !important */
+        div[data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            width: 100% !important;
+            min-width: 100% !important;
+            gap: 1px !important;
+            margin-bottom: 2px !important;
+            
+            /* TRUQUE DO ZOOM: Reduz o tamanho de tudo dentro deste bloco para 65% */
+            zoom: 0.65 !important;
+        }
+
+        /* 3. COLUNAS (DIAS) - Tamanho visualmente maior para compensar o zoom, mas fixo */
+        div[data-testid="column"] {
+            flex: 0 0 auto !important;
+            min-width: 130px !important; /* No zoom 0.65, isso vira ~85px */
+            width: 130px !important;
+        }
+        
+        /* 4. COLUNA DA HORA */
+        div[data-testid="column"]:first-child {
+            min-width: 60px !important; /* No zoom 0.65 vira ~40px */
+            width: 60px !important;
+            position: sticky !important;
+            left: 0 !important;
+            background: white !important;
+            z-index: 50;
+            border-right: 2px solid #ddd !important;
+        }
+
+        /* 5. BOTÕES: REMOVE ESPAÇO E BORDA */
+        div[data-testid="stVerticalBlock"] button[kind="secondary"] {
+            height: 60px !important; /* Visualmente ~40px */
+            min-height: 60px !important;
+            width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: 1px solid #f1f5f9 !important;
+            color: transparent !important;
+        }
+        
+        /* 6. CABEÇALHOS */
+        .day-header-box { 
+            height: 50px !important; 
+            display: flex; align-items: center; justify-content: center; 
+            background: #f8fafc; border-bottom: 2px solid #e2e8f0;
+            font-size: 16px !important; /* Fonte maior para resistir ao zoom */
+            text-align: center;
+        }
+        
+        .time-label { 
+            font-size: 14px !important; top: 20px !important; position: relative; 
+        }
+        
+        /* Header App Hidden */
+        .stApp > header { display: none !important; }
+    }
+    
+    /* DESKTOP */
+    @media (min-width: 769px) {
+        .evt-card { height: 46px; padding: 0 4px; font-size:11px; }
+        .day-header-box { font-size:12px; }
+    }
+
+    /* GERAL */
+    .evt-card {
+        background-color: #e0f2fe; border-left: 3px solid #0284c7; color: #0369a1; font-weight: 700; 
+        border-radius: 4px; overflow: hidden; cursor: pointer; display: flex; align-items: center; padding: 2px;
+        height: 100%; width: 100%; white-space: normal; line-height: 1.1;
+        /* No mobile, o card tbm sofre zoom, entao aumentamos a fonte base */
+        font-size: 14px; 
+    }
+    .blocked { background: #f1f5f9; color: #94a3b8; justify-content: center; border-left: 3px solid #cbd5e1; }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # NAVEGAÇÃO
     c1, c2, c3 = st.columns([1, 4, 1])
     c1.button("❮", on_click=lambda: navegar('prev'), use_container_width=True)
     c3.button("❯", on_click=lambda: navegar('next'), use_container_width=True)
@@ -289,7 +290,7 @@ def render_calendar_interface(sala, is_admin_mode=False):
     mes_nome = d_start.strftime("%b").upper()
     c2.markdown(f"<div style='text-align:center; font-weight:bold; margin-top:5px'>{mes_nome} {d_start.day}-{d_end.day}</div>", unsafe_allow_html=True)
 
-    # Dados
+    # DADOS
     reservas = []
     try:
         r = supabase.table("reservas").select("*").eq("sala_nome", sala).neq("status", "cancelada").gte("data_reserva", str(d_start)).lte("data_reserva", str(d_end)).execute()
@@ -313,7 +314,7 @@ def render_calendar_interface(sala, is_admin_mode=False):
             cls_hj = "color:#0284c7;" if is_hj else "color:#334155;"
             st.markdown(f"""
             <div class='day-header-box'>
-                <div style='{cls_hj}'>{dias_sem[d.weekday()]}<br><strong style='font-size:14px'>{d.day}</strong></div>
+                <div style='{cls_hj}'>{dias_sem[d.weekday()]}<br><strong>{d.day}</strong></div>
             </div>""", unsafe_allow_html=True)
 
     # 2. GRADE (7h-22h)
@@ -345,8 +346,9 @@ def render_calendar_interface(sala, is_admin_mode=False):
                             supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute()
                             st.rerun()
                 elif is_past or is_sunday or is_sat_closed:
-                    st.markdown("<div style='height:45px; background:#f9fafb; border-radius:4px;'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='height:60px; background:#f9fafb; border-radius:4px;'></div>", unsafe_allow_html=True)
                 else:
+                    # BOTÃO NATIVO
                     if cont.button("Agendar", key=f"btn_{d}_{h}", type="secondary", use_container_width=True):
                         modal_agendamento(sala, d, h)
 
