@@ -33,113 +33,110 @@ supabase = init_connection()
 
 # --- 3. CSS "DOIS UNIVERSOS" ---
 
-# CSS BASE (Sempre ativo)
+# CSS BASE
 CSS_BASE = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     .stApp { background-color: #ffffff; font-family: 'Inter', sans-serif; color: #1e293b; }
-    
-    /* Remove tralha nativa */
     header, footer, [data-testid="stToolbar"] { display: none !important; }
-    
-    /* Botões Gerais */
     div[data-testid="stForm"] button, button[kind="primary"] { 
         background: #0f766e !important; color: white !important; border: none; border-radius: 6px; 
     }
 </style>
 """
 
-# CSS 1: LOGIN (RESPONSIVO E BONITO)
+# CSS 1: LOGIN (MANTÉM RESPONSIVO)
 CSS_LOGIN_MOBILE = """
 <style>
     @media only screen and (max-width: 768px) {
-        .block-container { 
-            max-width: 100% !important; 
-            padding: 2rem 1rem !important; 
-            width: 100% !important;
-            overflow-x: hidden !important;
-        }
+        .block-container { max-width: 100% !important; padding: 2rem 1rem !important; }
         button { min-height: 50px !important; }
     }
 </style>
 """
 
-# CSS 2: AGENDA (PROTOCOL: EXCEL MODE - SCROLL SÓLIDO)
+# CSS 2: AGENDA (PROTOCOLO GRIDIRON - CSS GRID RÍGIDO)
 CSS_AGENDA_WIDE = """
 <style>
     /* ============================================================ */
-    /* 📊 PROTOCOLO EXCEL MODE (< 768px)                            */
-    /* Lógica: Container rolável com largura fixa interna.          */
-    /* A coluna da hora (1ª) fica fixa (sticky).                    */
+    /* 🏗️ PROTOCOLO GRIDIRON (< 768px)                              */
+    /* Abandona Flexbox. Usa CSS Grid para forçar tabela perfeita.  */
     /* ============================================================ */
     
     @media only screen and (max-width: 768px) {
         
-        /* 1. O CONTAINER QUE ROLA */
+        /* 1. CONTAINER COM SCROLL */
         .block-container {
             padding: 0 !important;
             max-width: 100vw !important;
-            overflow-x: auto !important; /* Habilita o scroll horizontal */
+            overflow-x: auto !important;
         }
 
-        /* 2. FORÇA A LARGURA DA TABELA INTERNA */
-        /* Isso obriga o navegador a criar espaço para os 7 dias */
-        div[data-testid="stVerticalBlock"] {
-            min-width: 800px !important; /* 50px hora + (7 * 105px dias) */
-        }
-
-        /* 3. AS LINHAS (CABEÇALHO E HORÁRIOS) */
+        /* 2. FORÇA O GRID LAYOUT NOS BLOCOS HORIZONTAIS */
         div[data-testid="stHorizontalBlock"] {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            gap: 0 !important;
-            width: 100% !important;
+            display: grid !important;
+            /* 1ª Coluna: 35px | Resto: 7 colunas iguais */
+            grid-template-columns: 35px repeat(7, 1fr) !important; 
+            min-width: 800px !important; /* LARGURA MÍNIMA DA TABELA */
+            gap: 0px !important;
             border-bottom: 1px solid #f1f5f9;
         }
 
-        /* 4. A COLUNA DA HORA (STICKY NA ESQUERDA) */
-        /* O primeiro filho fica preso na tela enquanto o resto rola */
+        /* 3. COLUNA DA HORA (FIXA) */
         div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child {
             position: sticky !important;
             left: 0 !important;
-            z-index: 100 !important;
-            background-color: #ffffff !important;
+            z-index: 50 !important;
+            background: white !important;
             border-right: 2px solid #e2e8f0 !important;
-            min-width: 50px !important;
-            max-width: 50px !important;
-            width: 50px !important;
-            flex: 0 0 50px !important;
+            width: 100% !important; /* Ocupa a célula do grid */
+            min-width: 0 !important;
         }
 
-        /* 5. AS COLUNAS DOS DIAS */
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(n+2) {
-            min-width: 105px !important;
-            max-width: 105px !important;
-            width: 105px !important;
-            flex: 0 0 105px !important;
-            border-right: 1px solid #f8fafc;
+        /* 4. AS OUTRAS COLUNAS */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+            min-width: 0 !important; /* O Grid controla a largura, não o elemento */
+            width: 100% !important;
+            padding: 0 !important;
         }
         
-        /* 6. AJUSTES VISUAIS MICRO */
-        /* Botões */
+        /* 5. REMOVE GAPS VERTICAIS */
+        div[data-testid="stVerticalBlock"] { gap: 0 !important; }
+        div[data-testid="element-container"] { margin: 0 !important; }
+        
+        /* 6. COMPACTAÇÃO EXTREMA DE CONTEÚDO */
+        
+        /* Botões Invisíveis */
         div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-            height: 40px !important;
-            min-height: 40px !important;
+            height: 35px !important;
+            min-height: 35px !important;
             padding: 0 !important;
             border: none !important;
-            border-bottom: 1px solid #f1f5f9 !important;
+            border-right: 1px solid #f8fafc !important;
         }
         
-        /* Fontes */
-        p, div, span, button { font-size: 10px !important; }
-        .day-header-num { font-size: 16px !important; }
+        /* Eventos */
+        .evt-card {
+            height: 33px !important;
+            font-size: 9px !important;
+            padding: 0 2px !important;
+            line-height: 33px !important;
+            margin: 1px 0 !important;
+        }
         
-        /* Esconde Header do App */
+        /* Admin Block */
+        .admin-blocked { height: 33px !important; font-size: 8px !important; }
+        
+        /* Cabeçalhos */
+        .day-header-num { font-size: 14px !important; }
+        .day-header-name { font-size: 9px !important; margin-bottom: 0 !important; }
+        .time-label { font-size: 9px !important; top: 10px !important; padding-right: 4px !important; }
+        
+        /* Esconde Header App */
         .stApp > header { display: none !important; }
     }
 
-    /* --- ESTILOS GERAIS (DESKTOP) --- */
+    /* --- ESTILOS DESKTOP --- */
     @media (min-width: 769px) {
         div[data-testid="stVerticalBlock"] button[kind="secondary"] {
             background: transparent !important; border: none !important;
@@ -150,25 +147,25 @@ CSS_AGENDA_WIDE = """
         .evt-card { height: 42px; font-size: 11px; padding: 0 4px; }
     }
 
-    /* --- ESTILOS VISUAIS COMUNS --- */
+    /* --- COMUNS --- */
     .evt-card {
         background-color: #e0f2fe; color: #0369a1; font-weight: 700; 
         border-radius: 2px; border-left: 3px solid #0284c7;
-        overflow: hidden; cursor: pointer; display: flex; align-items: center;
-        margin: 1px 0; height: 38px; font-size: 10px; padding: 2px;
+        overflow: hidden; cursor: pointer; display: block;
+        white-space: nowrap; text-overflow: ellipsis;
     }
     .admin-blocked { 
         background: #f1f5f9; color: #94a3b8; font-size: 9px;
         display: flex; align-items: center; justify-content: center;
-        height: 100%; width: 100%;
+        width: 100%;
     }
-    .day-header-box { text-align: center; border-bottom: 1px solid #cbd5e1; padding: 5px 0; background: #fff; }
+    .day-header-box { text-align: center; border-bottom: 1px solid #cbd5e1; padding: 2px 0; background: #fff; }
     .day-header-name { font-weight: 700; color: #64748b; text-transform: uppercase; }
     .day-header-num { font-weight: 800; color: #1e293b; line-height: 1; }
     .today-hl { color: #0284c7; }
     .time-label { 
         font-weight: 600; color: #94a3b8; 
-        text-align: right; position: relative; top: 12px; padding-right: 5px;
+        text-align: right; position: relative;
     }
 </style>
 """
@@ -338,7 +335,7 @@ def render_calendar(sala, is_admin_mode=False):
     dias_visiveis = [d_start + timedelta(days=i) for i in range(7)]
     dias_sem = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
     
-    # Ratios
+    # Ratios (O CSS GRID VAI IGNORAR ISSO E USAR A REGRA 35px + 1fr)
     cols = st.columns([0.3, 1, 1, 1, 1, 1, 1, 1])
     cols[0].write("") # Espaço hora
     
@@ -380,13 +377,13 @@ def render_calendar(sala, is_admin_mode=False):
                         if is_admin_mode:
                              if cont.button("x", key=f"d_res_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
                 elif is_sun or is_sat_close:
-                    st.markdown("<div style='height:40px; background:#f9fafb;'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='height:35px; background:#f9fafb;'></div>", unsafe_allow_html=True)
                 else:
                     if not is_admin_mode:
                         if cont.button(" ", key=f"add_{d}_{h}", type="secondary", use_container_width=True):
                             modal_agendamento(sala, d, h)
                     else:
-                        st.markdown("<div style='height:40px; border-right:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
+                        st.markdown("<div style='height:35px; border-right:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
 
 def tela_admin_master():
     tabs = st.tabs(["💰 Config", "📅 Visualizar", "🚫 Bloqueios", "📄 Relatórios", "👥 Usuários"])
@@ -550,7 +547,7 @@ def main():
             if c_b.button("Recuperar"): st.session_state.auth_mode = 'forgot'; st.rerun()
         return
 
-    # MODO AGENDA: CSS DE AGENDA (EXCEL MODE - SEM JS)
+    # MODO AGENDA: CSS DE AGENDA (PROTOCOL: GRIDIRON)
     st.markdown(CSS_AGENDA_WIDE, unsafe_allow_html=True)
 
     u = st.session_state['user']
