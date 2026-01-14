@@ -30,21 +30,21 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS GLOBAL ---
+# --- 3. CSS GLOBAL BÁSICO ---
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     .stApp { background-color: #ffffff; font-family: 'Inter', sans-serif; color: #1e293b; }
     header, footer, [data-testid="stToolbar"] { display: none !important; }
     
-    /* Botões Gerais */
+    /* Botões Padrão */
     div[data-testid="stForm"] button, button[kind="primary"] { 
         background: #0f766e !important; color: white !important; border: none; border-radius: 6px; 
     }
     
     /* Login Responsivo */
     @media only screen and (max-width: 768px) {
-        .block-container { padding: 2rem 1rem !important; max-width: 100% !important; }
+        .block-container { padding: 2rem 1rem !important; }
         button { min-height: 50px !important; }
     }
 </style>
@@ -117,6 +117,7 @@ def navegar(direcao):
     if direcao == 'prev': st.session_state.data_ref -= timedelta(days=delta)
     else: st.session_state.data_ref += timedelta(days=delta)
 
+# --- 5. AGENDAMENTO ---
 @st.dialog("Novo Agendamento")
 def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
     st.markdown(f"#### {data_sugerida.strftime('%d/%m/%Y')}")
@@ -184,103 +185,88 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
                 st.toast("Sucesso!", icon="✅"); time.sleep(1); st.rerun()
         except: st.error("Erro.")
 
-# --- 6. RENDERIZADOR PYTHON NATIVO (GRADE BLINDADA) ---
+# --- 6. RENDERIZADOR DA AGENDA (COM ZOOM E BOTÃO "+") ---
 def render_calendar_interface(sala, is_admin_mode=False):
     
-    # CSS AGRESSIVO PARA FORÇAR LAYOUT HORIZONTAL E BOTÕES PEQUENOS
+    # CSS MICROCIRURGIA COM ZOOM
     st.markdown("""
     <style>
     @media only screen and (max-width: 768px) {
         
-        /* 1. CONTAINER DA PÁGINA (Permite scroll se transbordar) */
+        /* 1. O TRUQUE DO ZOOM: DIMINUI TUDO EM 30% */
         .block-container {
             padding: 5px 2px !important;
-            max-width: 100vw !important;
-            overflow-x: auto !important; 
+            overflow-x: hidden !important;
         }
-
-        /* 2. FORÇA O BLOCO HORIZONTAL A SER GIGANTE (NÃO QUEBRA LINHA) */
-        /* Seleciona o bloco que contém as colunas da agenda */
-        div[data-testid="stHorizontalBlock"] {
+        
+        /* Aplica zoom apenas na área da grade */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) {
+            zoom: 0.70 !important; /* <--- O SEGREDO */
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
-            min-width: 700px !important; /* Força largura maior que a tela do celular */
+            overflow-x: auto !important;
+            width: 100% !important;
             gap: 1px !important;
-            padding-bottom: 5px !important;
+            margin-bottom: 5px !important;
         }
 
-        /* 3. COLUNAS (LARGURA FIXA E PEQUENA) */
+        /* 2. LARGURAS FIXAS */
         div[data-testid="column"] {
             flex: 0 0 auto !important;
-            width: 80px !important;       /* Largura fixa */
-            min-width: 80px !important;
-            max-width: 80px !important;
+            width: 75px !important;
+            min-width: 75px !important;
         }
         
-        /* 4. COLUNA DA HORA (1ª) - FIXA E ESTREITA */
-        div[data-testid="column"]:nth-of-type(1) {
-            width: 40px !important;
-            min-width: 40px !important;
-            max-width: 40px !important;
+        /* Coluna da hora */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child {
+            width: 45px !important;
+            min-width: 45px !important;
             position: sticky !important;
             left: 0 !important;
             background: white !important;
-            z-index: 99 !important;
-            border-right: 1px solid #e2e8f0 !important;
+            z-index: 100 !important;
+            border-right: 1px solid #e5e7eb !important;
         }
 
-        /* 5. BOTÕES "+" (QUADRADOS E PEQUENOS) */
+        /* 3. BOTÃO "+" PEQUENO */
         div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-            height: 40px !important;
-            min-height: 40px !important;
+            height: 35px !important;
+            min-height: 35px !important;
             width: 100% !important;
             padding: 0 !important;
             margin: 0 !important;
-            border: 1px solid #e2e8f0 !important;
-            background-color: transparent !important;
-            color: #0f766e !important;
-            font-weight: bold !important;
             font-size: 16px !important;
             line-height: 1 !important;
+            border: 1px solid #f3f4f6 !important;
+            color: #0f766e !important; /* Cor do + */
+            background: white !important;
         }
-        div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover {
-            background-color: #f0fdf4 !important;
-        }
-        
-        /* 6. CABEÇALHOS */
-        .day-header-box { 
-            height: 40px !important; 
-            display: flex; align-items: center; justify-content: center; 
-            background: #f8fafc; border-bottom: 2px solid #e2e8f0;
-            font-size: 12px !important; text-align: center;
+        div[data-testid="stVerticalBlock"] button[kind="secondary"]:active {
+            background-color: #ccfbf1 !important;
         }
         
-        .time-label { 
-            font-size: 10px !important; top: 15px !important; position: relative; font-weight: 600;
-        }
+        /* 4. CABEÇALHOS E TEXTOS */
+        .day-header-box { height: 40px !important; font-size: 12px !important; display:flex; align-items:center; justify-content:center; text-align:center; background:#f9fafb; }
+        .time-label { top: 12px; position: relative; font-size: 11px !important; font-weight:600; color:#9ca3af; }
         
-        /* Oculta Header do App */
+        /* Header App */
         .stApp > header { display: none !important; }
     }
     
-    /* DESKTOP (AJUSTES) */
+    /* DESKTOP */
     @media (min-width: 769px) {
         button[kind="secondary"] { height: 45px !important; border: 1px solid #f1f5f9 !important; color: #0f766e !important; }
         button[kind="secondary"]:hover { background: #f8fafc !important; }
     }
 
-    /* ESTILOS COMUNS */
+    /* CARD DE EVENTO */
     .evt-card {
         background-color: #e0f2fe; border-left: 3px solid #0284c7; color: #0369a1; font-weight: 700; 
         border-radius: 3px; overflow: hidden; cursor: pointer; display: flex; align-items: center; padding: 2px;
-        height: 38px; font-size: 10px; line-height: 1.1; white-space: normal;
+        height: 33px; font-size: 10px; line-height: 1.1; white-space: normal;
     }
-    .blocked { background: #f1f5f9; color: #94a3b8; justify-content: center; border-left: 3px solid #cbd5e1; }
-    .slot-blocked {
-        height: 38px; display: flex; align-items: center; justify-content: center;
-        background: #f1f5f9; color: #cbd5e1; font-size: 18px;
-    }
+    .blocked { background: #f1f5f9; color: #9ca3af; justify-content: center; border-left: 3px solid #d1d5db; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -310,7 +296,7 @@ def render_calendar_interface(sala, is_admin_mode=False):
     dias_visiveis = [d_start + timedelta(days=i) for i in range(7)]
     dias_sem = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
 
-    # 1. CABEÇALHO (HORA + 7 DIAS)
+    # 1. CABEÇALHO
     cols = st.columns([0.3, 1, 1, 1, 1, 1, 1, 1])
     cols[0].write("") 
     for i, d in enumerate(dias_visiveis):
@@ -351,7 +337,7 @@ def render_calendar_interface(sala, is_admin_mode=False):
                             supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute()
                             st.rerun()
                 elif is_past or is_sunday or is_sat_closed:
-                    st.markdown("<div class='slot-blocked'>•</div>", unsafe_allow_html=True)
+                    st.markdown("<div style='height:35px; background:#f9fafb; border-radius:3px;'></div>", unsafe_allow_html=True)
                 else:
                     # BOTÃO COM SINAL DE + (Nativo do Streamlit)
                     if cont.button("＋", key=f"btn_{d}_{h}", type="secondary", use_container_width=True):
