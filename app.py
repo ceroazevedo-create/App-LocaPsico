@@ -8,7 +8,6 @@ import base64
 import calendar
 import time
 import os
-import streamlit.components.v1 as components
 
 # --- 1. CONFIGURAÇÕES INICIAIS ---
 st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide", initial_sidebar_state="collapsed")
@@ -31,21 +30,99 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS GERAL ---
+# --- 3. CSS "GRADE PERFEITA" ---
+# Este CSS força os botões do Python a parecerem células de uma tabela Excel
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     .stApp { background-color: #ffffff; font-family: 'Inter', sans-serif; color: #1e293b; }
     header, footer, [data-testid="stToolbar"] { display: none !important; }
     
+    /* Botões Gerais (Login, etc) */
     div[data-testid="stForm"] button, button[kind="primary"] { 
         background: #0f766e !important; color: white !important; border: none; border-radius: 6px; 
     }
     
-    /* Login Responsivo */
+    /* === REGRAS DA AGENDA (MOBILE) === */
     @media only screen and (max-width: 768px) {
-        .block-container { padding: 2rem 1rem !important; max-width: 100% !important; }
-        button { min-height: 50px !important; }
+        
+        .block-container { padding: 10px 2px !important; overflow-x: hidden; }
+
+        /* 1. FORÇA LINHA HORIZONTAL (NUNCA EMPILHAR) */
+        /* Seleciona blocos com 8 colunas (nossa agenda) */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important; /* OBRIGATÓRIO */
+            overflow-x: auto !important;  /* SCROLL LATERAL */
+            align-items: stretch !important;
+            width: 100% !important;
+            gap: 1px !important;
+            padding-bottom: 2px !important;
+        }
+
+        /* 2. LARGURA FIXA DAS COLUNAS (IMPEDE FICAR "GRANDE") */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"] {
+            flex: 0 0 auto !important;
+            width: 60px !important;       /* LARGURA MÁXIMA DA CÉLULA */
+            min-width: 60px !important;
+            max-width: 60px !important;
+        }
+        
+        /* 3. COLUNA DA HORA (PRIMEIRA) - FIXA E MENOR */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"]:first-child {
+            width: 40px !important;
+            min-width: 40px !important;
+            max-width: 40px !important;
+            position: sticky !important;
+            left: 0 !important;
+            background: white !important;
+            z-index: 50 !important;
+            border-right: 1px solid #e2e8f0 !important;
+        }
+
+        /* 4. TRANSFORMANDO BOTÕES EM CÉLULAS PEQUENAS */
+        div[data-testid="stVerticalBlock"] button[kind="secondary"] {
+            height: 40px !important;      /* ALTURA FIXA PEQUENA */
+            min-height: 40px !important;
+            width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            font-size: 14px !important;
+            line-height: 1 !important;
+            border: 1px solid #f1f5f9 !important;
+            background-color: transparent !important;
+            color: #0d9488 !important; /* Cor do + */
+            font-weight: bold !important;
+        }
+        div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover {
+            background-color: #f0fdf4 !important;
+        }
+        
+        /* CABEÇALHOS */
+        .day-header-box { 
+            height: 40px; display: flex; align-items: center; justify-content: center; 
+            background: #f8fafc; border-bottom: 2px solid #e2e8f0; font-size: 10px; text-align: center;
+        }
+        .time-label { top: 15px; position: relative; font-size: 10px; font-weight: 600; color: #94a3b8; }
+        
+        /* CARD DE EVENTO */
+        .evt-card {
+            height: 38px; font-size: 9px; line-height: 1; padding: 1px;
+            display: flex; align-items: center; white-space: normal; overflow: hidden;
+            background-color: #e0f2fe; border-left: 3px solid #0284c7; color: #0369a1; border-radius: 3px;
+        }
+        .slot-blocked {
+            height: 38px; display: flex; align-items: center; justify-content: center;
+            background: #f1f5f9; color: #cbd5e1; font-size: 14px;
+        }
+    }
+    
+    /* DESKTOP (MANTÉM NORMAL) */
+    @media (min-width: 769px) {
+        .evt-card { height: 46px; font-size: 11px; padding: 4px; border-radius: 4px; background: #e0f2fe; color: #0369a1; border-left: 3px solid #0284c7; }
+        button[kind="secondary"] { border: 1px solid #eee; height: 46px; width: 100%; color: #0d9488; }
+        .slot-blocked { height: 46px; background: #f8fafc; display: flex; align-items: center; justify-content: center; color: #cbd5e1; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -118,20 +195,14 @@ def navegar(direcao):
     else: st.session_state.data_ref += timedelta(days=delta)
 
 @st.dialog("Novo Agendamento")
-def modal_agendamento(sala_padrao, data_sugerida=None, hora_sugerida_int=None):
-    if not data_sugerida: data_sugerida = st.session_state.data_ref
-    
-    st.markdown(f"#### Detalhes da Reserva")
+def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
+    st.markdown(f"#### {data_sugerida.strftime('%d/%m/%Y')}")
     config_precos = get_config_precos()
-    
-    c_d, c_h = st.columns(2)
-    dt = c_d.date_input("Data", value=data_sugerida)
-    
     modo = st.radio("Cobrança", ["Por Hora", "Por Período"], horizontal=True)
+    dt = data_sugerida
     horarios_selecionados = []
     valor_final = 0.0
     
-    # Recalcula listas com base na data selecionada
     dia_sem = dt.weekday()
     if dia_sem == 6: lista_horas = []; st.error("Domingo Fechado")
     elif dia_sem == 5: lista_horas = [f"{h:02d}:00" for h in range(7, 14)]; 
@@ -142,7 +213,7 @@ def modal_agendamento(sala_padrao, data_sugerida=None, hora_sugerida_int=None):
         if hora_sugerida_int:
             str_h = f"{hora_sugerida_int:02d}:00"
             if str_h in lista_horas: idx_padrao = lista_horas.index(str_h)
-        hr = c_h.selectbox("Horário", lista_horas, index=idx_padrao, disabled=(len(lista_horas)==0))
+        hr = st.selectbox("Horário", lista_horas, index=idx_padrao, disabled=(len(lista_horas)==0))
         if hr:
             horarios_selecionados = [(hr, f"{int(hr[:2])+1:02d}:00")]
             valor_final = config_precos['preco_hora']
@@ -190,139 +261,7 @@ def modal_agendamento(sala_padrao, data_sugerida=None, hora_sugerida_int=None):
                 st.toast("Sucesso!", icon="✅"); time.sleep(1); st.rerun()
         except: st.error("Erro.")
 
-# --- 6. RENDERIZADOR HTML PURO (O QUE FICOU PERFEITO) ---
-def render_calendar_html(sala, is_admin_mode=False):
-    # Lógica de Dados
-    ref = st.session_state.data_ref
-    d_start = ref - timedelta(days=ref.weekday())
-    d_end = d_start + timedelta(days=6)
-    agora = datetime.datetime.now()
-    
-    reservas = []
-    try:
-        r = supabase.table("reservas").select("*").eq("sala_nome", sala).neq("status", "cancelada").gte("data_reserva", str(d_start)).lte("data_reserva", str(d_end)).execute()
-        reservas = r.data
-    except: pass
-    
-    mapa = {}
-    for x in reservas:
-        d_r = x['data_reserva']
-        if d_r not in mapa: mapa[d_r] = {}
-        mapa[d_r][x['hora_inicio']] = x
-
-    dias_visiveis = [d_start + timedelta(days=i) for i in range(7)]
-    dias_sem = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
-
-    # HTML PERFEITO (Com altura corrigida para 22h)
-    html = """
-    <style>
-        body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; overflow-x: hidden; background: transparent; }
-        
-        .calendar-container {
-            width: 100%;
-            overflow-x: auto; 
-            white-space: nowrap;
-            padding-bottom: 10px;
-            -webkit-overflow-scrolling: touch;
-        }
-        
-        .calendar-table {
-            border-collapse: separate;
-            border-spacing: 0;
-            width: max-content;
-            min-width: 800px;
-        }
-        
-        th, td {
-            border-bottom: 1px solid #f1f5f9;
-            border-right: 1px solid #f8fafc;
-            padding: 0; margin: 0;
-            box-sizing: border-box;
-        }
-        
-        .col-time {
-            position: sticky; left: 0; background: white; z-index: 10;
-            width: 45px; min-width: 45px;
-            border-right: 2px solid #e2e8f0;
-            text-align: right; padding-right: 5px;
-            font-size: 11px; color: #94a3b8; font-weight: 600;
-            vertical-align: middle;
-        }
-        
-        .col-day { width: 105px; min-width: 105px; vertical-align: top; }
-        
-        .header-cell {
-            text-align: center; height: 40px; background: #f8fafc; border-bottom: 2px solid #e2e8f0;
-        }
-        .day-name { font-size: 11px; font-weight: 700; color: #64748b; display: block; }
-        .day-num { font-size: 16px; font-weight: 800; color: #1e293b; display: block; }
-        .today .day-num { color: #0284c7 !important; }
-        
-        .slot-cell { height: 50px; position: relative; }
-        
-        .evt-card {
-            background: #e0f2fe; border-left: 3px solid #0284c7; color: #0369a1;
-            font-size: 10px; font-weight: 700;
-            padding: 2px 4px; margin: 2px; border-radius: 3px;
-            height: 44px; display: flex; align-items: center;
-            white-space: normal; line-height: 1.1; overflow: hidden;
-        }
-        .blocked { background: #f1f5f9; color: #94a3b8; justify-content: center; border-left: 3px solid #cbd5e1; }
-        .slot-disabled { background: #fafafa; opacity: 0.5; }
-        .slot-free { color: #cbd5e1; font-size: 9px; text-align: center; line-height: 50px; }
-    </style>
-    
-    <div class="calendar-container">
-        <table class="calendar-table">
-            <thead>
-                <tr>
-                    <th class="col-time"></th>
-    """
-    
-    for d in dias_visiveis:
-        is_hj = (d == datetime.date.today())
-        cls = "today" if is_hj else ""
-        html += f"""
-            <th class="col-day header-cell {cls}">
-                <span class="day-name">{dias_sem[d.weekday()]}</span>
-                <span class="day-num">{d.day}</span>
-            </th>
-        """
-    html += "</tr></thead><tbody>"
-    
-    # 7h até 22h
-    for h in range(7, 23):
-        html += f"""<tr><td class="col-time">{h:02d}:00</td>"""
-        for d in dias_visiveis:
-            d_s = str(d)
-            h_s = f"{h:02d}:00:00"
-            res = mapa.get(d_s, {}).get(h_s)
-            
-            dt_check = datetime.datetime.combine(d, datetime.time(h, 0))
-            is_past = dt_check < agora
-            is_sunday = d.weekday() == 6
-            is_sat_closed = (d.weekday() == 5 and h >= 14)
-            is_disabled = is_past or is_sunday or is_sat_closed
-            
-            html += "<td class='slot-cell'>"
-            
-            if res:
-                nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
-                cls_evt = "blocked" if res['status'] == 'bloqueado' else ""
-                txt = "BLOQ" if res['status'] == 'bloqueado' else nm
-                html += f"<div class='evt-card {cls_evt}'>{txt}</div>"
-            elif is_disabled:
-                html += "<div class='slot-disabled' style='height:100%;'></div>"
-            else:
-                # SEM LINK: Apenas visual
-                html += "<div class='slot-free'>•</div>"
-            
-            html += "</td>"
-        html += "</tr>"
-    
-    html += "</tbody></table></div>"
-    return html
-
+# --- 6. RENDERIZADOR PYTHON (BOTÕES REAIS E PEQUENOS) ---
 def render_calendar_interface(sala, is_admin_mode=False):
     # NAVEGAÇÃO
     c1, c2, c3 = st.columns([1, 4, 1])
@@ -335,16 +274,68 @@ def render_calendar_interface(sala, is_admin_mode=False):
     mes_nome = d_start.strftime("%b").upper()
     c2.markdown(f"<div style='text-align:center; font-weight:bold; margin-top:5px'>{mes_nome} {d_start.day}-{d_end.day}</div>", unsafe_allow_html=True)
 
-    # BOTÃO DE AÇÃO (A SOLUÇÃO PARA O CLIQUE)
-    st.write("")
-    if st.button("➕ NOVO AGENDAMENTO", type="primary", use_container_width=True):
-        modal_agendamento(sala)
-    st.write("")
+    # DADOS
+    reservas = []
+    try:
+        r = supabase.table("reservas").select("*").eq("sala_nome", sala).neq("status", "cancelada").gte("data_reserva", str(d_start)).lte("data_reserva", str(d_end)).execute()
+        reservas = r.data
+    except: pass
+    mapa = {}
+    for x in reservas:
+        d_r = x['data_reserva']
+        if d_r not in mapa: mapa[d_r] = {}
+        mapa[d_r][x['hora_inicio']] = x
 
-    # RENDERIZA O HTML (APENAS VISUALIZAÇÃO)
-    # Aumentei altura para 1000px para caber até 22h sem cortar
-    html_code = render_calendar_html(sala, is_admin_mode)
-    components.html(html_code, height=950, scrolling=False) 
+    dias_visiveis = [d_start + timedelta(days=i) for i in range(7)]
+    dias_sem = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
+
+    # 1. CABEÇALHO
+    cols = st.columns([0.3, 1, 1, 1, 1, 1, 1, 1])
+    cols[0].write("") 
+    for i, d in enumerate(dias_visiveis):
+        with cols[i+1]:
+            is_hj = (d == datetime.date.today())
+            cls_hj = "color:#0284c7;" if is_hj else "color:#334155;"
+            st.markdown(f"""
+            <div class='day-header-box'>
+                <div style='{cls_hj}'>{dias_sem[d.weekday()]}<br><strong>{d.day}</strong></div>
+            </div>""", unsafe_allow_html=True)
+
+    # 2. GRADE (7h-22h)
+    for h in range(7, 23): 
+        row = st.columns([0.3, 1, 1, 1, 1, 1, 1, 1])
+        row[0].markdown(f"<div class='time-label'>{h:02d}:00</div>", unsafe_allow_html=True)
+        
+        for i, d in enumerate(dias_visiveis):
+            with row[i+1]:
+                d_s = str(d)
+                h_s = f"{h:02d}:00:00"
+                res = mapa.get(d_s, {}).get(h_s)
+                
+                agora = datetime.datetime.now()
+                dt_check = datetime.datetime.combine(d, datetime.time(h, 0))
+                is_past = dt_check < agora
+                is_sunday = d.weekday() == 6
+                is_sat_closed = (d.weekday() == 5 and h >= 14)
+                
+                cont = st.container()
+                
+                if res:
+                    nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
+                    cls_evt = "blocked" if res['status'] == 'bloqueado' else "evt-card"
+                    txt = "BLOQ" if res['status'] == 'bloqueado' else nm
+                    st.markdown(f"<div class='{cls_evt}'>{txt}</div>", unsafe_allow_html=True)
+                    if is_admin_mode:
+                        if cont.button("x", key=f"del_{res['id']}"): 
+                            supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute()
+                            st.rerun()
+                elif is_past or is_sunday or is_sat_closed:
+                    st.markdown("<div class='slot-blocked'>•</div>", unsafe_allow_html=True)
+                else:
+                    # O SINAL DE + (BOTÃO NATIVO)
+                    # O CSS força ele a ser pequeno e quadrado
+                    if cont.button("+", key=f"btn_{d}_{h}", type="secondary", use_container_width=True):
+                        modal_agendamento(sala, d, h)
 
 def tela_admin_master():
     tabs = st.tabs(["💰 Config", "📅 Visualizar", "🚫 Bloqueios", "📄 Relatórios", "👥 Usuários"])
