@@ -31,93 +31,112 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS VISUAL (DESIGN PREMIUM) ---
+# --- 3. CSS RESPONSIVO AVANÇADO (ENGINEERING LEVEL) ---
 st.markdown("""
 <style>
-    /* --- FUNDO E TIPOGRAFIA GERAL --- */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    /* --- RESET & BASE --- */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    
+    * { box-sizing: border-box; }
     
     .stApp {
         background-color: #f8fafc;
         font-family: 'Inter', sans-serif;
         color: #1e293b;
     }
+
+    /* --- RESPONSIVE CONTAINER (MEDIA QUERIES) --- */
     
+    /* 1. DESKTOP (> 1024px) - Mantém layout premium */
     .block-container {
         padding-top: 2rem !important;
         max-width: 1100px;
     }
 
-    /* Container Principal */
+    /* 2. TABLET (768px - 1023px) */
+    @media (max-width: 1023px) {
+        .block-container {
+            padding-top: 1.5rem !important;
+            padding-left: 2rem !important;
+            padding-right: 2rem !important;
+        }
+    }
+
+    /* 3. MOBILE (< 768px) - Otimização Crítica */
+    @media (max-width: 767px) {
+        .block-container {
+            padding-top: 0.5rem !important;
+            padding-left: 0.8rem !important;
+            padding-right: 0.8rem !important;
+            max-width: 100% !important;
+        }
+        
+        /* Ajuste de Títulos */
+        h1 { font-size: 20px !important; margin-bottom: 5px !important; }
+        h2, h3 { font-size: 18px !important; }
+        
+        /* Card Principal ocupa 100% */
+        div[data-testid="column"]:nth-of-type(2) > div {
+            padding: 15px !important;
+            margin-bottom: 10px !important;
+        }
+        
+        /* Inputs e Botões Full Width para Toque */
+        .stTextInput input, .stSelectbox, div[data-testid="stForm"] button {
+            height: 45px !important;
+            font-size: 16px !important; /* Evita zoom no iPhone */
+        }
+        
+        /* Forçar colunas de formulário a empilhar (UX melhor) */
+        div[data-testid="column"] {
+            min-width: 100% !important;
+        }
+    }
+
+    /* --- COMPONENTES VISUAIS --- */
+    
+    /* Card Container */
     div[data-testid="column"]:nth-of-type(2) > div {
         background-color: #ffffff;
         padding: 40px;
         border-radius: 16px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
         border: 1px solid #f1f5f9;
         margin-bottom: 20px;
     }
 
-    div[data-testid="stImage"] {
-        display: flex;
-        justify-content: center;
-        margin-bottom: 24px;
-    }
+    /* Logo Responsiva */
     div[data-testid="stImage"] > img {
-        max-height: 120px;
+        max-height: 100px;
         object-fit: contain;
+        width: auto;
+    }
+    @media (max-width: 767px) {
+        div[data-testid="stImage"] > img { max-height: 70px !important; }
     }
 
-    h1 {
-        font-size: 26px;
-        font-weight: 700;
-        color: #0f172a;
-        text-align: center;
-        margin-bottom: 8px;
-        letter-spacing: -0.5px;
-    }
-    h2, h3 { color: #334155; font-weight: 600; }
-    p { color: #64748b; }
-
-    /* --- INPUTS --- */
+    /* Inputs */
     .stTextInput input {
         background-color: #f8fafc;
         border: 1px solid #e2e8f0;
         border-radius: 8px;
         padding: 10px 12px;
         height: 45px;
-        font-size: 15px;
-        transition: all 0.2s;
+        color: #334155;
     }
-    .stTextInput input:focus {
-        border-color: #0d9488;
-        box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2);
-    }
+    .stTextInput input:focus { border-color: #0d9488; outline: none; }
 
-    /* --- BOTÕES PRIMÁRIOS (VERDE TEAL) --- */
-    div[data-testid="stForm"] button, 
-    button[kind="primary"] {
+    /* Botões */
+    div[data-testid="stForm"] button, button[kind="primary"] {
         background: linear-gradient(180deg, #0f766e 0%, #0d9488 100%) !important;
         border: none !important;
         height: 45px !important;
         font-weight: 600 !important;
-        letter-spacing: 0.5px;
         border-radius: 8px !important;
-        box-shadow: 0 2px 4px rgba(13, 148, 136, 0.2) !important;
         color: white !important;
-        transition: transform 0.1s ease !important;
+        width: 100%;
     }
-    div[data-testid="stForm"] button:hover, 
-    button[kind="primary"]:hover {
-        background: #0f766e !important;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 6px rgba(13, 148, 136, 0.3) !important;
-    }
-    div[data-testid="stForm"] button *, button[kind="primary"] * {
-        color: white !important;
-    }
-
-    /* --- BOTÕES SECUNDÁRIOS --- */
+    
     button[kind="secondary"] {
         background-color: white !important;
         border: 1px solid #cbd5e1 !important;
@@ -125,92 +144,61 @@ st.markdown("""
         border-radius: 8px !important;
         height: 45px !important;
         font-weight: 500 !important;
-    }
-    button[kind="secondary"]:hover {
-        background-color: #f1f5f9 !important;
-        border-color: #94a3b8 !important;
-        color: #1e293b !important;
+        width: 100%;
     }
 
-    /* --- BOTÕES DO CALENDÁRIO (DIAS) --- */
-    div[data-testid="stButton"] button {
-        border-radius: 8px !important;
-        border: none !important;
-        font-weight: bold !important;
-    }
-
-    /* --- SLOT "LIVRE" --- */
-    div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-        background-color: #f0fdf4 !important;
-        border: 1px solid #bbf7d0 !important;
-        color: #15803d !important;
-        font-size: 12px !important;
-        font-weight: 600 !important;
-        height: 38px !important;
-        min-height: 38px !important;
-        border-radius: 6px !important;
-        box-shadow: none !important;
-        transition: all 0.2s;
-    }
-    div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover {
-        background-color: #16a34a !important;
-        border-color: #16a34a !important;
-        color: white !important;
-    }
-    div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover p {
-        color: white !important;
-    }
-
-    /* --- MÉTRICAS --- */
-    div[data-testid="stMetric"] {
-        background-color: #f8fafc;
-        padding: 15px;
-        border-radius: 10px;
-        border: 1px solid #e2e8f0;
-        text-align: center;
-    }
-    div[data-testid="stMetricLabel"] { font-size: 14px !important; color: #64748b !important; }
-    div[data-testid="stMetricValue"] { font-size: 24px !important; color: #0d9488 !important; font-weight: 700 !important; }
-
-    /* --- BOTÕES DE PERIGO --- */
-    button[help="Excluir Usuário"], button[key="logout_btn"], button[key="admin_logout"] { 
-        border-color: #fecaca !important; 
-        color: #dc2626 !important; 
-        background-color: #fef2f2 !important; 
-    }
-    button[help="Excluir Usuário"]:hover, button[key="logout_btn"]:hover {
-        background-color: #dc2626 !important;
-        color: white !important;
-        border-color: #dc2626 !important;
-    }
-    button[help="Excluir Usuário"]:hover *, button[key="logout_btn"]:hover * { color: white !important; }
-
-    /* Olhinho da senha */
-    div[data-testid="stTextInput"] button {
-        background-color: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
+    /* --- LÓGICA DO CALENDÁRIO RESPONSIVO (SCROLL HORIZONTAL) --- */
+    /* Isso permite que o calendário tenha 7 colunas no mobile sem quebrar */
+    
+    div[data-testid="stHorizontalBlock"] {
+        width: 100%;
     }
     
-    .evt-chip {
-        background: white;
-        border-left: 4px solid #0d9488;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        color: #0f766e;
-        font-size: 11px;
-        font-weight: 600;
-        padding: 6px 8px;
-        border-radius: 4px;
-        margin-bottom: 4px;
-        display: flex;
-        align-items: center;
+    /* Quando dentro de um bloco horizontal, permite scroll se faltar espaço */
+    /* Aplica-se especificamente quando temos muitas colunas (calendário) */
+    @media (max-width: 767px) {
+        /* Seletor avançado para identificar a grade do calendário */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(7)) {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            padding-bottom: 10px; /* Espaço para scrollbar */
+            -webkit-overflow-scrolling: touch; /* Scroll suave no iOS */
+        }
+        
+        /* Garante largura mínima para as colunas do calendário no mobile */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(7)) > div[data-testid="column"] {
+            min-width: 110px !important; /* Tamanho mínimo legível */
+            flex: 0 0 auto !important;
+        }
     }
-    .admin-blocked { background: #334155; color: #f8fafc; border-radius: 4px; font-size: 10px; font-weight: bold; text-align: center; padding: 8px; letter-spacing: 1px; }
+
+    /* Chips e Status */
+    .evt-chip {
+        background: white; border-left: 4px solid #0d9488;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05); color: #0f766e;
+        font-size: 11px; font-weight: 600; padding: 6px;
+        border-radius: 4px; margin-bottom: 4px;
+        display: flex; align-items: center; justify-content: center;
+        text-align: center;
+    }
+    .admin-blocked { background: #334155; color: #f8fafc; border-radius: 4px; font-size: 10px; padding: 8px; text-align: center; }
     .blocked-slot { background-color: #fef2f2; height: 35px; border-radius: 6px; border: 1px solid #fecaca; opacity: 0.7; margin-bottom: 5px; }
+    
+    /* Botões da Grade */
+    div[data-testid="stVerticalBlock"] button[kind="secondary"] {
+        background-color: #f0fdf4 !important; border: 1px solid #bbf7d0 !important; color: #15803d !important;
+        font-size: 12px !important; font-weight: 600; height: 38px !important; border-radius: 6px !important;
+    }
+
+    /* Remover elementos nativos do Streamlit */
+    header[data-testid="stHeader"] { display: none !important; }
+    footer { display: none !important; }
+    .viewerBadge_container__1QSob { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# Javascript Cleaner
+# Javascript Cleaner (Força limpeza de UI)
 components.html("""<script>try{const doc=window.parent.document;const style=doc.createElement('style');style.innerHTML=`header, footer, .stApp > header { display: none !important; } [data-testid="stToolbar"] { display: none !important; } .viewerBadge_container__1QSob { display: none !important; }`;doc.head.appendChild(style);}catch(e){}</script>""", height=0)
 
 # --- 4. FUNÇÕES DE SUPORTE ---
@@ -463,7 +451,7 @@ def render_calendar(sala, is_admin_mode=False):
                 elif is_sunday or is_sat_closed or is_past: cont.markdown("<div class='blocked-slot'></div>", unsafe_allow_html=True)
                 else: 
                     if not is_admin_mode:
-                        if cont.button("Livre", key=f"free_{d_s}_{h}", type="secondary", use_container_width=True):
+                        if cont.button("Livre", key=f"free_{d_s}_{h}", type="secondary", use_container_width=True, use_container_width=True):
                             modal_agendamento(sala, d, h)
                     else:
                         cont.markdown("<div style='height:35px; border-left:1px dashed #cbd5e1'></div>", unsafe_allow_html=True)
