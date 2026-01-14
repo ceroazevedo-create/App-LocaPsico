@@ -20,8 +20,9 @@ if 'is_admin' not in st.session_state: st.session_state.is_admin = False
 if 'reset_email' not in st.session_state: st.session_state.reset_email = ""
 if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
 if 'view_mode' not in st.session_state: st.session_state.view_mode = 'SEMANA'
-# Controle para modal via URL
-if 'modal_trigger' not in st.session_state: st.session_state.modal_trigger = None
+
+# Variável de controle para abrir o modal automaticamente após clique no calendário
+if 'trigger_modal' not in st.session_state: st.session_state.trigger_modal = None
 
 NOME_DO_ARQUIVO_LOGO = "logo.png"
 
@@ -33,43 +34,33 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS "DOIS UNIVERSOS" ---
-
-# CSS BASE
-CSS_BASE = """
+# --- 3. CSS GLOBAL (LOGIN E ESTRUTURA) ---
+st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     .stApp { background-color: #ffffff; font-family: 'Inter', sans-serif; color: #1e293b; }
+    
+    /* Remove Header/Footer Nativos */
     header, footer, [data-testid="stToolbar"] { display: none !important; }
+    
+    /* Botões Gerais */
     div[data-testid="stForm"] button, button[kind="primary"] { 
         background: #0f766e !important; color: white !important; border: none; border-radius: 6px; 
     }
-</style>
-"""
-
-# CSS LOGIN
-CSS_LOGIN_MOBILE = """
-<style>
+    
+    /* Login Responsivo */
     @media only screen and (max-width: 768px) {
-        .block-container { max-width: 100% !important; padding: 2rem 1rem !important; }
+        .block-container { padding: 2rem 1rem !important; max-width: 100% !important; }
         button { min-height: 50px !important; }
     }
-</style>
-"""
-
-# CSS AGENDA (ESTILO GERAL PARA O APP, O CALENDÁRIO HTML TEM CSS PRÓPRIO)
-CSS_AGENDA_WIDE = """
-<style>
-    @media only screen and (max-width: 768px) {
-        .block-container {
-            padding: 10px 5px !important;
-            max-width: 100vw !important;
-            overflow-x: hidden !important;
-        }
-        .stApp > header { display: none !important; }
+    
+    /* Remove padding excessivo na agenda */
+    .block-container {
+        padding-top: 1rem;
+        padding-bottom: 5rem;
     }
 </style>
-"""
+""", unsafe_allow_html=True)
 
 # --- 4. FUNÇÕES DE SUPORTE ---
 def resolver_nome(email, nome_meta=None, nome_banco=None):
@@ -138,6 +129,7 @@ def navegar(direcao):
     if direcao == 'prev': st.session_state.data_ref -= timedelta(days=delta)
     else: st.session_state.data_ref += timedelta(days=delta)
 
+# --- 5. LÓGICA DE AGENDAMENTO ---
 @st.dialog("Novo Agendamento")
 def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
     st.markdown(f"#### {data_sugerida.strftime('%d/%m/%Y')}")
@@ -147,7 +139,7 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
     horarios_selecionados = []
     valor_final = 0.0
     
-    # Recalcula listas para o modal funcionar independentemente do clique
+    # Recalcula listas
     dia_sem = dt.weekday()
     if dia_sem == 6: lista_horas = []; st.error("Domingo Fechado")
     elif dia_sem == 5: lista_horas = [f"{h:02d}:00" for h in range(7, 14)]; 
@@ -206,9 +198,8 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
                 st.toast("Sucesso!", icon="✅"); time.sleep(1); st.rerun()
         except: st.error("Erro.")
 
-# --- MÁQUINA DE HTML PURO (COM INTERATIVIDADE) ---
+# --- 6. RENDERIZADOR HTML (AGORA COM LINKS) ---
 def render_calendar_html(sala, is_admin_mode=False):
-    # Lógica de Dados
     ref = st.session_state.data_ref
     d_start = ref - timedelta(days=ref.weekday())
     d_end = d_start + timedelta(days=6)
@@ -229,22 +220,26 @@ def render_calendar_html(sala, is_admin_mode=False):
     dias_visiveis = [d_start + timedelta(days=i) for i in range(7)]
     dias_sem = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
 
-    # HTML
+    # INICIO DO HTML
     html = """
     <style>
         body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; overflow-x: hidden; background: transparent; }
+        
         .calendar-container {
             width: 100%;
             overflow-x: auto; 
             white-space: nowrap;
-            padding-bottom: 5px;
+            padding-bottom: 10px;
+            -webkit-overflow-scrolling: touch; /* Scroll suave no iOS */
         }
+        
         .calendar-table {
             border-collapse: separate;
             border-spacing: 0;
             width: max-content;
             min-width: 800px;
         }
+        
         th, td {
             border-bottom: 1px solid #f1f5f9;
             border-right: 1px solid #f8fafc;
@@ -252,6 +247,7 @@ def render_calendar_html(sala, is_admin_mode=False):
             box-sizing: border-box;
         }
         
+        /* Coluna da Hora Fixa */
         .col-time {
             position: sticky; left: 0; background: white; z-index: 10;
             width: 45px; min-width: 45px;
@@ -260,8 +256,11 @@ def render_calendar_html(sala, is_admin_mode=False):
             font-size: 11px; color: #94a3b8; font-weight: 600;
             vertical-align: middle;
         }
+        
+        /* Colunas dos Dias */
         .col-day { width: 105px; min-width: 105px; vertical-align: top; }
         
+        /* Cabeçalho */
         .header-cell {
             text-align: center; height: 40px; background: #f8fafc; border-bottom: 2px solid #e2e8f0;
         }
@@ -269,15 +268,17 @@ def render_calendar_html(sala, is_admin_mode=False):
         .day-num { font-size: 16px; font-weight: 800; color: #1e293b; display: block; }
         .today .day-num { color: #0284c7 !important; }
         
+        /* Célula de Agendamento */
         .slot-cell { height: 50px; position: relative; }
         
-        /* O BOTÃO MÁGICO (Link que cobre a célula) */
+        /* LINK MÁGICO (CLICÁVEL) */
         .slot-link {
             display: block; width: 100%; height: 100%;
             text-decoration: none; cursor: pointer;
         }
-        .slot-link:active { background-color: #f0fdf4; } /* Feedback visual ao toque */
+        .slot-link:active { background-color: #f0fdf4; } /* Feedback de toque */
         
+        /* Eventos */
         .evt-card {
             background: #e0f2fe; border-left: 3px solid #0284c7; color: #0369a1;
             font-size: 10px; font-weight: 700;
@@ -314,7 +315,7 @@ def render_calendar_html(sala, is_admin_mode=False):
             h_s = f"{h:02d}:00:00"
             res = mapa.get(d_s, {}).get(h_s)
             
-            # Validação de Regras para Bloqueio Visual
+            # Regras de Bloqueio Visual
             dt_check = datetime.datetime.combine(d, datetime.time(h, 0))
             is_past = dt_check < agora
             is_sunday = d.weekday() == 6
@@ -327,14 +328,11 @@ def render_calendar_html(sala, is_admin_mode=False):
                 nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
                 cls_evt = "blocked" if res['status'] == 'bloqueado' else ""
                 txt = "BLOQ" if res['status'] == 'bloqueado' else nm
-                # Evento não é clicável aqui (para cancelar usa o painel)
                 html += f"<div class='evt-card {cls_evt}'>{txt}</div>"
             elif is_disabled:
                 html += "<div class='slot-disabled' style='height:100%;'></div>"
             else:
-                # CÉLULA LIVRE -> GERA LINK COM PARÂMETROS
-                # O target="_parent" força o Streamlit a recarregar e ler os params
-                # Usamos &booking=1 para o Python saber que é uma ação de agenda
+                # LINK PARA AGENDAR (Chama a URL com parâmetros)
                 link = f"?booking=1&d={d_s}&h={h}"
                 html += f"<a href='{link}' target='_parent' class='slot-link'></a>"
             
@@ -356,7 +354,7 @@ def render_calendar_interface(sala, is_admin_mode=False):
     mes_nome = d_start.strftime("%b").upper()
     c2.markdown(f"<div style='text-align:center; font-weight:bold; margin-top:5px'>{mes_nome} {d_start.day}-{d_end.day}</div>", unsafe_allow_html=True)
 
-    # RENDERIZA CALENDÁRIO
+    # RENDERIZA O HTML
     html_code = render_calendar_html(sala, is_admin_mode)
     components.html(html_code, height=600, scrolling=False) 
 
@@ -488,15 +486,10 @@ def tela_admin_master():
         else:
             st.info("Nenhum usuário encontrado.")
 
-# --- 7. MAIN (INJEÇÃO SELETIVA DE CSS) ---
+# --- 7. MAIN ---
 def main():
-    # 1. INJETA CSS BASE SEMPRE
-    st.markdown(CSS_BASE, unsafe_allow_html=True)
-
     if not st.session_state.user:
-        # MODO LOGIN: CSS DE LOGIN (RESPONSIVO)
-        st.markdown(CSS_LOGIN_MOBILE, unsafe_allow_html=True)
-        
+        # MODO LOGIN
         c1, c2, c3 = st.columns([1, 1.2, 1])
         with c2:
             st.write("") 
@@ -516,52 +509,47 @@ def main():
                     except Exception as e:
                         if "StopException" not in str(type(e)):
                             st.error("Erro login.")
-                            
+            
             c_a, c_b = st.columns(2)
             if c_a.button("Criar Conta"): st.session_state.auth_mode = 'register'; st.rerun()
             if c_b.button("Recuperar"): st.session_state.auth_mode = 'forgot'; st.rerun()
         return
 
-    # MODO AGENDA: CSS DE AGENDA (PROTOCOL: ISOLATION_CHAMBER)
-    st.markdown(CSS_AGENDA_WIDE, unsafe_allow_html=True)
-
+    # LOGADO
     u = st.session_state['user']
     if u is None: st.session_state.auth_mode = 'login'; st.rerun(); return
 
-    # --- LÓGICA DE CAPTURA DE CLIQUE NO CALENDÁRIO (URL PARAMS) ---
-    # Verifica se há parâmetros de agendamento na URL vindos do iframe
-    try:
-        # Tenta pegar query params (compatibilidade versões novas)
-        qp = st.query_params
-    except:
-        qp = st.experimental_get_query_params()
+    # --- LÓGICA DE CAPTURA DO CLIQUE DO CALENDÁRIO ---
+    try: qp = st.query_params
+    except: qp = st.experimental_get_query_params()
 
     if "booking" in qp:
-        # Captura dados
         d_str = qp.get("d")
         h_str = qp.get("h")
-        
-        # Converte se for lista (versões antigas) ou string
         if isinstance(d_str, list): d_str = d_str[0]
         if isinstance(h_str, list): h_str = h_str[0]
         
         if d_str and h_str:
-            d_obj = datetime.datetime.strptime(d_str, "%Y-%m-%d").date()
-            h_int = int(h_str)
-            
-            # Limpa URL para não reabrir em loop (importante)
+            # Salva no estado para persistir após limpar a URL
+            st.session_state.trigger_modal = {
+                "date": datetime.datetime.strptime(d_str, "%Y-%m-%d").date(),
+                "hour": int(h_str)
+            }
+            # Limpa URL
             try: st.query_params.clear()
             except: st.experimental_set_query_params()
-            
-            # Dispara modal (assumindo Sala 1 por padrão se veio do clique rápido, ou melhorar lógica depois)
-            # Como o HTML é isolado, precisamos saber a sala. O ideal é passar na URL ou usar session_state.
-            # Vamos assumir que a sala selecionada no radio button ainda está no state, mas o rerun pode resetar.
-            # Workaround: Usar "Sala 1" ou salvar a sala no session state antes.
-            # Simpificação: Abre para Sala 1 ou a última usada.
-            modal_agendamento("Sala 1", d_obj, h_int)
+            st.rerun()
 
-    # ---------------------------------------------------------------
+    # Dispara o modal se houver gatilho pendente
+    if st.session_state.trigger_modal:
+        data_m = st.session_state.trigger_modal["date"]
+        hora_m = st.session_state.trigger_modal["hour"]
+        # Reseta o gatilho para não abrir de novo
+        st.session_state.trigger_modal = None
+        # Abre o modal
+        modal_agendamento("Sala 1", data_m, hora_m)
 
+    # --- TELA PRINCIPAL ---
     if st.session_state.get('is_admin'):
         c_head_text, c_head_btn = st.columns([5, 1])
         with c_head_text: st.markdown("<h3 style='color:#0d9488; margin:0'>Painel Admin</h3>", unsafe_allow_html=True)
@@ -573,4 +561,18 @@ def main():
         nm = resolver_nome(u.email, u.user_metadata.get('nome'))
         
         c_head_text, c_head_btn = st.columns([4, 1]) 
-        with c_head_text: st.markdown(f"<h3 style='color:#0d9488; margin:0'>LocaPsico | {nm}</h3>", unsafe_
+        with c_head_text: st.markdown(f"<h3 style='color:#0d9488; margin:0'>LocaPsico | {nm}</h3>", unsafe_allow_html=True)
+        with c_head_btn: 
+            if st.button("Sair"): supabase.auth.sign_out(); st.session_state.clear(); st.rerun()
+        st.divider()
+        
+        tabs = st.tabs(["📅 Agenda", "📊 Painel", "🔒 Conta"])
+        
+        with tabs[0]:
+            sala = st.radio("Local", ["Sala 1", "Sala 2"], horizontal=True)
+            render_calendar_interface(sala)
+            
+        with tabs[1]:
+            st.markdown("### Meus Agendamentos")
+            agora = datetime.datetime.now()
+            inicio_mes = datetime.
