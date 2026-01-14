@@ -31,93 +31,107 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS VISUAL (DESIGN PREMIUM) ---
+# --- 3. CSS "MOBILE FIRST" (ARQUITETURA UX AVANÇADA) ---
 st.markdown("""
 <style>
-    /* --- FUNDO E TIPOGRAFIA GERAL --- */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    /* IMPORTANDO FONTE MODERNA */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     
+    /* --- RESETA GERAL --- */
     .stApp {
         background-color: #f8fafc;
         font-family: 'Inter', sans-serif;
         color: #1e293b;
     }
     
+    /* --- ESTRATÉGIA DE CONTAINER (O PUL DO GATO) --- */
+    /* Padrão (Desktop) */
     .block-container {
         padding-top: 2rem !important;
+        padding-bottom: 2rem !important;
         max-width: 1100px;
     }
 
-    /* Container Principal */
-    div[data-testid="column"]:nth-of-type(2) > div {
-        background-color: #ffffff;
-        padding: 40px;
-        border-radius: 16px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-        border: 1px solid #f1f5f9;
-        margin-bottom: 20px;
+    /* Regra Mobile (Telas < 600px) */
+    @media (max-width: 600px) {
+        .block-container {
+            padding-top: 0.5rem !important; /* Cola no topo */
+            padding-left: 0.5rem !important; /* Bordas finas */
+            padding-right: 0.5rem !important;
+            padding-bottom: 1rem !important;
+            max-width: 100% !important; /* Usa toda a largura */
+        }
+        
+        /* Tipografia Adaptativa no Mobile */
+        h1 { font-size: 20px !important; margin-bottom: 10px !important; }
+        h2 { font-size: 18px !important; }
+        h3 { font-size: 16px !important; }
+        p, div, span, label { font-size: 14px !important; }
+        
+        /* Botões e Inputs Largos para Dedo */
+        .stButton button { width: 100% !important; }
+        .stTextInput input { height: 45px !important; }
+        
+        /* Ajuste do Card Branco no Mobile */
+        div[data-testid="column"]:nth-of-type(2) > div {
+            padding: 15px !important; /* Menos padding interno */
+            box-shadow: none !important; /* Remove sombra pra limpar */
+            border: none !important;
+        }
     }
 
-    div[data-testid="stImage"] {
-        display: flex;
-        justify-content: center;
-        margin-bottom: 24px;
-    }
-    div[data-testid="stImage"] > img {
-        max-height: 120px;
-        object-fit: contain;
+    /* --- REMOÇÃO DE "GORDURA" (CLEAN UI) --- */
+    header[data-testid="stHeader"] { display: none !important; } /* Remove barra superior */
+    footer { display: none !important; } /* Remove rodapé Streamlit */
+    #MainMenu { visibility: hidden; } /* Remove menu hamburguer */
+    .viewerBadge_container__1QSob { display: none !important; }
+
+    /* --- ESTILO DOS COMPONENTES (Mantendo Identidade Visual) --- */
+    
+    /* Card Desktop */
+    @media (min-width: 601px) {
+        div[data-testid="column"]:nth-of-type(2) > div {
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border: 1px solid #f1f5f9;
+            margin-bottom: 20px;
+        }
     }
 
-    h1 {
-        font-size: 26px;
-        font-weight: 700;
-        color: #0f172a;
-        text-align: center;
-        margin-bottom: 8px;
-        letter-spacing: -0.5px;
-    }
+    /* Logo Centralizada */
+    div[data-testid="stImage"] { display: flex; justify-content: center; margin-bottom: 15px; }
+    div[data-testid="stImage"] > img { max-height: 80px; object-fit: contain; }
+
+    /* Títulos */
+    h1 { color: #0f172a; text-align: center; font-weight: 700; letter-spacing: -0.5px; }
     h2, h3 { color: #334155; font-weight: 600; }
-    p { color: #64748b; }
 
-    /* --- INPUTS --- */
+    /* Inputs */
     .stTextInput input {
         background-color: #f8fafc;
         border: 1px solid #e2e8f0;
         border-radius: 8px;
         padding: 10px 12px;
         height: 45px;
-        font-size: 15px;
-        transition: all 0.2s;
+        transition: border 0.2s;
     }
-    .stTextInput input:focus {
-        border-color: #0d9488;
-        box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2);
-    }
+    .stTextInput input:focus { border-color: #0d9488; }
 
-    /* --- BOTÕES PRIMÁRIOS (VERDE TEAL) --- */
-    div[data-testid="stForm"] button, 
-    button[kind="primary"] {
+    /* Botões Primários (Verde) */
+    div[data-testid="stForm"] button, button[kind="primary"] {
         background: linear-gradient(180deg, #0f766e 0%, #0d9488 100%) !important;
         border: none !important;
-        height: 45px !important;
+        height: 48px !important;
         font-weight: 600 !important;
-        letter-spacing: 0.5px;
         border-radius: 8px !important;
-        box-shadow: 0 2px 4px rgba(13, 148, 136, 0.2) !important;
         color: white !important;
-        transition: transform 0.1s ease !important;
+        transition: transform 0.1s;
     }
-    div[data-testid="stForm"] button:hover, 
-    button[kind="primary"]:hover {
-        background: #0f766e !important;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 6px rgba(13, 148, 136, 0.3) !important;
-    }
-    div[data-testid="stForm"] button *, button[kind="primary"] * {
-        color: white !important;
-    }
+    div[data-testid="stForm"] button:active, button[kind="primary"]:active { transform: scale(0.98); }
 
-    /* --- BOTÕES SECUNDÁRIOS --- */
+    /* Botões Secundários */
     button[kind="secondary"] {
         background-color: white !important;
         border: 1px solid #cbd5e1 !important;
@@ -126,91 +140,41 @@ st.markdown("""
         height: 45px !important;
         font-weight: 500 !important;
     }
-    button[kind="secondary"]:hover {
-        background-color: #f1f5f9 !important;
-        border-color: #94a3b8 !important;
-        color: #1e293b !important;
-    }
 
-    /* --- BOTÕES DO CALENDÁRIO (DIAS) --- */
-    div[data-testid="stButton"] button {
-        border-radius: 8px !important;
-        border: none !important;
-        font-weight: bold !important;
-    }
-
-    /* --- SLOT "LIVRE" --- */
+    /* Botões da Grade (Agenda) */
     div[data-testid="stVerticalBlock"] button[kind="secondary"] {
         background-color: #f0fdf4 !important;
         border: 1px solid #bbf7d0 !important;
         color: #15803d !important;
         font-size: 12px !important;
         font-weight: 600 !important;
-        height: 38px !important;
-        min-height: 38px !important;
+        height: 40px !important;
+        min-height: 40px !important;
         border-radius: 6px !important;
-        box-shadow: none !important;
-        transition: all 0.2s;
-    }
-    div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover {
-        background-color: #16a34a !important;
-        border-color: #16a34a !important;
-        color: white !important;
-    }
-    div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover p {
-        color: white !important;
     }
 
-    /* --- MÉTRICAS --- */
-    div[data-testid="stMetric"] {
-        background-color: #f8fafc;
-        padding: 15px;
-        border-radius: 10px;
-        border: 1px solid #e2e8f0;
-        text-align: center;
+    /* Chips e Status */
+    .evt-chip {
+        background: white; border-left: 4px solid #0d9488;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05); color: #0f766e;
+        font-size: 11px; font-weight: 600; padding: 6px 8px;
+        border-radius: 4px; margin-bottom: 4px; display: flex; align-items: center;
     }
-    div[data-testid="stMetricLabel"] { font-size: 14px !important; color: #64748b !important; }
-    div[data-testid="stMetricValue"] { font-size: 24px !important; color: #0d9488 !important; font-weight: 700 !important; }
-
-    /* --- BOTÕES DE PERIGO --- */
+    .admin-blocked { background: #334155; color: #f8fafc; border-radius: 4px; font-size: 10px; font-weight: bold; padding: 8px; text-align: center; }
+    .blocked-slot { background-color: #fef2f2; height: 35px; border-radius: 6px; border: 1px solid #fecaca; opacity: 0.7; margin-bottom: 5px; }
+    
+    /* Botões Perigo */
     button[help="Excluir Usuário"], button[key="logout_btn"], button[key="admin_logout"] { 
-        border-color: #fecaca !important; 
-        color: #dc2626 !important; 
-        background-color: #fef2f2 !important; 
-    }
-    button[help="Excluir Usuário"]:hover, button[key="logout_btn"]:hover {
-        background-color: #dc2626 !important;
-        color: white !important;
-        border-color: #dc2626 !important;
-    }
-    button[help="Excluir Usuário"]:hover *, button[key="logout_btn"]:hover * { color: white !important; }
-
-    /* Olhinho da senha */
-    div[data-testid="stTextInput"] button {
-        background-color: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
+        border-color: #fecaca !important; color: #dc2626 !important; background-color: #fef2f2 !important; 
     }
     
-    .evt-chip {
-        background: white;
-        border-left: 4px solid #0d9488;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        color: #0f766e;
-        font-size: 11px;
-        font-weight: 600;
-        padding: 6px 8px;
-        border-radius: 4px;
-        margin-bottom: 4px;
-        display: flex;
-        align-items: center;
-    }
-    .admin-blocked { background: #334155; color: #f8fafc; border-radius: 4px; font-size: 10px; font-weight: bold; text-align: center; padding: 8px; letter-spacing: 1px; }
-    .blocked-slot { background-color: #fef2f2; height: 35px; border-radius: 6px; border: 1px solid #fecaca; opacity: 0.7; margin-bottom: 5px; }
+    /* Olhinho Senha */
+    div[data-testid="stTextInput"] button { background: transparent !important; border: none !important; box-shadow: none !important; }
+
 </style>
 """, unsafe_allow_html=True)
 
-# Javascript Cleaner
+# Javascript Cleaner (Backup para remover elementos persistentes)
 components.html("""<script>try{const doc=window.parent.document;const style=doc.createElement('style');style.innerHTML=`header, footer, .stApp > header { display: none !important; } [data-testid="stToolbar"] { display: none !important; } .viewerBadge_container__1QSob { display: none !important; }`;doc.head.appendChild(style);}catch(e){}</script>""", height=0)
 
 # --- 4. FUNÇÕES DE SUPORTE ---
