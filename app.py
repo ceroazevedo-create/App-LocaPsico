@@ -21,7 +21,7 @@ if 'reset_email' not in st.session_state: st.session_state.reset_email = ""
 if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
 if 'view_mode' not in st.session_state: st.session_state.view_mode = 'SEMANA'
 
-# Variável de controle para abrir o modal automaticamente após clique no calendário
+# Variável de controle para abrir o modal automaticamente
 if 'trigger_modal' not in st.session_state: st.session_state.trigger_modal = None
 
 NOME_DO_ARQUIVO_LOGO = "logo.png"
@@ -34,16 +34,12 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS GLOBAL (LOGIN E ESTRUTURA) ---
+# --- 3. CSS GLOBAL ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     .stApp { background-color: #ffffff; font-family: 'Inter', sans-serif; color: #1e293b; }
-    
-    /* Remove Header/Footer Nativos */
     header, footer, [data-testid="stToolbar"] { display: none !important; }
-    
-    /* Botões Gerais */
     div[data-testid="stForm"] button, button[kind="primary"] { 
         background: #0f766e !important; color: white !important; border: none; border-radius: 6px; 
     }
@@ -198,7 +194,7 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
                 st.toast("Sucesso!", icon="✅"); time.sleep(1); st.rerun()
         except: st.error("Erro.")
 
-# --- 6. RENDERIZADOR HTML (COM LINKS PARA CLIQUE) ---
+# --- 6. RENDERIZADOR HTML (COM SCRIPT DE CLIQUE) ---
 def render_calendar_html(sala, is_admin_mode=False):
     # Lógica de Dados
     ref = st.session_state.data_ref
@@ -221,8 +217,21 @@ def render_calendar_html(sala, is_admin_mode=False):
     dias_visiveis = [d_start + timedelta(days=i) for i in range(7)]
     dias_sem = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
 
-    # INICIO DO HTML (COM CSS EMBUTIDO)
+    # INICIO DO HTML
+    # INCLUI SCRIPT JS PARA FORÇAR O CLIQUE
     html = """
+    <script>
+        function sendBooking(date, hour) {
+            // Pega a URL atual do pai
+            const currentUrl = new URL(window.parent.location.href);
+            // Adiciona os parametros
+            currentUrl.searchParams.set('booking', '1');
+            currentUrl.searchParams.set('d', date);
+            currentUrl.searchParams.set('h', hour);
+            // Força o redirecionamento no pai
+            window.parent.location.href = currentUrl.toString();
+        }
+    </script>
     <style>
         body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; overflow-x: hidden; background: transparent; }
         
@@ -231,14 +240,14 @@ def render_calendar_html(sala, is_admin_mode=False):
             overflow-x: auto; 
             white-space: nowrap;
             padding-bottom: 10px;
-            -webkit-overflow-scrolling: touch; /* Scroll suave no iOS */
+            -webkit-overflow-scrolling: touch;
         }
         
         .calendar-table {
             border-collapse: separate;
             border-spacing: 0;
             width: max-content;
-            min-width: 800px; /* Largura mínima para garantir que não empilhe */
+            min-width: 800px;
         }
         
         th, td {
@@ -248,7 +257,6 @@ def render_calendar_html(sala, is_admin_mode=False):
             box-sizing: border-box;
         }
         
-        /* Coluna da Hora Fixa */
         .col-time {
             position: sticky; left: 0; background: white; z-index: 10;
             width: 45px; min-width: 45px;
@@ -258,10 +266,8 @@ def render_calendar_html(sala, is_admin_mode=False):
             vertical-align: middle;
         }
         
-        /* Colunas dos Dias */
         .col-day { width: 105px; min-width: 105px; vertical-align: top; }
         
-        /* Cabeçalho */
         .header-cell {
             text-align: center; height: 40px; background: #f8fafc; border-bottom: 2px solid #e2e8f0;
         }
@@ -269,17 +275,15 @@ def render_calendar_html(sala, is_admin_mode=False):
         .day-num { font-size: 16px; font-weight: 800; color: #1e293b; display: block; }
         .today .day-num { color: #0284c7 !important; }
         
-        /* Célula de Agendamento */
         .slot-cell { height: 50px; position: relative; }
         
-        /* LINK MÁGICO (CLICÁVEL) */
-        .slot-link {
+        /* BOTÃO JS */
+        .slot-btn {
             display: block; width: 100%; height: 100%;
-            text-decoration: none; cursor: pointer;
+            background: transparent; border: none; cursor: pointer;
         }
-        .slot-link:active { background-color: #f0fdf4; } /* Feedback de toque */
+        .slot-btn:active { background-color: #f0fdf4; }
         
-        /* Eventos */
         .evt-card {
             background: #e0f2fe; border-left: 3px solid #0284c7; color: #0369a1;
             font-size: 10px; font-weight: 700;
@@ -309,6 +313,7 @@ def render_calendar_html(sala, is_admin_mode=False):
         """
     html += "</tr></thead><tbody>"
     
+    # LOOP CORRIGIDO: 7 até 22 (Para incluir o horário de 21:00)
     for h in range(7, 22):
         html += f"""<tr><td class="col-time">{h:02d}:00</td>"""
         for d in dias_visiveis:
@@ -316,7 +321,7 @@ def render_calendar_html(sala, is_admin_mode=False):
             h_s = f"{h:02d}:00:00"
             res = mapa.get(d_s, {}).get(h_s)
             
-            # Regras de Bloqueio Visual
+            # Regras
             dt_check = datetime.datetime.combine(d, datetime.time(h, 0))
             is_past = dt_check < agora
             is_sunday = d.weekday() == 6
@@ -333,10 +338,8 @@ def render_calendar_html(sala, is_admin_mode=False):
             elif is_disabled:
                 html += "<div class='slot-disabled' style='height:100%;'></div>"
             else:
-                # LINK PARA AGENDAR (Chama a URL com parâmetros)
-                # target="_parent" é o segredo para falar com o Streamlit
-                link = f"?booking=1&d={d_s}&h={h}"
-                html += f"<a href='{link}' target='_parent' class='slot-link'></a>"
+                # CHAMA A FUNÇÃO JS PARA AGENDAR
+                html += f"<button class='slot-btn' onclick=\"sendBooking('{d_s}', '{h}')\"></button>"
             
             html += "</td>"
         html += "</tr>"
@@ -356,9 +359,10 @@ def render_calendar_interface(sala, is_admin_mode=False):
     mes_nome = d_start.strftime("%b").upper()
     c2.markdown(f"<div style='text-align:center; font-weight:bold; margin-top:5px'>{mes_nome} {d_start.day}-{d_end.day}</div>", unsafe_allow_html=True)
 
-    # RENDERIZA O HTML
+    # RENDERIZA O HTML COM ALTURA AUMENTADA PARA CABER ATÉ 22H
+    # 15 horas * 50px = 750px + cabeçalho ~ 850px. Usando 950px para folga.
     html_code = render_calendar_html(sala, is_admin_mode)
-    components.html(html_code, height=600, scrolling=False) 
+    components.html(html_code, height=950, scrolling=False) 
 
 def tela_admin_master():
     tabs = st.tabs(["💰 Config", "📅 Visualizar", "🚫 Bloqueios", "📄 Relatórios", "👥 Usuários"])
@@ -521,7 +525,7 @@ def main():
     u = st.session_state['user']
     if u is None: st.session_state.auth_mode = 'login'; st.rerun(); return
 
-    # --- LÓGICA DE CAPTURA DO CLIQUE DO CALENDÁRIO ---
+    # --- LÓGICA DE CAPTURA DO CLIQUE (URL PARAMS) ---
     try: qp = st.query_params
     except: qp = st.experimental_get_query_params()
 
@@ -573,7 +577,6 @@ def main():
             
         with tabs[1]:
             st.markdown("### Meus Agendamentos")
-            # Correção do erro de syntax (linha 578)
             agora = datetime.datetime.now()
             inicio_mes = datetime.date.today().replace(day=1)
             try:
