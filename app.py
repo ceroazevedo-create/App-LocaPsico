@@ -31,148 +31,124 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS GLOBAL DESTRUCTIVE (MOBILE GRID ENFORCER) ---
+# --- 3. CSS "VIEWPORT FORCE" (A SOLUÇÃO PRAGMÁTICA) ---
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     .stApp { background-color: #ffffff; font-family: 'Inter', sans-serif; color: #1e293b; }
-    
-    /* Remove padding lateral global para ganhar espaço */
-    .block-container { 
-        padding-top: 1rem !important; 
-        max-width: 100% !important; 
-        padding-left: 2px !important; 
-        padding-right: 2px !important; 
-    }
 
     /* ============================================================ */
-    /* ☢️ PROTOCOLO GLOBAL: DITADURA DO FLEX-ROW (< 768px)          */
-    /* "Se é um bloco horizontal, será uma linha com scroll. Ponto." */
+    /* 📱 MOBILE VIEWPORT FORCE (< 768px)                           */
+    /* Estratégia: Forçar largura de Desktop no Mobile.             */
+    /* O usuário rola a tela toda para o lado. Alinhamento 100%.    */
     /* ============================================================ */
     
     @media only screen and (max-width: 768px) {
         
-        /* 1. O PAI: FORÇA FLUXO HORIZONTAL EM TUDO */
+        /* 1. O CONTAINER MESTRE: LARGURA FORÇADA */
+        .block-container {
+            min-width: 1000px !important;       /* Força largura de Desktop */
+            width: 1000px !important;           /* Garante consistência */
+            padding-left: 10px !important;
+            padding-right: 10px !important;
+            padding-top: 1rem !important;
+            overflow-x: auto !important;        /* Permite rolar a página se necessário */
+        }
+
+        /* 2. REMOÇÃO DE SCROLLS INTERNOS */
+        /* Como a página toda rola, os blocos internos devem ser estáticos */
         div[data-testid="stHorizontalBlock"] {
-            display: flex !important;
-            flex-direction: row !important;     /* NUNCA EMPILHAR */
-            flex-wrap: nowrap !important;       /* NUNCA QUEBRAR LINHA */
-            overflow-x: auto !important;        /* SCROLL SE ESTOURAR */
-            align-items: stretch !important;
+            overflow: visible !important;
             width: 100% !important;
-            gap: 1px !important;
-            padding-bottom: 5px;                /* Espaço para dedo no scroll */
         }
-
-        /* 2. AS COLUNAS: LARGURA MÍNIMA OBRIGATÓRIA */
+        
+        /* 3. COLUNAS LIMPAS */
         div[data-testid="column"] {
-            flex: 0 0 auto !important;          /* Tamanho Rígido */
-            width: auto !important;
-            min-width: 100px !important;        /* OBRIGA SCROLL SE TIVER MUITAS COLUNAS */
-            padding: 0 1px !important;
+            min-width: 0 !important;
+            flex: 1 1 auto !important; /* Distribuição igual */
         }
         
-        /* 3. A COLUNA DE HORA (A PRIMEIRA): FIXA E ESTREITA */
-        /* Isso cria o efeito "Frozen Pane" do Excel */
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child {
-            position: sticky !important;
-            left: 0 !important;
-            z-index: 99 !important;             /* Fica por cima dos dias ao rolar */
-            background-color: #ffffff !important; 
-            min-width: 40px !important;         /* Bem estreita */
-            width: 40px !important;
-            border-right: 1px solid #e2e8f0 !important;
-        }
-
-        /* 4. CONTEÚDO DUAL (VISIBILIDADE) */
-        .desktop-content { display: none !important; }
-        .mobile-content { display: block !important; }
-
-        /* 5. AJUSTES VISUAIS MICRO (Para caber em 100px) */
-        .day-header-name { font-size: 9px !important; text-align: center; }
-        .day-header-num { font-size: 14px !important; text-align: center; font-weight: 700; }
-        .time-label { font-size: 10px !important; text-align: center; padding-right: 2px; }
+        /* Ajuste de Texto para a "Tela Grande" no Celular */
+        p, button, div { font-size: 12px !important; }
+        .day-header-num { font-size: 18px !important; }
         
-        /* Botões de Slot "Fantasmas" no Mobile */
-        div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-            height: 35px !important;
-            min-height: 35px !important;
-            padding: 0 !important;
-            border: 1px dashed #e2e8f0 !important;
-            font-size: 9px !important; /* Texto bem pequeno se houver */
-        }
-        
-        /* Oculta Cabeçalho/Rodapé Nativo */
+        /* Oculta Header do Streamlit para ganhar espaço vertical */
         header { display: none !important; }
-        footer { display: none !important; }
     }
 
     /* ============================================================ */
-    /* 💻 DESKTOP RULES (> 768px)                                   */
+    /* 🎨 ESTÉTICA GOOGLE AGENDA (CLEAN & TIGHT)                    */
+    /* Aplica-se a Mobile e Desktop para consistência               */
     /* ============================================================ */
-    @media only screen and (min-width: 769px) {
-        .desktop-content { display: block !important; }
-        .mobile-content { display: none !important; }
-        
-        div[data-testid="column"]:first-child {
-            min-width: 60px !important;
-        }
+
+    /* Botões de Slot (A Grade) */
+    div[data-testid="stVerticalBlock"] button[kind="secondary"] {
+        background-color: transparent !important;   /* Fundo transparente */
+        border: none !important;                    /* Sem borda padrão */
+        border-right: 1px solid #f1f5f9 !important; /* Linha vertical sutil */
+        border-bottom: 1px solid #f1f5f9 !important;/* Linha horizontal sutil */
+        border-radius: 0 !important;                /* Quadrado */
+        box-shadow: none !important;                /* Sem sombra */
+        height: 45px !important;
+        width: 100% !important;
+        transition: background-color 0.1s;
+    }
+    
+    /* Efeito Hover na Célula */
+    div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover {
+        background-color: #f8fafc !important;
     }
 
-    /* --- ESTILOS GERAIS --- */
-    
-    /* Login Limpo */
-    div[data-testid="column"]:nth-of-type(2) > div { 
-        background-color: #ffffff; padding: 25px; border-radius: 12px; border: 1px solid #e2e8f0; 
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    /* Cards de Evento */
+    .evt-card {
+        background-color: #e0f2fe; 
+        color: #0369a1;
+        font-size: 11px; 
+        font-weight: 600; 
+        padding: 4px 6px; 
+        border-radius: 4px;
+        border-left: 3px solid #0284c7;
+        white-space: nowrap; 
+        overflow: hidden; 
+        text-overflow: ellipsis;
+        height: 42px; 
+        line-height: 1.4;
+        margin: 1px 0;
+        cursor: pointer;
     }
     
-    /* Cards de Evento (Desktop) */
-    .evt-card-desktop {
-        background: #e0f2fe; border-left: 3px solid #0284c7; color: #0369a1;
-        padding: 4px; font-size: 10px; font-weight: 600; border-radius: 3px;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        height: 38px; line-height: 1.2; margin-bottom: 2px;
+    .admin-blocked { 
+        background: repeating-linear-gradient(45deg, #f1f5f9, #f1f5f9 10px, #e2e8f0 10px, #e2e8f0 20px);
+        color: #94a3b8;
+        font-size: 10px;
+        display: flex; align-items: center; justify-content: center;
+        height: 42px;
+        border-radius: 0;
     }
-    
-    /* Barra Mobile (Minimalista) */
-    .evt-bar-mobile {
-        background-color: #0ea5e9; /* Azul */
-        height: 100%; width: 100%;
-        min-height: 35px;
-        border-radius: 2px;
-        /* Texto dentro da barra mobile se couber */
-        color: white; font-size: 8px; display: flex; align-items: center; justify-content: center;
-        overflow: hidden;
-    }
-    
-    .evt-blocked-desktop { background: #334155; color: white; font-size: 10px; padding: 4px; border-radius: 3px; height: 38px; text-align: center; display: flex; align-items: center; justify-content: center; }
-    .evt-blocked-mobile { background-color: #334155; height: 100%; min-height: 35px; width: 100%; border-radius: 2px; }
 
-    /* Headers */
-    .day-header-box { text-align: center; border-bottom: 1px solid #e2e8f0; margin-bottom: 5px; padding-bottom: 5px; }
-    .day-header-name { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; }
-    .day-header-num { font-size: 20px; font-weight: 700; color: #1e293b; }
+    /* Cabeçalhos */
+    .day-header-box { text-align: center; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; margin-bottom: 0; }
+    .day-header-name { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
+    .day-header-num { font-size: 22px; font-weight: 700; color: #1e293b; line-height: 1.1; }
     .today-hl { color: #0284c7; }
 
-    /* Inputs e Botões */
-    div[data-testid="stForm"] button, button[kind="primary"] { background: #0f766e !important; color: white !important; border: none; height: 45px; }
-    .stTextInput input { background: #f8fafc; border: 1px solid #e2e8f0; height: 45px; }
-    
-    /* Slot Livre Desktop */
-    @media (min-width: 769px) {
-        div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-            background-color: #ffffff !important; border: 1px solid #e2e8f0 !important; color: transparent !important;
-            height: 40px !important; width: 100%; transition: all 0.2s;
-        }
-        div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover {
-            border-color: #0d9488 !important; background-color: #f0fdf4 !important; color: #0d9488 !important;
-        }
+    /* Login Card (Proteção) */
+    /* Como forçamos min-width 1000px no container, o login ficaria esticado. Vamos limitar ele. */
+    div[data-testid="column"]:has(div.login-container) {
+        max-width: 400px !important;
+        margin: 0 auto !important;
     }
     
-    /* Hora lateral */
-    .time-label { font-size: 11px; font-weight: 600; color: #94a3b8; text-align: right; margin-top: 12px; padding-right: 5px;}
+    /* Botões Primários */
+    div[data-testid="stForm"] button, button[kind="primary"] { background: #0f766e !important; color: white !important; border: none; border-radius: 6px; }
     
+    /* Hora lateral */
+    .time-label { 
+        font-size: 11px; font-weight: 500; color: #94a3b8; 
+        text-align: center; position: relative; top: -10px; background: white; 
+    }
+    
+    footer {display: none;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -358,8 +334,6 @@ def render_calendar(sala, is_admin_mode=False):
     # LINHAS DE HORÁRIO
     for h in range(7, 22):
         row = st.columns([0.3, 1, 1, 1, 1, 1, 1, 1])
-        
-        # Coluna Hora (Fixa no mobile via CSS)
         row[0].markdown(f"<div class='time-label'>{h:02d}:00</div>", unsafe_allow_html=True)
         
         for i, d in enumerate(dias_visiveis):
@@ -377,21 +351,23 @@ def render_calendar(sala, is_admin_mode=False):
                 if res:
                     nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
                     if res['status'] == 'bloqueado':
-                        st.markdown(f"""<div class='desktop-content admin-blocked'>BLOQ</div><div class='mobile-content evt-blocked-mobile'></div>""", unsafe_allow_html=True)
+                        st.markdown(f"""<div class='admin-blocked'>BLOQ</div>""", unsafe_allow_html=True)
                         if is_admin_mode:
                              if cont.button("🗑️", key=f"d_blk_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
                     else:
-                        st.markdown(f"""<div class='desktop-content evt-card-desktop' title='{nm}'>{nm}</div><div class='mobile-content evt-bar-mobile'>{nm}</div>""", unsafe_allow_html=True)
+                        # AGORA TEMOS ESPAÇO: MOSTRE O TEXTO NORMALMENTE
+                        st.markdown(f"""<div class='evt-card' title='{nm}'>{nm}</div>""", unsafe_allow_html=True)
                         if is_admin_mode:
                              if cont.button("x", key=f"d_res_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
                 elif is_sun or is_sat_close:
-                    st.markdown("<div class='blocked-slot'></div>", unsafe_allow_html=True)
+                    # Nada, deixa o CSS criar a grade ou fundo cinza
+                    st.markdown("<div style='height:45px; background:#f9fafb;'></div>", unsafe_allow_html=True)
                 else:
                     if not is_admin_mode:
                         if cont.button(" ", key=f"add_{d}_{h}", type="secondary", use_container_width=True):
                             modal_agendamento(sala, d, h)
                     else:
-                        st.markdown("<div style='height:35px; border-right:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
+                        st.markdown("<div style='height:45px; border-right:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
 
 def tela_admin_master():
@@ -525,63 +501,37 @@ def tela_admin_master():
 # --- 7. MAIN ---
 def main():
     if not st.session_state.user:
+        # LOGIN SCREEN (PROTECTED - NOT WIDE)
         c1, c2, c3 = st.columns([1, 1.2, 1])
         with c2:
             st.write("") 
             if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
             else: st.markdown("<h1 style='text-align:center; color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
             
-            if st.session_state.auth_mode == 'login':
-                with st.form("login"):
-                    email = st.text_input("Email")
-                    senha = st.text_input("Senha", type="password")
-                    if st.form_submit_button("Entrar", use_container_width=True):
-                        try:
-                            u = supabase.auth.sign_in_with_password({"email": email, "password": senha})
-                            if u.user: 
-                                st.session_state.user = u.user
-                                st.session_state.is_admin = (email == "admin@admin.com.br")
-                                st.rerun()
-                        except Exception as e:
-                            # CORREÇÃO ERRO FALSO LOGIN
-                            if "StopException" not in str(type(e)):
-                                st.error("Erro login.")
-                                
-                c_a, c_b = st.columns(2)
-                if c_a.button("Criar Conta"): st.session_state.auth_mode = 'register'; st.rerun()
-                if c_b.button("Recuperar"): st.session_state.auth_mode = 'forgot'; st.rerun()
+            # Container de login isolado para não pegar o min-width: 1000px
+            st.markdown("<div class='login-container'>", unsafe_allow_html=True)
+            with st.form("login"):
+                email = st.text_input("Email")
+                senha = st.text_input("Senha", type="password")
+                if st.form_submit_button("Entrar", use_container_width=True):
+                    try:
+                        u = supabase.auth.sign_in_with_password({"email": email, "password": senha})
+                        if u.user: 
+                            st.session_state.user = u.user
+                            st.session_state.is_admin = (email == "admin@admin.com.br")
+                            st.rerun()
+                    except Exception as e:
+                        if "StopException" not in str(type(e)):
+                            st.error("Erro no login. Verifique email/senha.")
+            st.markdown("</div>", unsafe_allow_html=True)
             
-            elif st.session_state.auth_mode == 'register':
-                st.markdown("### Criar Conta")
-                nm = st.text_input("Nome")
-                em = st.text_input("Email")
-                pw = st.text_input("Senha", type="password")
-                if st.button("Cadastrar", type="primary"):
-                    try: supabase.auth.sign_up({"email": em, "password": pw, "options": {"data": {"nome": nm}}}); st.success("OK!"); time.sleep(1); st.session_state.auth_mode='login'; st.rerun()
-                    except: st.error("Erro")
-                if st.button("Voltar"): st.session_state.auth_mode='login'; st.rerun()
-                
-            elif st.session_state.auth_mode == 'forgot':
-                em = st.text_input("Email")
-                if st.button("Enviar"): 
-                    try: supabase.auth.sign_in_with_otp({"email": em}); st.session_state.reset_email=em; st.session_state.auth_mode='verify_otp'; st.rerun()
-                    except: st.error("Erro")
-                if st.button("Voltar"): st.session_state.auth_mode='login'; st.rerun()
-            elif st.session_state.auth_mode == 'verify_otp':
-                otp = st.text_input("Código")
-                if st.button("Verificar"):
-                    try: 
-                        r = supabase.auth.verify_otp({"email": st.session_state.reset_email, "token": otp, "type": "recovery"})
-                        if r.user: st.session_state.user=r.user; st.session_state.auth_mode='reset_screen'; st.rerun()
-                    except: st.error("Inválido")
-            elif st.session_state.auth_mode == 'reset_screen':
-                np = st.text_input("Nova Senha", type="password")
-                if st.button("Salvar"): supabase.auth.update_user({"password": np}); st.session_state.auth_mode='login'; st.rerun()
+            c_a, c_b = st.columns(2)
+            if c_a.button("Criar Conta"): st.session_state.auth_mode = 'register'; st.rerun()
+            if c_b.button("Recuperar"): st.session_state.auth_mode = 'forgot'; st.rerun()
         return
 
+    # TELA PRINCIPAL (LOGADO)
     u = st.session_state['user']
-    if u is None: st.session_state.auth_mode = 'login'; st.rerun(); return
-
     if st.session_state.get('is_admin'):
         c_head_text, c_head_btn = st.columns([5, 1])
         with c_head_text: st.markdown("<h3 style='color:#0d9488; margin:0'>Painel Admin</h3>", unsafe_allow_html=True)
@@ -608,7 +558,7 @@ def main():
             agora = datetime.datetime.now()
             inicio_mes = datetime.date.today().replace(day=1)
             try:
-                r = supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").gte("data_reserva", str(inicio_mes)).order("data_reserva").execute()
+                r = supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").gte("data_reserva", str(inicio_mes)).order("data_reserva").order("hora_inicio").execute()
                 df = pd.DataFrame(r.data)
                 if not df.empty:
                     for _, row in df.iterrows():
@@ -621,7 +571,7 @@ def main():
                                 c1.markdown(f"**{row['data_reserva']}** às **{row['hora_inicio'][:5]}** - {row['sala_nome']}")
                                 if dt_res > agora + timedelta(hours=24):
                                     if c2.button("Cancelar", key=f"c_{row['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", row['id']).execute(); st.rerun()
-                                else: c2.caption("🚫 <24h")
+                                else: c2.caption("🚫 < 24h")
                                 st.divider()
                 else: st.info("Nada este mês.")
             except: pass
