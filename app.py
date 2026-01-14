@@ -31,10 +31,11 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS INTELIGENTE (RESPONSIVIDADE SELETIVA) ---
+# --- 3. CSS VISUAL (ESTILO CLEAN & CORREÇÃO MOBILE) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    
     .stApp { background-color: #ffffff; font-family: 'Inter', sans-serif; color: #1e293b; }
     .block-container { padding-top: 1rem !important; max-width: 100% !important; padding-left: 5px; padding-right: 5px; }
 
@@ -45,7 +46,6 @@ st.markdown("""
     @media only screen and (max-width: 768px) {
         
         /* O seletor :has() verifica se o bloco tem 8 colunas (Calendário) */
-        /* Isso impede que o Login (3 colunas) seja afetado */
         div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) {
             display: flex !important;
             flex-wrap: nowrap !important;       /* Não quebra linha */
@@ -62,15 +62,12 @@ st.markdown("""
             padding: 0 1px !important;
         }
         
-        /* Esconde a coluna da HORA no mobile (opcional, para ganhar espaço) */
-        /* Ou deixa ela sticky. Aqui vamos esconder para densidade máxima */
+        /* Esconde a coluna da HORA no mobile para ganhar espaço */
         div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"]:first-child {
             display: none !important; 
         }
 
-        /* ----------------------------------------------------- */
-        /* REGRAS DE VISUALIZAÇÃO DUPLA (Mobile vs Desktop)      */
-        /* ----------------------------------------------------- */
+        /* VISUALIZAÇÃO DUPLA (Mobile vs Desktop) */
         .evt-desktop { display: none !important; }
         .evt-mobile { display: block !important; }
         
@@ -100,9 +97,9 @@ st.markdown("""
         }
     }
 
-    /* --- ESTILOS GERAIS (LOGIN E ELEMENTOS) --- */
+    /* --- ESTILOS GERAIS --- */
     
-    /* Login Card: Garante que fique bonito e não esmagado */
+    /* Login Card */
     div[data-testid="column"]:nth-of-type(2) > div { 
         background-color: #ffffff; 
         padding: 30px; 
@@ -187,7 +184,7 @@ def gerar_pdf_fatura(df, nome_usuario, mes_referencia):
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
     pdf.set_text_color(13, 148, 136)
-    pdf.cell(0, 10, "LOCAPSICO - Extrato Detalhado", ln=True, align="C")
+    pdf.cell(0, 10, "LOCAPSICO - Extrato", ln=True, align="C")
     pdf.set_font("Arial", "", 12)
     pdf.set_text_color(50, 50, 50)
     pdf.ln(5)
@@ -292,80 +289,144 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
         except: st.error("Erro.")
 
 def render_calendar(sala, is_admin_mode=False):
-    c_L, c_R = st.columns([1, 4, 1])
-    c_L.button("❮", on_click=lambda: navegar('prev'), use_container_width=True)
-    c_R.button("❯", on_click=lambda: navegar('next'), use_container_width=True)
+    # NAVEGAÇÃO
+    # CORREÇÃO AQUI: Unpacking correto de 3 colunas
+    c1, c2, c3 = st.columns([1, 4, 1])
+    
+    with c1: 
+        if st.button("◀", use_container_width=True, key=f"nav_prev_{is_admin_mode}"): navegar('prev'); st.rerun()
+    with c3: 
+        if st.button("▶", use_container_width=True, key=f"nav_next_{is_admin_mode}"): navegar('next'); st.rerun()
     
     ref = st.session_state.data_ref
     d_start = ref - timedelta(days=ref.weekday())
     d_end = d_start + timedelta(days=6)
     mes_nome = d_start.strftime("%b").upper()
-    c_L.parent.columns([1, 4, 1])[1].markdown(f"<div style='text-align:center; font-weight:bold; margin-top:5px'>{mes_nome} {d_start.day}-{d_end.day}</div>", unsafe_allow_html=True)
-
-    reservas = []
-    try:
-        r = supabase.table("reservas").select("*").eq("sala_nome", sala).neq("status", "cancelada").gte("data_reserva", str(d_start)).lte("data_reserva", str(d_end)).execute()
-        reservas = r.data
-    except: pass
-    mapa = {}
-    for x in reservas:
-        d = x['data_reserva']
-        if d not in mapa: mapa[d] = {}
-        mapa[d][x['hora_inicio']] = x
-
-    dias_visiveis = [d_start + timedelta(days=i) for i in range(7)]
-    dias_sem = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
     
-    # CABEÇALHO (8 Colunas: 1 Hora + 7 Dias)
-    cols = st.columns([0.3, 1, 1, 1, 1, 1, 1, 1])
-    cols[0].write("")
-    
-    for i, d in enumerate(dias_visiveis):
-        with cols[i+1]:
-            is_hj = (d == datetime.date.today())
-            cls_hj = "today-hl" if is_hj else ""
-            st.markdown(f"""
-            <div class='day-header-box'>
-                <div class='day-header-name'>{dias_sem[d.weekday()]}</div>
-                <div class='day-header-num {cls_hj}'>{d.day}</div>
-            </div>""", unsafe_allow_html=True)
+    # Título no meio
+    with c2:
+        st.markdown(f"<div style='text-align:center; font-weight:bold; margin-top:5px'>{mes_nome} {d_start.day}-{d_end.day}</div>", unsafe_allow_html=True)
 
-    # CORPO
-    for h in range(7, 22):
-        row = st.columns([0.3, 1, 1, 1, 1, 1, 1, 1])
-        row[0].markdown(f"<div class='time-label'>{h:02d}:00</div>", unsafe_allow_html=True)
+    # VISUALIZAÇÃO
+    mode = st.session_state.view_mode
+    def set_mode(m): st.session_state.view_mode = m
+    bt_sty = lambda m: "primary" if mode == m else "secondary"
+    b1, b2, b3 = st.columns(3)
+    with b1: 
+        if st.button("Dia", type=bt_sty('DIA'), use_container_width=True, key=f"v_dia_{is_admin_mode}"): set_mode('DIA'); st.rerun()
+    with b2: 
+        if st.button("Semana", type=bt_sty('SEMANA'), use_container_width=True, key=f"v_sem_{is_admin_mode}"): set_mode('SEMANA'); st.rerun()
+    with b3: 
+        if st.button("Mês", type=bt_sty('MÊS'), use_container_width=True, key=f"v_mes_{is_admin_mode}"): set_mode('MÊS'); st.rerun()
+    
+    if mode == 'MÊS':
+        ano, mes = ref.year, ref.month
+        last_day = calendar.monthrange(ano, mes)[1]
+        d_start, d_end = datetime.date(ano, mes, 1), datetime.date(ano, mes, last_day)
         
-        for i, d in enumerate(dias_visiveis):
-            with row[i+1]:
-                d_s = str(d)
-                h_s = f"{h:02d}:00:00"
-                res = mapa.get(d_s, {}).get(h_s)
-                
-                cont = st.container()
-                dt_slot = datetime.datetime.combine(d, datetime.time(h, 0))
-                agora = datetime.datetime.now()
-                is_past = dt_slot < agora
-                is_sun = d.weekday() == 6
-                is_sat_close = (d.weekday() == 5 and h >= 14)
-                
-                if res:
-                    nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
-                    if res['status'] == 'bloqueado':
-                        st.markdown(f"""<div class='evt-desktop evt-blocked-desktop'>BLOQUEADO</div><div class='evt-mobile evt-blocked-mobile'></div>""", unsafe_allow_html=True)
-                        if is_admin_mode:
-                             if cont.button("🗑️", key=f"d_blk_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
-                    else:
-                        st.markdown(f"""<div class='evt-desktop' title='{nm}'>{nm}</div><div class='evt-mobile' title='{nm}'></div>""", unsafe_allow_html=True)
-                        if is_admin_mode:
-                             if cont.button("x", key=f"d_res_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
-                elif is_sun or is_sat_close or is_past:
-                    cont.markdown("<div class='blocked-slot'></div>", unsafe_allow_html=True)
+        reservas = []
+        try:
+            r = supabase.table("reservas").select("*").eq("sala_nome", sala).neq("status", "cancelada").gte("data_reserva", str(d_start)).lte("data_reserva", str(d_end)).execute()
+            reservas = r.data
+        except: pass
+        mapa = {}
+        for x in reservas:
+            d = x['data_reserva']
+            if d not in mapa: mapa[d] = {}
+            mapa[d][x['hora_inicio']] = x
+            
+        cols = st.columns(7)
+        dias = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
+        for i, d in enumerate(dias): cols[i].markdown(f"<div style='text-align:center; font-weight:bold; color:#64748b; font-size:12px; margin-bottom:5px'>{d}</div>", unsafe_allow_html=True)
+        cal_matrix = calendar.monthcalendar(ref.year, ref.month)
+        for week in cal_matrix:
+            cols = st.columns(7)
+            for i, day in enumerate(week):
+                if day == 0: cols[i].write("")
                 else:
-                    if not is_admin_mode:
-                        if cont.button(" ", key=f"add_{d}_{h}", type="secondary", use_container_width=True):
-                            modal_agendamento(sala, d, h)
+                    d_obj = datetime.date(ref.year, ref.month, day)
+                    d_str = str(d_obj)
+                    with cols[i]:
+                        if not is_admin_mode:
+                            if st.button(f"{day}", key=f"btn_day_{day}_{mes}_{is_admin_mode}", use_container_width=True):
+                                if d_obj < datetime.date.today(): st.toast("Data passada.", icon="🚫")
+                                elif d_obj.weekday() == 6: st.toast("Domingo fechado.", icon="🚫")
+                                else: modal_agendamento(sala, d_obj)
+                        else:
+                            st.markdown(f"<div style='text-align:center; font-weight:bold; padding:5px'>{day}</div>", unsafe_allow_html=True)
+                    eventos_html = ""
+                    if d_str in mapa:
+                        for h in sorted(mapa[d_str].keys()):
+                            res = mapa[d_str][h]
+                            if res['status'] == 'bloqueado': eventos_html += f"<div style='background:#1e293b; color:white; font-size:9px; padding:2px; border-radius:3px; margin-bottom:2px;'>⛔ BLOQ</div>"
+                            else:
+                                nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
+                                eventos_html += f"<div style='background:#ccfbf1; color:#115e59; font-size:9px; padding:2px; border-radius:3px; margin-bottom:2px; white-space:nowrap; overflow:hidden;'>{h[:5]} {nm}</div>"
+                    cols[i].markdown(f"{eventos_html}", unsafe_allow_html=True)
+    else:
+        visiveis = [d_start + timedelta(days=i) for i in range(7 if mode == 'SEMANA' else 1)]
+        reservas = []
+        try:
+            r = supabase.table("reservas").select("*").eq("sala_nome", sala).neq("status", "cancelada").gte("data_reserva", str(d_start)).lte("data_reserva", str(d_end)).execute()
+            reservas = r.data
+        except: pass
+        mapa = {}
+        for x in reservas:
+            d = x['data_reserva']
+            if d not in mapa: mapa[d] = {}
+            mapa[d][x['hora_inicio']] = x
+
+        # CABEÇALHO (8 Colunas: 1 Hora + 7 Dias)
+        cols = st.columns([0.3, 1, 1, 1, 1, 1, 1, 1])
+        cols[0].write("")
+        d_n = ["SEG","TER","QUA","QUI","SEX","SÁB","DOM"]
+        
+        for i, d in enumerate(visiveis):
+            with cols[i+1]:
+                is_hj = (d == datetime.date.today())
+                cls_hj = "today-hl" if is_hj else ""
+                st.markdown(f"""
+                <div class='day-header-box'>
+                    <div class='day-header-name'>{d_n[d.weekday()]}</div>
+                    <div class='day-header-num {cls_hj}'>{d.day}</div>
+                </div>""", unsafe_allow_html=True)
+
+        # CORPO
+        for h in range(7, 22):
+            row = st.columns([0.3, 1, 1, 1, 1, 1, 1, 1])
+            row[0].markdown(f"<div class='time-label'>{h:02d}:00</div>", unsafe_allow_html=True)
+            
+            for i, d in enumerate(visiveis):
+                with row[i+1]:
+                    d_s = str(d)
+                    h_s = f"{h:02d}:00:00"
+                    res = mapa.get(d_s, {}).get(h_s)
+                    
+                    cont = st.container()
+                    dt_slot = datetime.datetime.combine(d, datetime.time(h, 0))
+                    agora = datetime.datetime.now()
+                    is_past = dt_slot < agora
+                    is_sun = d.weekday() == 6
+                    is_sat_close = (d.weekday() == 5 and h >= 14)
+                    
+                    if res:
+                        nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
+                        if res['status'] == 'bloqueado':
+                            st.markdown(f"""<div class='evt-desktop evt-blocked-desktop'>BLOQUEADO</div><div class='evt-mobile evt-blocked-mobile'></div>""", unsafe_allow_html=True)
+                            if is_admin_mode:
+                                 if cont.button("🗑️", key=f"d_blk_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
+                        else:
+                            st.markdown(f"""<div class='evt-desktop' title='{nm}'>{nm}</div><div class='evt-mobile' title='{nm}'></div>""", unsafe_allow_html=True)
+                            if is_admin_mode:
+                                 if cont.button("x", key=f"d_res_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
+                    elif is_sun or is_sat_close or is_past:
+                        cont.markdown("<div class='blocked-slot'></div>", unsafe_allow_html=True)
                     else:
-                        cont.markdown("<div style='height:40px; border-right:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
+                        if not is_admin_mode:
+                            if cont.button(" ", key=f"add_{d}_{h}", type="secondary", use_container_width=True):
+                                modal_agendamento(sala, d, h)
+                        else:
+                            cont.markdown("<div style='height:40px; border-right:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
 
 def tela_admin_master():
@@ -517,7 +578,6 @@ def main():
                                 st.session_state.is_admin = (email == "admin@admin.com.br")
                                 st.rerun()
                         except Exception as e: 
-                            # Correção do erro "falso" de login: Ignora StopException (do rerun)
                             if "StopException" not in str(type(e)):
                                 st.error("Erro no login. Verifique email/senha.")
                                 
@@ -537,7 +597,7 @@ def main():
                 
             elif st.session_state.auth_mode == 'forgot':
                 em = st.text_input("Email")
-                if st.button("Enviar"): 
+                if st.button("Enviar Código"): 
                     try: supabase.auth.sign_in_with_otp({"email": em}); st.session_state.reset_email=em; st.session_state.auth_mode='verify_otp'; st.rerun()
                     except: st.error("Erro")
                 if st.button("Voltar"): st.session_state.auth_mode='login'; st.rerun()
