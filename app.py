@@ -31,7 +31,7 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS VISUAL (DESIGN PREMIUM - VERSÃO ESTÁVEL 86) ---
+# --- 3. CSS VISUAL & HACKS DE LAYOUT ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
@@ -39,45 +39,71 @@ st.markdown("""
     .stApp { background-color: #f8fafc; font-family: 'Inter', sans-serif; color: #1e293b; }
     .block-container { padding-top: 2rem !important; max-width: 1100px; }
 
-    /* Container Principal */
-    div[data-testid="column"]:nth-of-type(2) > div {
-        background-color: #ffffff;
-        padding: 40px;
-        border-radius: 16px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-        border: 1px solid #f1f5f9;
-        margin-bottom: 20px;
-    }
+    /* ============================================================ */
+    /* 📱 MOBILE SCROLL FORCE - ENGENHARIA REVERSA DE STREAMLIT     */
+    /* Objetivo: Impedir empilhamento de colunas no celular.        */
+    /* ============================================================ */
+    
+    @media only screen and (max-width: 768px) {
+        
+        /* Força o container pai das colunas a agir como uma linha infinita */
+        div[data-testid="stHorizontalBlock"] {
+            width: 100% !important;
+            display: flex !important;
+            flex-wrap: nowrap !important;       /* PROIBIDO QUEBRAR LINHA */
+            overflow-x: auto !important;        /* SCROLL LATERAL ATIVADO */
+            white-space: nowrap !important;
+            -webkit-overflow-scrolling: touch;  /* Scroll suave no iOS */
+            padding-bottom: 8px;                /* Espaço para o dedo rolar */
+            gap: 5px !important;                /* Espaçamento entre colunas */
+        }
 
-    /* Imagem Logo */
+        /* Força as colunas (filhos) a terem largura fixa mínima */
+        div[data-testid="column"] {
+            flex: 0 0 auto !important;          /* Não encolher, tamanho rígido */
+            width: auto !important;
+            min-width: 140px !important;        /* LARGURA MÍNIMA: Garante leitura do dia */
+        }
+        
+        /* Ajuste Fino: A primeira coluna (Hora) pode ser um pouco menor */
+        div[data-testid="column"]:first-child {
+            min-width: 50px !important;
+            position: sticky;                   /* Fixa a hora na esquerda (efeito Excel) */
+            left: 0;
+            background-color: #f8fafc;          /* Fundo para não ficar transparente ao rolar */
+            z-index: 10;
+            border-right: 1px solid #e2e8f0;
+        }
+    }
+    /* ============================================================ */
+
+    /* Container Principal (Desktop) */
+    div[data-testid="column"]:nth-of-type(2) > div { background-color: #ffffff; padding: 40px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid #f1f5f9; margin-bottom: 20px; }
+    
+    /* Logo */
     div[data-testid="stImage"] { display: flex; justify-content: center; margin-bottom: 24px; }
     div[data-testid="stImage"] > img { max-height: 120px; object-fit: contain; }
 
     /* Tipografia */
-    h1 { font-size: 26px; font-weight: 700; color: #0f172a; text-align: center; margin-bottom: 8px; letter-spacing: -0.5px; }
-    h2, h3 { color: #334155; font-weight: 600; }
-    p { color: #64748b; }
-
-    /* Inputs e Botões */
-    .stTextInput input { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; height: 45px; font-size: 15px; }
+    h1 { font-size: 26px; font-weight: 700; color: #0f172a; text-align: center; margin-bottom: 8px; }
+    
+    /* Inputs */
+    .stTextInput input { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; height: 45px; }
+    
+    /* Botões */
     div[data-testid="stForm"] button, button[kind="primary"] { background: linear-gradient(180deg, #0f766e 0%, #0d9488 100%) !important; border: none !important; height: 45px !important; font-weight: 600 !important; border-radius: 8px !important; color: white !important; }
     button[kind="secondary"] { background-color: white !important; border: 1px solid #cbd5e1 !important; color: #475569 !important; border-radius: 8px !important; height: 45px !important; font-weight: 500 !important; }
     
-    /* Botões da Grade */
-    div[data-testid="stVerticalBlock"] button[kind="secondary"] { background-color: #f0fdf4 !important; border: 1px solid #bbf7d0 !important; color: #15803d !important; font-size: 12px !important; font-weight: 600 !important; height: 38px !important; min-height: 38px !important; border-radius: 6px !important; }
-    div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover { background-color: #16a34a !important; border-color: #16a34a !important; color: white !important; }
-    div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover p { color: white !important; }
-
-    /* Chips e Status */
+    /* Agenda: Botões de Slot */
+    div[data-testid="stVerticalBlock"] button[kind="secondary"] { background-color: #f0fdf4 !important; border: 1px solid #bbf7d0 !important; color: #15803d !important; font-size: 12px !important; font-weight: 600 !important; height: 38px !important; min-height: 38px !important; border-radius: 6px !important; width: 100% !important; }
+    
+    /* Eventos e Bloqueios */
     .evt-chip { background: white; border-left: 4px solid #0d9488; box-shadow: 0 1px 2px rgba(0,0,0,0.05); color: #0f766e; font-size: 11px; font-weight: 600; padding: 6px 8px; border-radius: 4px; margin-bottom: 4px; display: flex; align-items: center; }
-    .admin-blocked { background: #334155; color: #f8fafc; border-radius: 4px; font-size: 10px; font-weight: bold; text-align: center; padding: 8px; letter-spacing: 1px; }
+    .admin-blocked { background: #334155; color: #f8fafc; border-radius: 4px; font-size: 10px; font-weight: bold; text-align: center; padding: 8px; }
     .blocked-slot { background-color: #fef2f2; height: 35px; border-radius: 6px; border: 1px solid #fecaca; opacity: 0.7; margin-bottom: 5px; }
     
-    /* Botões Perigo */
-    button[help="Excluir Usuário"], button[key="logout_btn"], button[key="admin_logout"] { border-color: #fecaca !important; color: #dc2626 !important; background-color: #fef2f2 !important; }
-    
-    /* Olhinho Senha */
-    div[data-testid="stTextInput"] button { background-color: transparent !important; border: none !important; box-shadow: none !important; }
+    /* Remover Cabeçalho Nativo */
+    header[data-testid="stHeader"] { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -622,10 +648,14 @@ def main():
         with c_head_btn:
             if st.button("Sair", key="logout_btn", use_container_width=True): supabase.auth.sign_out(); st.session_state.clear(); st.rerun()
         st.divider()
+        
+        # --- ABAS (SEGURANÇA AGORA É UMA ABA) ---
         tabs = st.tabs(["📅 Agenda", "📊 Painel", "🔒 Segurança"])
+        
         with tabs[0]:
             sala = st.radio("Sala", ["Sala 1", "Sala 2"], horizontal=True)
             render_calendar(sala)
+            
         with tabs[1]:
             st.markdown("### Meus Agendamentos")
             agora = datetime.datetime.now()
@@ -633,6 +663,7 @@ def main():
             inicio_mes = hoje.replace(day=1)
             df_fut = pd.DataFrame()
             try:
+                # LISTA DESDE INICIO DO MÊS (Histórico + Futuro)
                 res_user = supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").gte("data_reserva", str(inicio_mes)).order("data_reserva").order("hora_inicio").execute()
                 df_fut = pd.DataFrame(res_user.data)
             except: st.error("Erro ao carregar dados.")
@@ -640,7 +671,9 @@ def main():
             if not df_fut.empty:
                 for _, row in df_fut.iterrows():
                     dt_reserva = datetime.datetime.combine(datetime.date.fromisoformat(row['data_reserva']), datetime.datetime.strptime(row['hora_inicio'], "%H:%M:%S").time())
+                    
                     if dt_reserva < agora:
+                        # PASSADO (CINZA - SEM BOTÃO)
                         st.markdown(f"""
                         <div style="background-color: #f8fafc; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; color: #94a3b8; margin-bottom: 10px;">
                             <strong>✅ Realizado: {row['data_reserva']}</strong> às {row['hora_inicio'][:5]}<br>
@@ -648,6 +681,7 @@ def main():
                         </div>
                         """, unsafe_allow_html=True)
                     else:
+                        # FUTURO (VERDE - COM BOTÃO)
                         with st.container():
                             c_info, c_btn = st.columns([3, 1])
                             c_info.markdown(f"**{row['data_reserva']}** às **{row['hora_inicio'][:5]}** - {row['sala_nome']}")
@@ -663,16 +697,19 @@ def main():
                             else: c_btn.caption("🚫 < 24h")
                             st.divider()
             else: st.info("Sem agendamentos este mês.")
+                
             st.markdown("### Financeiro")
             try:
                 df_all = pd.DataFrame(supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").execute().data)
                 k1, k2 = st.columns(2)
                 k1.metric("Investido Total", f"R$ {df_all['valor_cobrado'].sum() if not df_all.empty else 0:.0f}")
                 k2.metric("Sessões Totais", len(df_all) if not df_all.empty else 0)
-            except: st.error("Erro ao carregar dados.")
+            except: st.error("Erro ao carregar financeiro.")
+            
         with tabs[2]:
             st.markdown("### Segurança da Conta")
             st.markdown("Redefina sua senha de acesso abaixo.")
+            
             p1 = st.text_input("Nova Senha", type="password")
             if st.button("Alterar Senha"):
                 if len(p1) < 6: st.warning("A senha deve ter pelo menos 6 caracteres.")
