@@ -31,30 +31,9 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS & JS HACKS ---
+# --- 3. CSS "DOIS UNIVERSOS" ---
 
-# JAVASCRIPT NUCLEAR: FORÇA VIEWPORT "ULTRA WIDE"
-# Aumentamos para 1400px e reduzimos a escala para 0.30. 
-# Isso obriga o celular a "afastar a câmera", deixando tudo menor e fitando a semana.
-JS_FORCE_DESKTOP = """
-<script>
-    function forceDesktop() {
-        var meta = document.querySelector('meta[name="viewport"]');
-        if (meta) {
-            meta.content = 'width=1400, initial-scale=0.30, maximum-scale=2.0, user-scalable=yes';
-        } else {
-            var newMeta = document.createElement('meta');
-            newMeta.name = 'viewport';
-            newMeta.content = 'width=1400, initial-scale=0.30, maximum-scale=2.0, user-scalable=yes';
-            document.getElementsByTagName('head')[0].appendChild(newMeta);
-        }
-    }
-    forceDesktop();
-    setInterval(forceDesktop, 1000);
-</script>
-"""
-
-# CSS BASE
+# CSS BASE (Sempre ativo)
 CSS_BASE = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -70,70 +49,127 @@ CSS_BASE = """
 </style>
 """
 
-# CSS LOGIN (MANTÉM RESPONSIVIDADE ORIGINAL)
-CSS_LOGIN = """
+# CSS 1: LOGIN (RESPONSIVO E BONITO)
+CSS_LOGIN_MOBILE = """
 <style>
-    .block-container { max-width: 100% !important; padding: 2rem 1rem; }
+    @media only screen and (max-width: 768px) {
+        .block-container { 
+            max-width: 100% !important; 
+            padding: 2rem 1rem !important; 
+            width: 100% !important;
+            overflow-x: hidden !important;
+        }
+        button { min-height: 50px !important; }
+    }
 </style>
 """
 
-# CSS AGENDA (ESTILO "SLIM" PARA CABER NO MODO 1400PX)
-CSS_AGENDA_DESKTOP_LOOK = """
+# CSS 2: AGENDA (PROTOCOL: EXCEL MODE - SCROLL SÓLIDO)
+CSS_AGENDA_WIDE = """
 <style>
-    /* Ajustes para a tela "gigante" de 1400px parecer compacta */
+    /* ============================================================ */
+    /* 📊 PROTOCOLO EXCEL MODE (< 768px)                            */
+    /* Lógica: Container rolável com largura fixa interna.          */
+    /* A coluna da hora (1ª) fica fixa (sticky).                    */
+    /* ============================================================ */
     
-    .block-container {
-        max-width: 1350px !important; /* Aproveita a largura forçada pelo JS */
-        padding-top: 10px !important;
-        padding-left: 10px !important;
-        padding-right: 10px !important;
+    @media only screen and (max-width: 768px) {
+        
+        /* 1. O CONTAINER QUE ROLA */
+        .block-container {
+            padding: 0 !important;
+            max-width: 100vw !important;
+            overflow-x: auto !important; /* Habilita o scroll horizontal */
+        }
+
+        /* 2. FORÇA A LARGURA DA TABELA INTERNA */
+        /* Isso obriga o navegador a criar espaço para os 7 dias */
+        div[data-testid="stVerticalBlock"] {
+            min-width: 800px !important; /* 50px hora + (7 * 105px dias) */
+        }
+
+        /* 3. AS LINHAS (CABEÇALHO E HORÁRIOS) */
+        div[data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            gap: 0 !important;
+            width: 100% !important;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        /* 4. A COLUNA DA HORA (STICKY NA ESQUERDA) */
+        /* O primeiro filho fica preso na tela enquanto o resto rola */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child {
+            position: sticky !important;
+            left: 0 !important;
+            z-index: 100 !important;
+            background-color: #ffffff !important;
+            border-right: 2px solid #e2e8f0 !important;
+            min-width: 50px !important;
+            max-width: 50px !important;
+            width: 50px !important;
+            flex: 0 0 50px !important;
+        }
+
+        /* 5. AS COLUNAS DOS DIAS */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(n+2) {
+            min-width: 105px !important;
+            max-width: 105px !important;
+            width: 105px !important;
+            flex: 0 0 105px !important;
+            border-right: 1px solid #f8fafc;
+        }
+        
+        /* 6. AJUSTES VISUAIS MICRO */
+        /* Botões */
+        div[data-testid="stVerticalBlock"] button[kind="secondary"] {
+            height: 40px !important;
+            min-height: 40px !important;
+            padding: 0 !important;
+            border: none !important;
+            border-bottom: 1px solid #f1f5f9 !important;
+        }
+        
+        /* Fontes */
+        p, div, span, button { font-size: 10px !important; }
+        .day-header-num { font-size: 16px !important; }
+        
+        /* Esconde Header do App */
+        .stApp > header { display: none !important; }
     }
 
-    /* Redução Geral de Fontes (Para ficar proporcional ao Scale 0.30) */
-    html, body, p, div, span, button {
-        font-size: 12px !important; /* Levemente menor para caber mais */
+    /* --- ESTILOS GERAIS (DESKTOP) --- */
+    @media (min-width: 769px) {
+        div[data-testid="stVerticalBlock"] button[kind="secondary"] {
+            background: transparent !important; border: none !important;
+            border-right: 1px solid #f1f5f9 !important; border-bottom: 1px solid #f1f5f9 !important;
+            border-radius: 0 !important; width: 100% !important; margin: 0 !important; height: 45px; 
+        }
+        div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover { background: #f8fafc !important; }
+        .evt-card { height: 42px; font-size: 11px; padding: 0 4px; }
     }
 
-    /* Botões da Grade (Altura Reduzida) */
-    div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-        background: transparent !important; border: none !important;
-        border-right: 1px solid #f1f5f9 !important; border-bottom: 1px solid #f1f5f9 !important;
-        border-radius: 0 !important; width: 100% !important; margin: 0 !important;
-        height: 35px !important; /* Mais fino que os 45px originais */
-        min-height: 35px !important;
-    }
-    div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover { background: #f8fafc !important; }
-
-    /* Card Evento Compacto */
+    /* --- ESTILOS VISUAIS COMUNS --- */
     .evt-card {
-        background-color: #e0f2fe; color: #0369a1; 
-        font-size: 10px; font-weight: 700; 
-        padding: 0 4px; border-radius: 2px; border-left: 3px solid #0284c7;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        display: flex; align-items: center; cursor: pointer;
-        height: 33px; /* Acompanha a altura da célula */
+        background-color: #e0f2fe; color: #0369a1; font-weight: 700; 
+        border-radius: 2px; border-left: 3px solid #0284c7;
+        overflow: hidden; cursor: pointer; display: flex; align-items: center;
+        margin: 1px 0; height: 38px; font-size: 10px; padding: 2px;
     }
-    
-    /* Bloqueio Compacto */
     .admin-blocked { 
         background: #f1f5f9; color: #94a3b8; font-size: 9px;
         display: flex; align-items: center; justify-content: center;
-        height: 33px; width: 100%;
+        height: 100%; width: 100%;
     }
-
-    /* Cabeçalhos */
-    .day-header-box { text-align: center; border-bottom: 1px solid #cbd5e1; padding: 4px 0; background: #fff; }
-    .day-header-name { font-weight: 700; color: #64748b; text-transform: uppercase; font-size: 11px; }
-    .day-header-num { font-weight: 800; color: #1e293b; line-height: 1; font-size: 20px; }
+    .day-header-box { text-align: center; border-bottom: 1px solid #cbd5e1; padding: 5px 0; background: #fff; }
+    .day-header-name { font-weight: 700; color: #64748b; text-transform: uppercase; }
+    .day-header-num { font-weight: 800; color: #1e293b; line-height: 1; }
     .today-hl { color: #0284c7; }
-    
     .time-label { 
-        font-weight: 600; color: #94a3b8; font-size: 11px;
-        text-align: right; padding-right: 8px; position: relative; top: 10px;
+        font-weight: 600; color: #94a3b8; 
+        text-align: right; position: relative; top: 12px; padding-right: 5px;
     }
-    
-    /* Garante alinhamento */
-    div[data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; }
 </style>
 """
 
@@ -344,13 +380,13 @@ def render_calendar(sala, is_admin_mode=False):
                         if is_admin_mode:
                              if cont.button("x", key=f"d_res_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
                 elif is_sun or is_sat_close:
-                    st.markdown("<div style='height:35px; background:#f9fafb;'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='height:40px; background:#f9fafb;'></div>", unsafe_allow_html=True)
                 else:
                     if not is_admin_mode:
                         if cont.button(" ", key=f"add_{d}_{h}", type="secondary", use_container_width=True):
                             modal_agendamento(sala, d, h)
                     else:
-                        st.markdown("<div style='height:35px; border-right:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
+                        st.markdown("<div style='height:40px; border-right:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
 
 def tela_admin_master():
     tabs = st.tabs(["💰 Config", "📅 Visualizar", "🚫 Bloqueios", "📄 Relatórios", "👥 Usuários"])
@@ -487,7 +523,7 @@ def main():
 
     if not st.session_state.user:
         # MODO LOGIN: CSS DE LOGIN (RESPONSIVO)
-        st.markdown(CSS_LOGIN, unsafe_allow_html=True)
+        st.markdown(CSS_LOGIN_MOBILE, unsafe_allow_html=True)
         
         c1, c2, c3 = st.columns([1, 1.2, 1])
         with c2:
@@ -514,9 +550,8 @@ def main():
             if c_b.button("Recuperar"): st.session_state.auth_mode = 'forgot'; st.rerun()
         return
 
-    # MODO AGENDA: CSS DE AGENDA (DESKTOP LOOK FORÇADO VIA JS)
-    components.html(JS_FORCE_DESKTOP, height=0) # INJETA O SCRIPT NUCLEAR
-    st.markdown(CSS_AGENDA_DESKTOP_LOOK, unsafe_allow_html=True)
+    # MODO AGENDA: CSS DE AGENDA (EXCEL MODE - SEM JS)
+    st.markdown(CSS_AGENDA_WIDE, unsafe_allow_html=True)
 
     u = st.session_state['user']
     if u is None: st.session_state.auth_mode = 'login'; st.rerun(); return
