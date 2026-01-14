@@ -16,7 +16,9 @@ st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide", initia
 if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
 if 'user' not in st.session_state: st.session_state.user = None
 if 'is_admin' not in st.session_state: st.session_state.is_admin = False
+if 'reset_email' not in st.session_state: st.session_state.reset_email = ""
 if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
+if 'view_mode' not in st.session_state: st.session_state.view_mode = 'SEMANA'
 
 NOME_DO_ARQUIVO_LOGO = "logo.png"
 
@@ -28,7 +30,7 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS BÁSICO (SEGURO PARA LOGIN) ---
+# --- 3. CSS GLOBAL (BASE) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -109,6 +111,7 @@ def navegar(direcao):
     if direcao == 'prev': st.session_state.data_ref -= timedelta(days=delta)
     else: st.session_state.data_ref += timedelta(days=delta)
 
+# --- 5. AGENDAMENTO ---
 @st.dialog("Novo Agendamento")
 def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
     st.markdown(f"#### {data_sugerida.strftime('%d/%m/%Y')}")
@@ -176,78 +179,73 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
                 st.toast("Sucesso!", icon="✅"); time.sleep(1); st.rerun()
         except: st.error("Erro.")
 
-# --- 6. RENDERIZADOR PYTHON NATIVO COM CSS SCOPED ---
+# --- 6. RENDERIZADOR PYTHON COM CSS TITANIUM (Só carrega se logado) ---
 def render_calendar_interface(sala, is_admin_mode=False):
     
-    # CSS INJETADO APENAS AQUI (PARA NÃO QUEBRAR O LOGIN)
-    # Força os botões do calendário a se comportarem como tabela
+    # CSS: ESTE BLOCO SÓ EXISTE NA AGENDA
+    # Ele força qualquer bloco horizontal a ficar LADO A LADO com scroll.
     st.markdown("""
     <style>
-    /* FORÇA HORIZONTAL NO MOBILE */
     @media only screen and (max-width: 768px) {
         
-        /* Seleciona o container das colunas do calendário (identificado por ter 8 filhos) */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) {
+        /* FORÇA BRUTA: Se é um bloco horizontal, ele VAI ser linha e VAI ter scroll */
+        div[data-testid="stHorizontalBlock"] {
             display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            overflow-x: auto !important;
+            flex-direction: row !important;     /* NUNCA COLUMN */
+            flex-wrap: nowrap !important;       /* NUNCA WRAP */
+            overflow-x: auto !important;        /* SCROLL SIM */
             width: 100% !important;
+            min-width: 100% !important;
             gap: 2px !important;
+            padding-bottom: 5px !important;
+        }
+
+        /* COLUNAS: Tamanho fixo para garantir que 8 caibam apenas com scroll */
+        div[data-testid="column"] {
+            flex: 0 0 auto !important;          /* NÃO ENCOLHE */
+            width: 95px !important;             /* LARGURA MÍNIMA SEGURA */
+            min-width: 95px !important;
         }
         
-        /* Força largura mínima nas colunas para ativar o scroll */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"] {
-            flex: 0 0 auto !important;
-            min-width: 100px !important; /* LARGURA FIXA DO DIA */
-        }
-        
-        /* Coluna da hora menor */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"]:first-child {
-            min-width: 45px !important;
+        /* Coluna da HORA (é sempre a primeira filha do bloco) */
+        div[data-testid="column"]:nth-of-type(1) {
+            width: 40px !important;
+            min-width: 40px !important;
             position: sticky !important;
-            left: 0;
-            background: white;
-            z-index: 10;
-            border-right: 1px solid #eee;
+            left: 0 !important;
+            background: white !important;
+            z-index: 50 !important;
+            border-right: 1px solid #ddd !important;
         }
-        
-        /* Botões */
+
+        /* AJUSTES VISUAIS DOS BOTÕES */
         div[data-testid="stVerticalBlock"] button[kind="secondary"] {
             height: 50px !important;
             width: 100% !important;
             padding: 0 !important;
-            margin: 0 !important;
+            border: 1px solid #f1f5f9 !important;
         }
         
-        /* Eventos */
-        .evt-card {
-            height: 46px !important;
-            font-size: 10px !important;
-            overflow: hidden;
-            display: flex; align-items: center;
-        }
-        
-        /* Ajuste cabeçalho dia */
-        .day-header-box { height: 45px !important; display: flex; align-items: center; justify-content: center; text-align: center; }
-        
-        /* Ajuste hora label */
+        /* CABEÇALHOS */
+        .day-header-box { height: 45px !important; display: flex; align-items: center; justify-content: center; background:#f8fafc; font-size:11px; }
         .time-label { top: 18px; position: relative; font-size: 10px; }
+        
+        /* REMOVE MARGENS EXTRAS DO APP */
+        .block-container { padding-left: 5px !important; padding-right: 5px !important; }
+        .stApp > header { display: none !important; }
     }
     
-    /* GERAL */
+    /* ESTILOS COMUNS */
     .evt-card {
         background-color: #e0f2fe; border-left: 3px solid #0284c7; color: #0369a1; font-weight: 700; 
-        border-radius: 4px; overflow: hidden; cursor: pointer; display: block; padding: 2px;
+        border-radius: 4px; overflow: hidden; cursor: pointer; display: flex; align-items: center; padding: 2px;
+        height: 48px; font-size: 10px; line-height: 1.1; white-space: normal;
     }
     .blocked { background: #f1f5f9; color: #94a3b8; justify-content: center; border-left: 3px solid #cbd5e1; }
-    .day-header-box { background: #f8fafc; border-bottom: 2px solid #e2e8f0; padding: 5px; margin-bottom: 5px; }
-    .time-label { font-weight: 600; color: #94a3b8; text-align: right; }
-    
     </style>
     """, unsafe_allow_html=True)
 
-    # Navegação
+    # NAVEGAÇÃO
     c1, c2, c3 = st.columns([1, 4, 1])
     c1.button("❮", on_click=lambda: navegar('prev'), use_container_width=True)
     c3.button("❯", on_click=lambda: navegar('next'), use_container_width=True)
@@ -258,7 +256,7 @@ def render_calendar_interface(sala, is_admin_mode=False):
     mes_nome = d_start.strftime("%b").upper()
     c2.markdown(f"<div style='text-align:center; font-weight:bold; margin-top:5px'>{mes_nome} {d_start.day}-{d_end.day}</div>", unsafe_allow_html=True)
 
-    # Dados
+    # DADOS
     reservas = []
     try:
         r = supabase.table("reservas").select("*").eq("sala_nome", sala).neq("status", "cancelada").gte("data_reserva", str(d_start)).lte("data_reserva", str(d_end)).execute()
@@ -273,23 +271,18 @@ def render_calendar_interface(sala, is_admin_mode=False):
     dias_visiveis = [d_start + timedelta(days=i) for i in range(7)]
     dias_sem = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
 
-    # 1. CABEÇALHO (HORA VAZIA + 7 DIAS)
+    # 1. CABEÇALHO
     cols = st.columns([0.3, 1, 1, 1, 1, 1, 1, 1])
     cols[0].write("") 
     for i, d in enumerate(dias_visiveis):
         with cols[i+1]:
             is_hj = (d == datetime.date.today())
             cls_hj = "color:#0284c7;" if is_hj else "color:#334155;"
-            # Renderiza o cabeçalho em HTML puro para controle total
-            st.markdown(f"""
-            <div class='day-header-box'>
-                <div style='{cls_hj}'><small>{dias_sem[d.weekday()]}</small><br><strong style='font-size:16px'>{d.day}</strong></div>
-            </div>""", unsafe_allow_html=True)
+            st.markdown(f"<div class='day-header-box'><div style='{cls_hj}'>{dias_sem[d.weekday()]}<br><strong style='font-size:16px'>{d.day}</strong></div></div>", unsafe_allow_html=True)
 
-    # 2. GRADE DE HORÁRIOS (7 AS 22h)
+    # 2. GRADE (7h-22h)
     for h in range(7, 23): 
         row = st.columns([0.3, 1, 1, 1, 1, 1, 1, 1])
-        # Coluna da hora
         row[0].markdown(f"<div class='time-label'>{h:02d}:00</div>", unsafe_allow_html=True)
         
         for i, d in enumerate(dias_visiveis):
@@ -318,9 +311,7 @@ def render_calendar_interface(sala, is_admin_mode=False):
                 elif is_past or is_sunday or is_sat_closed:
                     st.markdown("<div style='height:50px; background:#f9fafb; border-radius:4px;'></div>", unsafe_allow_html=True)
                 else:
-                    # BOTÃO NATIVO: Este botão não causa refresh de página (apenas rerun do script), 
-                    # então o login se mantém.
-                    # O CSS (CSS_AGENDA_NATIVE) vai garantir que ele não empilhe.
+                    # BOTÃO TRANSPARENTE: Texto invisível no mobile via CSS (color:transparent)
                     if cont.button("Agendar", key=f"btn_{d}_{h}", type="secondary", use_container_width=True):
                         modal_agendamento(sala, d, h)
 
@@ -453,6 +444,16 @@ def tela_admin_master():
 
 # --- 7. MAIN ---
 def main():
+    # CSS LOGIN PADRÃO (RESPONSIVO)
+    st.markdown("""
+    <style>
+    @media only screen and (max-width: 768px) {
+        .block-container { padding: 2rem 1rem !important; }
+        button { min-height: 50px !important; }
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     if not st.session_state.user:
         c1, c2, c3 = st.columns([1, 1.2, 1])
         with c2:
