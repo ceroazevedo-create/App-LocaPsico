@@ -37,7 +37,7 @@ supabase = init_connection()
 # --- 3. CSS GLOBAL (LOGIN E ESTRUTURA) ---
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     .stApp { background-color: #ffffff; font-family: 'Inter', sans-serif; color: #1e293b; }
     
     /* Remove Header/Footer Nativos */
@@ -198,8 +198,9 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
                 st.toast("Sucesso!", icon="✅"); time.sleep(1); st.rerun()
         except: st.error("Erro.")
 
-# --- 6. RENDERIZADOR HTML (AGORA COM LINKS) ---
+# --- 6. RENDERIZADOR HTML (COM LINKS PARA CLIQUE) ---
 def render_calendar_html(sala, is_admin_mode=False):
+    # Lógica de Dados
     ref = st.session_state.data_ref
     d_start = ref - timedelta(days=ref.weekday())
     d_end = d_start + timedelta(days=6)
@@ -220,7 +221,7 @@ def render_calendar_html(sala, is_admin_mode=False):
     dias_visiveis = [d_start + timedelta(days=i) for i in range(7)]
     dias_sem = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
 
-    # INICIO DO HTML
+    # INICIO DO HTML (COM CSS EMBUTIDO)
     html = """
     <style>
         body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; overflow-x: hidden; background: transparent; }
@@ -237,7 +238,7 @@ def render_calendar_html(sala, is_admin_mode=False):
             border-collapse: separate;
             border-spacing: 0;
             width: max-content;
-            min-width: 800px;
+            min-width: 800px; /* Largura mínima para garantir que não empilhe */
         }
         
         th, td {
@@ -333,6 +334,7 @@ def render_calendar_html(sala, is_admin_mode=False):
                 html += "<div class='slot-disabled' style='height:100%;'></div>"
             else:
                 # LINK PARA AGENDAR (Chama a URL com parâmetros)
+                # target="_parent" é o segredo para falar com o Streamlit
                 link = f"?booking=1&d={d_s}&h={h}"
                 html += f"<a href='{link}' target='_parent' class='slot-link'></a>"
             
@@ -530,7 +532,6 @@ def main():
         if isinstance(h_str, list): h_str = h_str[0]
         
         if d_str and h_str:
-            # Salva no estado para persistir após limpar a URL
             st.session_state.trigger_modal = {
                 "date": datetime.datetime.strptime(d_str, "%Y-%m-%d").date(),
                 "hour": int(h_str)
@@ -540,13 +541,11 @@ def main():
             except: st.experimental_set_query_params()
             st.rerun()
 
-    # Dispara o modal se houver gatilho pendente
+    # Dispara modal
     if st.session_state.trigger_modal:
         data_m = st.session_state.trigger_modal["date"]
         hora_m = st.session_state.trigger_modal["hour"]
-        # Reseta o gatilho para não abrir de novo
         st.session_state.trigger_modal = None
-        # Abre o modal
         modal_agendamento("Sala 1", data_m, hora_m)
 
     # --- TELA PRINCIPAL ---
@@ -574,5 +573,41 @@ def main():
             
         with tabs[1]:
             st.markdown("### Meus Agendamentos")
+            # Correção do erro de syntax (linha 578)
             agora = datetime.datetime.now()
-            inicio_mes = datetime.
+            inicio_mes = datetime.date.today().replace(day=1)
+            try:
+                r = supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").gte("data_reserva", str(inicio_mes)).order("data_reserva").execute()
+                df = pd.DataFrame(r.data)
+                if not df.empty:
+                    for _, row in df.iterrows():
+                        dt_res = datetime.datetime.combine(datetime.date.fromisoformat(row['data_reserva']), datetime.datetime.strptime(row['hora_inicio'], "%H:%M:%S").time())
+                        if dt_res < agora:
+                            st.markdown(f"<div style='background:#f8fafc; padding:10px; border-radius:8px; color:#94a3b8; margin-bottom:8px'>✅ {row['data_reserva']} às {row['hora_inicio'][:5]} <small>({row['sala_nome']})</small></div>", unsafe_allow_html=True)
+                        else:
+                            with st.container():
+                                c1, c2 = st.columns([3,1])
+                                c1.markdown(f"**{row['data_reserva']}** às **{row['hora_inicio'][:5]}** - {row['sala_nome']}")
+                                if dt_res > agora + timedelta(hours=24):
+                                    if c2.button("Cancelar", key=f"c_{row['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", row['id']).execute(); st.rerun()
+                                else: c2.caption("🚫 < 24h")
+                                st.divider()
+                else: st.info("Nada este mês.")
+            except: pass
+            
+            st.markdown("### Financeiro")
+            try:
+                df_all = pd.DataFrame(supabase.table("reservas").select("*").eq("user_id", u.id).eq("status", "confirmada").execute().data)
+                k1, k2 = st.columns(2)
+                k1.metric("Total Investido", f"R$ {df_all['valor_cobrado'].sum():.0f}")
+                k2.metric("Sessões", len(df_all))
+            except: pass
+
+        with tabs[2]:
+            p = st.text_input("Nova Senha", type="password")
+            if st.button("Trocar Senha"):
+                if len(p)<6: st.warning("Min 6 chars")
+                else: supabase.auth.update_user({"password": p}); st.success("Atualizado!")
+
+if __name__ == "__main__":
+    main()
