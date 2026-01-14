@@ -30,99 +30,22 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS "GRADE PERFEITA" ---
-# Este CSS força os botões do Python a parecerem células de uma tabela Excel
+# --- 3. CSS GLOBAL ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     .stApp { background-color: #ffffff; font-family: 'Inter', sans-serif; color: #1e293b; }
     header, footer, [data-testid="stToolbar"] { display: none !important; }
     
-    /* Botões Gerais (Login, etc) */
+    /* Botões Gerais */
     div[data-testid="stForm"] button, button[kind="primary"] { 
         background: #0f766e !important; color: white !important; border: none; border-radius: 6px; 
     }
     
-    /* === REGRAS DA AGENDA (MOBILE) === */
+    /* Login Responsivo */
     @media only screen and (max-width: 768px) {
-        
-        .block-container { padding: 10px 2px !important; overflow-x: hidden; }
-
-        /* 1. FORÇA LINHA HORIZONTAL (NUNCA EMPILHAR) */
-        /* Seleciona blocos com 8 colunas (nossa agenda) */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important; /* OBRIGATÓRIO */
-            overflow-x: auto !important;  /* SCROLL LATERAL */
-            align-items: stretch !important;
-            width: 100% !important;
-            gap: 1px !important;
-            padding-bottom: 2px !important;
-        }
-
-        /* 2. LARGURA FIXA DAS COLUNAS (IMPEDE FICAR "GRANDE") */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"] {
-            flex: 0 0 auto !important;
-            width: 60px !important;       /* LARGURA MÁXIMA DA CÉLULA */
-            min-width: 60px !important;
-            max-width: 60px !important;
-        }
-        
-        /* 3. COLUNA DA HORA (PRIMEIRA) - FIXA E MENOR */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"]:first-child {
-            width: 40px !important;
-            min-width: 40px !important;
-            max-width: 40px !important;
-            position: sticky !important;
-            left: 0 !important;
-            background: white !important;
-            z-index: 50 !important;
-            border-right: 1px solid #e2e8f0 !important;
-        }
-
-        /* 4. TRANSFORMANDO BOTÕES EM CÉLULAS PEQUENAS */
-        div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-            height: 40px !important;      /* ALTURA FIXA PEQUENA */
-            min-height: 40px !important;
-            width: 100% !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            font-size: 14px !important;
-            line-height: 1 !important;
-            border: 1px solid #f1f5f9 !important;
-            background-color: transparent !important;
-            color: #0d9488 !important; /* Cor do + */
-            font-weight: bold !important;
-        }
-        div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover {
-            background-color: #f0fdf4 !important;
-        }
-        
-        /* CABEÇALHOS */
-        .day-header-box { 
-            height: 40px; display: flex; align-items: center; justify-content: center; 
-            background: #f8fafc; border-bottom: 2px solid #e2e8f0; font-size: 10px; text-align: center;
-        }
-        .time-label { top: 15px; position: relative; font-size: 10px; font-weight: 600; color: #94a3b8; }
-        
-        /* CARD DE EVENTO */
-        .evt-card {
-            height: 38px; font-size: 9px; line-height: 1; padding: 1px;
-            display: flex; align-items: center; white-space: normal; overflow: hidden;
-            background-color: #e0f2fe; border-left: 3px solid #0284c7; color: #0369a1; border-radius: 3px;
-        }
-        .slot-blocked {
-            height: 38px; display: flex; align-items: center; justify-content: center;
-            background: #f1f5f9; color: #cbd5e1; font-size: 14px;
-        }
-    }
-    
-    /* DESKTOP (MANTÉM NORMAL) */
-    @media (min-width: 769px) {
-        .evt-card { height: 46px; font-size: 11px; padding: 4px; border-radius: 4px; background: #e0f2fe; color: #0369a1; border-left: 3px solid #0284c7; }
-        button[kind="secondary"] { border: 1px solid #eee; height: 46px; width: 100%; color: #0d9488; }
-        .slot-blocked { height: 46px; background: #f8fafc; display: flex; align-items: center; justify-content: center; color: #cbd5e1; }
+        .block-container { padding: 2rem 1rem !important; max-width: 100% !important; }
+        button { min-height: 50px !important; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -261,8 +184,106 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
                 st.toast("Sucesso!", icon="✅"); time.sleep(1); st.rerun()
         except: st.error("Erro.")
 
-# --- 6. RENDERIZADOR PYTHON (BOTÕES REAIS E PEQUENOS) ---
+# --- 6. RENDERIZADOR PYTHON NATIVO (GRADE BLINDADA) ---
 def render_calendar_interface(sala, is_admin_mode=False):
+    
+    # CSS AGRESSIVO PARA FORÇAR LAYOUT HORIZONTAL E BOTÕES PEQUENOS
+    st.markdown("""
+    <style>
+    @media only screen and (max-width: 768px) {
+        
+        /* 1. CONTAINER DA PÁGINA (Permite scroll se transbordar) */
+        .block-container {
+            padding: 5px 2px !important;
+            max-width: 100vw !important;
+            overflow-x: auto !important; 
+        }
+
+        /* 2. FORÇA O BLOCO HORIZONTAL A SER GIGANTE (NÃO QUEBRA LINHA) */
+        /* Seleciona o bloco que contém as colunas da agenda */
+        div[data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            min-width: 700px !important; /* Força largura maior que a tela do celular */
+            gap: 1px !important;
+            padding-bottom: 5px !important;
+        }
+
+        /* 3. COLUNAS (LARGURA FIXA E PEQUENA) */
+        div[data-testid="column"] {
+            flex: 0 0 auto !important;
+            width: 80px !important;       /* Largura fixa */
+            min-width: 80px !important;
+            max-width: 80px !important;
+        }
+        
+        /* 4. COLUNA DA HORA (1ª) - FIXA E ESTREITA */
+        div[data-testid="column"]:nth-of-type(1) {
+            width: 40px !important;
+            min-width: 40px !important;
+            max-width: 40px !important;
+            position: sticky !important;
+            left: 0 !important;
+            background: white !important;
+            z-index: 99 !important;
+            border-right: 1px solid #e2e8f0 !important;
+        }
+
+        /* 5. BOTÕES "+" (QUADRADOS E PEQUENOS) */
+        div[data-testid="stVerticalBlock"] button[kind="secondary"] {
+            height: 40px !important;
+            min-height: 40px !important;
+            width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: 1px solid #e2e8f0 !important;
+            background-color: transparent !important;
+            color: #0f766e !important;
+            font-weight: bold !important;
+            font-size: 16px !important;
+            line-height: 1 !important;
+        }
+        div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover {
+            background-color: #f0fdf4 !important;
+        }
+        
+        /* 6. CABEÇALHOS */
+        .day-header-box { 
+            height: 40px !important; 
+            display: flex; align-items: center; justify-content: center; 
+            background: #f8fafc; border-bottom: 2px solid #e2e8f0;
+            font-size: 12px !important; text-align: center;
+        }
+        
+        .time-label { 
+            font-size: 10px !important; top: 15px !important; position: relative; font-weight: 600;
+        }
+        
+        /* Oculta Header do App */
+        .stApp > header { display: none !important; }
+    }
+    
+    /* DESKTOP (AJUSTES) */
+    @media (min-width: 769px) {
+        button[kind="secondary"] { height: 45px !important; border: 1px solid #f1f5f9 !important; color: #0f766e !important; }
+        button[kind="secondary"]:hover { background: #f8fafc !important; }
+    }
+
+    /* ESTILOS COMUNS */
+    .evt-card {
+        background-color: #e0f2fe; border-left: 3px solid #0284c7; color: #0369a1; font-weight: 700; 
+        border-radius: 3px; overflow: hidden; cursor: pointer; display: flex; align-items: center; padding: 2px;
+        height: 38px; font-size: 10px; line-height: 1.1; white-space: normal;
+    }
+    .blocked { background: #f1f5f9; color: #94a3b8; justify-content: center; border-left: 3px solid #cbd5e1; }
+    .slot-blocked {
+        height: 38px; display: flex; align-items: center; justify-content: center;
+        background: #f1f5f9; color: #cbd5e1; font-size: 18px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     # NAVEGAÇÃO
     c1, c2, c3 = st.columns([1, 4, 1])
     c1.button("❮", on_click=lambda: navegar('prev'), use_container_width=True)
@@ -289,7 +310,7 @@ def render_calendar_interface(sala, is_admin_mode=False):
     dias_visiveis = [d_start + timedelta(days=i) for i in range(7)]
     dias_sem = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
 
-    # 1. CABEÇALHO
+    # 1. CABEÇALHO (HORA + 7 DIAS)
     cols = st.columns([0.3, 1, 1, 1, 1, 1, 1, 1])
     cols[0].write("") 
     for i, d in enumerate(dias_visiveis):
@@ -332,9 +353,8 @@ def render_calendar_interface(sala, is_admin_mode=False):
                 elif is_past or is_sunday or is_sat_closed:
                     st.markdown("<div class='slot-blocked'>•</div>", unsafe_allow_html=True)
                 else:
-                    # O SINAL DE + (BOTÃO NATIVO)
-                    # O CSS força ele a ser pequeno e quadrado
-                    if cont.button("+", key=f"btn_{d}_{h}", type="secondary", use_container_width=True):
+                    # BOTÃO COM SINAL DE + (Nativo do Streamlit)
+                    if cont.button("＋", key=f"btn_{d}_{h}", type="secondary", use_container_width=True):
                         modal_agendamento(sala, d, h)
 
 def tela_admin_master():
