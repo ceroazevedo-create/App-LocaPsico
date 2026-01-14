@@ -31,7 +31,7 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS SEPARADO POR CONTEXTO ---
+# --- 3. CSS SEPARADO POR CONTEXTO (ESTRATÉGIA: DOIS UNIVERSOS) ---
 
 # ESTILO BASE (FONTE E CORES) - Sempre aplicado
 CSS_BASE = """
@@ -71,67 +71,98 @@ CSS_LOGIN_MOBILE = """
 </style>
 """
 
-# ESTILO 2: AGENDA (A DITADURA DOS PIXELS)
-# Removemos o @media query. A regra agora é universal para quem está logado.
-# Forçamos 1200px de largura. O Streamlit vai "achar" que está num Desktop e renderizará as colunas lado a lado.
+# ESTILO 2: AGENDA (A DITADURA DOS PIXELS + RAIO ENCOLHEDOR)
+# Esta é a solução final para o calendário. Força largura e aplica ZOOM OUT.
 CSS_AGENDA_WIDE = """
 <style>
-    /* 1. FORÇA A BARRA DE ROLAGEM HORIZONTAL NA JANELA INTEIRA */
-    .stApp {
-        overflow-x: auto !important;
-    }
-
-    /* 2. FORÇA O CONTAINER A TER TAMANHO DE DESKTOP */
-    .block-container {
-        width: 1200px !important;       /* Largura FIXA */
-        min-width: 1200px !important;   /* Não encolhe nem a pau */
-        max-width: 1200px !important;   /* Não estica além disso */
-        padding-left: 20px !important;
-        padding-right: 20px !important;
-        margin: 0 auto !important;
-    }
-
-    /* 3. GARANTE QUE OS BLOCOS INTERNOS ACOMPANHEM A LARGURA */
-    div[data-testid="stHorizontalBlock"] {
-        width: 100% !important;
-        min-width: 100% !important;
-        flex-wrap: nowrap !important; /* Proíbe quebra de linha */
-    }
-
-    /* 4. COLUNAS DO CALENDÁRIO */
-    div[data-testid="column"] {
-        flex: 1 1 0px !important; /* Distribuição igual */
-        min-width: 0 !important;
-    }
+    /* ============================================================ */
+    /* 🔭 MOBILE ZOOM OUT FORCE (< 768px)                           */
+    /* Estratégia: Renderizar largo (1100px) mas com ZOOM de 55%    */
+    /* Resultado: Visual de Desktop, tamanho de Mobile.             */
+    /* ============================================================ */
     
-    /* 5. ESTILOS DA GRADE (GOOGLE AGENDA FEEL) */
+    @media only screen and (max-width: 768px) {
+        
+        /* 1. O TRUQUE DE MESTRE: ZOOM OUT */
+        .block-container {
+            width: 1100px !important;       /* Largura física real para caber 7 colunas */
+            min-width: 1100px !important;
+            
+            /* A MÁGICA: Reduz tudo para 55% do tamanho original */
+            zoom: 0.55 !important;          
+            
+            padding: 5px !important;
+            overflow-x: visible !important;
+        }
+
+        /* 2. PERMITE QUE A TELA ROLE SE PRECISAR (SAFETY NET) */
+        .stApp {
+            overflow-x: auto !important;
+        }
+        
+        /* 3. LIMPEZA VISUAL (Para não desperdiçar pixels) */
+        header { display: none !important; }
+        .stApp > header { display: none !important; }
+        footer { display: none !important; }
+        
+        /* 4. AJUSTES DE COLUNA */
+        div[data-testid="column"] {
+            min-width: 0 !important; /* Remove travas de largura mínima nativas */
+            padding: 0 2px !important;
+        }
+        
+        /* 5. TEXTOS (Reajuste se ficar ilegível com o zoom) */
+        /* Como o zoom reduz pixels, aumentamos um pouco a base para compensar a nitidez */
+        p, div, button, span {
+            font-size: 14px !important; 
+        }
+        .day-header-num { font-size: 24px !important; }
+    }
+
+    /* --- ESTILOS GERAIS DA GRADE (DESKTOP & MOBILE INTEGRADOS) --- */
+    
+    /* Botões de Agendamento (Grade Limpa) */
     div[data-testid="stVerticalBlock"] button[kind="secondary"] {
         background-color: transparent !important; border: none !important;
-        border-right: 1px solid #f1f5f9 !important; border-bottom: 1px solid #f1f5f9 !important;
-        border-radius: 0 !important; height: 45px !important; width: 100% !important;
+        border-right: 1px solid #e2e8f0 !important; border-bottom: 1px solid #e2e8f0 !important;
+        border-radius: 0 !important; height: 50px !important; width: 100% !important;
+        margin: 0 !important;
     }
     div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover { background-color: #f8fafc !important; }
 
+    /* Card de Evento (Estilo Google Agenda Compacto) */
     .evt-card {
-        background-color: #e0f2fe; color: #0369a1; font-size: 11px; font-weight: 600; 
-        padding: 4px 6px; border-radius: 4px; border-left: 3px solid #0284c7;
+        background-color: #e0f2fe; color: #0369a1; 
+        font-size: 12px; font-weight: 700; 
+        padding: 2px 4px; border-radius: 3px; border-left: 4px solid #0284c7;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        height: 42px; line-height: 1.4; margin: 1px 0; cursor: pointer;
+        height: 46px; line-height: 1.2; margin: 1px 0; cursor: pointer;
+        display: flex; align-items: center;
     }
     
-    .day-header-box { text-align: center; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; }
-    .day-header-name { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; }
-    .day-header-num { font-size: 22px; font-weight: 700; color: #1e293b; }
+    /* Bloqueio Admin */
+    .admin-blocked { 
+        background: repeating-linear-gradient(45deg, #f1f5f9, #f1f5f9 10px, #e2e8f0 10px, #e2e8f0 20px);
+        color: #94a3b8; font-size: 10px; font-weight: bold; letter-spacing: 1px;
+        display: flex; align-items: center; justify-content: center;
+        height: 46px; border-radius: 0;
+    }
+
+    /* Cabeçalhos de Dia */
+    .day-header-box { text-align: center; padding-bottom: 4px; border-bottom: 2px solid #cbd5e1; background: #fff; }
+    .day-header-name { font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
+    .day-header-num { font-size: 26px; font-weight: 800; color: #1e293b; line-height: 1; margin-top: 2px; }
     .today-hl { color: #0284c7; }
     
+    /* Hora Lateral */
     .time-label { 
-        font-size: 11px; font-weight: 500; color: #94a3b8; 
-        text-align: center; position: relative; top: -10px; background: white; 
+        font-size: 12px; font-weight: 600; color: #94a3b8; 
+        text-align: right; padding-right: 8px; position: relative; top: -12px; 
     }
 </style>
 """
 
-# Javascript Cleaner (Mantido para garantir limpeza)
+# Javascript Cleaner
 components.html("""<script>try{const doc=window.parent.document;const style=doc.createElement('style');style.innerHTML=`header, footer, .stApp > header { display: none !important; } [data-testid="stToolbar"] { display: none !important; } .viewerBadge_container__1QSob { display: none !important; }`;doc.head.appendChild(style);}catch(e){}</script>""", height=0)
 
 # --- 4. FUNÇÕES DE SUPORTE ---
