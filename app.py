@@ -21,7 +21,7 @@ if 'reset_email' not in st.session_state: st.session_state.reset_email = ""
 if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
 if 'view_mode' not in st.session_state: st.session_state.view_mode = 'SEMANA'
 
-# Variável de controle para abrir o modal automaticamente
+# Variável de controle para gatilho de modal
 if 'trigger_modal' not in st.session_state: st.session_state.trigger_modal = None
 
 NOME_DO_ARQUIVO_LOGO = "logo.png"
@@ -40,6 +40,7 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     .stApp { background-color: #ffffff; font-family: 'Inter', sans-serif; color: #1e293b; }
     header, footer, [data-testid="stToolbar"] { display: none !important; }
+    
     div[data-testid="stForm"] button, button[kind="primary"] { 
         background: #0f766e !important; color: white !important; border: none; border-radius: 6px; 
     }
@@ -50,7 +51,7 @@ st.markdown("""
         button { min-height: 50px !important; }
     }
     
-    /* Remove padding excessivo na agenda */
+    /* Ajuste fino para o container da agenda */
     .block-container {
         padding-top: 1rem;
         padding-bottom: 5rem;
@@ -125,7 +126,7 @@ def navegar(direcao):
     if direcao == 'prev': st.session_state.data_ref -= timedelta(days=delta)
     else: st.session_state.data_ref += timedelta(days=delta)
 
-# --- 5. LÓGICA DE AGENDAMENTO ---
+# --- 5. AGENDAMENTO ---
 @st.dialog("Novo Agendamento")
 def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
     st.markdown(f"#### {data_sugerida.strftime('%d/%m/%Y')}")
@@ -194,9 +195,8 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
                 st.toast("Sucesso!", icon="✅"); time.sleep(1); st.rerun()
         except: st.error("Erro.")
 
-# --- 6. RENDERIZADOR HTML (COM SCRIPT DE CLIQUE) ---
+# --- 6. RENDERIZADOR HTML (COM SCRIPT DE CLIQUE AGRESSIVO) ---
 def render_calendar_html(sala, is_admin_mode=False):
-    # Lógica de Dados
     ref = st.session_state.data_ref
     d_start = ref - timedelta(days=ref.weekday())
     d_end = d_start + timedelta(days=6)
@@ -217,19 +217,26 @@ def render_calendar_html(sala, is_admin_mode=False):
     dias_visiveis = [d_start + timedelta(days=i) for i in range(7)]
     dias_sem = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
 
-    # INICIO DO HTML
-    # INCLUI SCRIPT JS PARA FORÇAR O CLIQUE
+    # HTML + JS (Script atualizado para window.top)
     html = """
     <script>
         function sendBooking(date, hour) {
-            // Pega a URL atual do pai
-            const currentUrl = new URL(window.parent.location.href);
-            // Adiciona os parametros
-            currentUrl.searchParams.set('booking', '1');
-            currentUrl.searchParams.set('d', date);
-            currentUrl.searchParams.set('h', hour);
-            // Força o redirecionamento no pai
-            window.parent.location.href = currentUrl.toString();
+            try {
+                // Tenta pegar a URL do topo (janela principal)
+                const currentUrl = new URL(window.top.location.href);
+                // Adiciona parâmetros
+                currentUrl.searchParams.set('booking', '1');
+                currentUrl.searchParams.set('d', date);
+                currentUrl.searchParams.set('h', hour);
+                // Força recarga na janela principal
+                window.top.location.href = currentUrl.toString();
+            } catch(e) {
+                console.error("Erro ao tentar acessar window.top:", e);
+                // Fallback (pode não funcionar em todos os iframes, mas tenta)
+                const currentUrl = new URL(window.location.href); 
+                // Se estivermos presos no iframe, isso não afeta o pai, mas é o que temos.
+                alert("Toque detectado! Se a página não recarregar, use o botão '+ Agendar' abaixo.");
+            }
         }
     </script>
     <style>
@@ -277,10 +284,11 @@ def render_calendar_html(sala, is_admin_mode=False):
         
         .slot-cell { height: 50px; position: relative; }
         
-        /* BOTÃO JS */
+        /* BOTÃO INVISÍVEL COBRINDO A CÉLULA */
         .slot-btn {
             display: block; width: 100%; height: 100%;
             background: transparent; border: none; cursor: pointer;
+            padding: 0; margin: 0;
         }
         .slot-btn:active { background-color: #f0fdf4; }
         
@@ -313,15 +321,14 @@ def render_calendar_html(sala, is_admin_mode=False):
         """
     html += "</tr></thead><tbody>"
     
-    # LOOP CORRIGIDO: 7 até 22 (Para incluir o horário de 21:00)
-    for h in range(7, 22):
+    # LOOP ESTENDIDO: 7 até 22 horas
+    for h in range(7, 23): # <--- MUDANÇA AQUI: Vai até 23 exclusive (ou seja, inclui 22:00)
         html += f"""<tr><td class="col-time">{h:02d}:00</td>"""
         for d in dias_visiveis:
             d_s = str(d)
             h_s = f"{h:02d}:00:00"
             res = mapa.get(d_s, {}).get(h_s)
             
-            # Regras
             dt_check = datetime.datetime.combine(d, datetime.time(h, 0))
             is_past = dt_check < agora
             is_sunday = d.weekday() == 6
@@ -338,7 +345,7 @@ def render_calendar_html(sala, is_admin_mode=False):
             elif is_disabled:
                 html += "<div class='slot-disabled' style='height:100%;'></div>"
             else:
-                # CHAMA A FUNÇÃO JS PARA AGENDAR
+                # CHAMA A FUNÇÃO JS
                 html += f"<button class='slot-btn' onclick=\"sendBooking('{d_s}', '{h}')\"></button>"
             
             html += "</td>"
@@ -348,7 +355,6 @@ def render_calendar_html(sala, is_admin_mode=False):
     return html
 
 def render_calendar_interface(sala, is_admin_mode=False):
-    # NAVEGAÇÃO
     c1, c2, c3 = st.columns([1, 4, 1])
     c1.button("❮", on_click=lambda: navegar('prev'), use_container_width=True)
     c3.button("❯", on_click=lambda: navegar('next'), use_container_width=True)
@@ -359,10 +365,13 @@ def render_calendar_interface(sala, is_admin_mode=False):
     mes_nome = d_start.strftime("%b").upper()
     c2.markdown(f"<div style='text-align:center; font-weight:bold; margin-top:5px'>{mes_nome} {d_start.day}-{d_end.day}</div>", unsafe_allow_html=True)
 
-    # RENDERIZA O HTML COM ALTURA AUMENTADA PARA CABER ATÉ 22H
-    # 15 horas * 50px = 750px + cabeçalho ~ 850px. Usando 950px para folga.
+    # ALTURA AUMENTADA PARA 1000px (Caber até as 22h)
     html_code = render_calendar_html(sala, is_admin_mode)
-    components.html(html_code, height=950, scrolling=False) 
+    components.html(html_code, height=1000, scrolling=False)
+    
+    # Botão de Segurança (Caso o JS falhe em algum celular específico)
+    if st.button("➕ Agendar Manualmente", use_container_width=True):
+        modal_agendamento(sala, datetime.date.today())
 
 def tela_admin_master():
     tabs = st.tabs(["💰 Config", "📅 Visualizar", "🚫 Bloqueios", "📄 Relatórios", "👥 Usuários"])
@@ -390,7 +399,7 @@ def tela_admin_master():
             salas = ["Sala 1", "Sala 2"] if sala_block == "Ambas" else [sala_block]
             for s in salas:
                 supabase.table("reservas").update({"status": "cancelada"}).eq("sala_nome", s).eq("data_reserva", str(dt_block)).neq("status", "cancelada").execute()
-                inserts = [{"sala_nome": s, "data_reserva": str(dt_block), "hora_inicio": f"{h:02d}:00", "hora_fim": f"{h+1:02d}:00", "user_id": st.session_state.user.id, "email_profissional": "ADM", "nome_profissional": "BLOQUEIO", "valor_cobrado": 0, "status": "bloqueado"} for h in range(7, 22)]
+                inserts = [{"sala_nome": s, "data_reserva": str(dt_block), "hora_inicio": f"{h:02d}:00", "hora_fim": f"{h+1:02d}:00", "user_id": st.session_state.user.id, "email_profissional": "ADM", "nome_profissional": "BLOQUEIO", "valor_cobrado": 0, "status": "bloqueado"} for h in range(7, 23)] # Até 22h
                 supabase.table("reservas").insert(inserts).execute()
             st.success("Bloqueado!")
         if st.button("Desbloquear Dia", type="secondary"):
@@ -398,7 +407,6 @@ def tela_admin_master():
             for s in salas: supabase.table("reservas").delete().eq("sala_nome", s).eq("data_reserva", str(dt_block)).eq("status", "bloqueado").execute()
             st.success("Desbloqueado!")
     
-    # --- ABAS RESTAURADAS ---
     with tabs[3]:
         col_m, col_u = st.columns(2)
         mes_sel = col_m.selectbox("Mês", ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"])
@@ -495,7 +503,6 @@ def tela_admin_master():
 # --- 7. MAIN ---
 def main():
     if not st.session_state.user:
-        # MODO LOGIN
         c1, c2, c3 = st.columns([1, 1.2, 1])
         with c2:
             st.write("") 
@@ -521,11 +528,10 @@ def main():
             if c_b.button("Recuperar"): st.session_state.auth_mode = 'forgot'; st.rerun()
         return
 
-    # LOGADO
     u = st.session_state['user']
     if u is None: st.session_state.auth_mode = 'login'; st.rerun(); return
 
-    # --- LÓGICA DE CAPTURA DO CLIQUE (URL PARAMS) ---
+    # --- LÓGICA DE CAPTURA DE CLIQUE ---
     try: qp = st.query_params
     except: qp = st.experimental_get_query_params()
 
@@ -540,16 +546,16 @@ def main():
                 "date": datetime.datetime.strptime(d_str, "%Y-%m-%d").date(),
                 "hour": int(h_str)
             }
-            # Limpa URL
             try: st.query_params.clear()
             except: st.experimental_set_query_params()
             st.rerun()
 
-    # Dispara modal
     if st.session_state.trigger_modal:
         data_m = st.session_state.trigger_modal["date"]
         hora_m = st.session_state.trigger_modal["hour"]
         st.session_state.trigger_modal = None
+        # Para que o modal saiba a sala, usamos a Sala 1 ou a selecionada (se persistida)
+        # Por padrão, assume a primeira para simplificar o clique rápido
         modal_agendamento("Sala 1", data_m, hora_m)
 
     # --- TELA PRINCIPAL ---
