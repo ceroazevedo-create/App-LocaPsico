@@ -33,13 +33,16 @@ supabase = init_connection()
 
 # --- 3. CSS SEPARADO POR CONTEXTO ---
 
-# ESTILO BASE (FONTE E CORES)
+# ESTILO BASE (FONTE E CORES) - Sempre aplicado
 CSS_BASE = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     .stApp { background-color: #ffffff; font-family: 'Inter', sans-serif; color: #1e293b; }
+    
+    /* Remove elementos nativos inúteis */
     header { display: none !important; } 
     footer { display: none !important; }
+    [data-testid="stToolbar"] { display: none !important; }
     
     /* Botões Gerais */
     div[data-testid="stForm"] button, button[kind="primary"] { 
@@ -49,56 +52,59 @@ CSS_BASE = """
 """
 
 # ESTILO 1: LOGIN (RESPONSIVO E CENTRALIZADO)
+# Este estilo só entra se NÃO estiver logado. Deixa o card bonitinho no celular.
 CSS_LOGIN_MOBILE = """
 <style>
     @media only screen and (max-width: 768px) {
         .block-container {
             max-width: 100% !important;
             padding: 2rem 1rem !important;
+            min-width: auto !important; /* Garante que não trave largura no login */
         }
         /* Login Card */
-        div[data-testid="column"]:nth-of-type(2) {
-            max-width: 100% !important;
+        div[data-testid="column"]:nth-of-type(2) > div {
+            padding: 20px !important;
         }
+        /* Botões grandes no mobile */
+        button { min-height: 50px !important; }
     }
 </style>
 """
 
-# ESTILO 2: AGENDA (FORÇA BRUTA HORIZONTAL - SCROLL MODO)
+# ESTILO 2: AGENDA (A DITADURA DOS PIXELS)
+# Removemos o @media query. A regra agora é universal para quem está logado.
+# Forçamos 1200px de largura. O Streamlit vai "achar" que está num Desktop e renderizará as colunas lado a lado.
 CSS_AGENDA_WIDE = """
 <style>
-    /* ============================================================ */
-    /* 🧨 MODO VIEWPORT LARGA - OBRIGA SCROLL NO MOBILE             */
-    /* ============================================================ */
-    @media only screen and (max-width: 768px) {
-        
-        /* 1. OBRIGA A TELA A SER LARGA (O SEGRED0) */
-        .block-container {
-            width: 1000px !important;       /* Largura fixa de Desktop */
-            min-width: 1000px !important;   /* Não deixa encolher */
-            max-width: 1000px !important;
-            overflow-x: auto !important;    /* Permite rolar */
-            padding: 10px !important;
-        }
+    /* 1. FORÇA A BARRA DE ROLAGEM HORIZONTAL NA JANELA INTEIRA */
+    .stApp {
+        overflow-x: auto !important;
+    }
 
-        /* 2. FORÇA O CONTAINER DO APP A ACEITAR A LARGURA */
-        .stApp > header { display: none; }
-        .stApp {
-            overflow-x: scroll !important; /* Habilita scroll na janela principal */
-        }
-        
-        /* 3. AJUSTA TAMANHO DA FONTE PARA NÃO FICAR GIGANTE */
-        html, body, p, div, button {
-            font-size: 14px !important; /* Mantém legível */
-        }
-        
-        /* 4. REMOVE GAP DO STREAMLIT QUE EMPILHA */
-        div[data-testid="column"] {
-            min-width: 0 !important; /* Permite colunas ficarem lado a lado */
-        }
+    /* 2. FORÇA O CONTAINER A TER TAMANHO DE DESKTOP */
+    .block-container {
+        width: 1200px !important;       /* Largura FIXA */
+        min-width: 1200px !important;   /* Não encolhe nem a pau */
+        max-width: 1200px !important;   /* Não estica além disso */
+        padding-left: 20px !important;
+        padding-right: 20px !important;
+        margin: 0 auto !important;
+    }
+
+    /* 3. GARANTE QUE OS BLOCOS INTERNOS ACOMPANHEM A LARGURA */
+    div[data-testid="stHorizontalBlock"] {
+        width: 100% !important;
+        min-width: 100% !important;
+        flex-wrap: nowrap !important; /* Proíbe quebra de linha */
+    }
+
+    /* 4. COLUNAS DO CALENDÁRIO */
+    div[data-testid="column"] {
+        flex: 1 1 0px !important; /* Distribuição igual */
+        min-width: 0 !important;
     }
     
-    /* ESTILOS DA GRADE (GOOGLE AGENDA FEEL) */
+    /* 5. ESTILOS DA GRADE (GOOGLE AGENDA FEEL) */
     div[data-testid="stVerticalBlock"] button[kind="secondary"] {
         background-color: transparent !important; border: none !important;
         border-right: 1px solid #f1f5f9 !important; border-bottom: 1px solid #f1f5f9 !important;
@@ -125,7 +131,7 @@ CSS_AGENDA_WIDE = """
 </style>
 """
 
-# Javascript Cleaner
+# Javascript Cleaner (Mantido para garantir limpeza)
 components.html("""<script>try{const doc=window.parent.document;const style=doc.createElement('style');style.innerHTML=`header, footer, .stApp > header { display: none !important; } [data-testid="stToolbar"] { display: none !important; } .viewerBadge_container__1QSob { display: none !important; }`;doc.head.appendChild(style);}catch(e){}</script>""", height=0)
 
 # --- 4. FUNÇÕES DE SUPORTE ---
