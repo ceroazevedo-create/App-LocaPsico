@@ -8,9 +8,8 @@ import base64
 import calendar
 import time
 import os
-import streamlit.components.v1 as components
 
-# --- 1. CONFIGURAÇÕES INICIAIS (Obrigatório ser a primeira linha) ---
+# --- 1. CONFIGURAÇÕES INICIAIS ---
 st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide", initial_sidebar_state="collapsed")
 
 # Inicializa Estado
@@ -51,10 +50,93 @@ st.markdown("""
         button { min-height: 50px !important; }
     }
     
-    /* Ajuste fino para o container da agenda */
-    .block-container {
-        padding-top: 1rem;
-        padding-bottom: 5rem;
+    /* Ajuste para o calendário injetado */
+    .calendar-wrapper {
+        width: 100%;
+        overflow-x: auto;
+        padding-bottom: 20px;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Estilos da Tabela HTML Injetada */
+    .custom-cal-table {
+        border-collapse: separate;
+        border-spacing: 0;
+        width: max-content;
+        min-width: 800px; /* Garante horizontalidade */
+        margin-bottom: 50px;
+    }
+    
+    .custom-cal-table th {
+        background-color: #f8fafc;
+        color: #334155;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 10px 5px;
+        border-bottom: 2px solid #e2e8f0;
+        border-right: 1px solid #f1f5f9;
+        text-align: center;
+        width: 100px;
+        position: sticky;
+        top: 0;
+    }
+    
+    .custom-cal-table td {
+        border-bottom: 1px solid #f1f5f9;
+        border-right: 1px solid #f8fafc;
+        height: 55px; /* Altura boa para o dedo */
+        padding: 2px;
+        vertical-align: middle;
+        position: relative;
+    }
+    
+    /* Coluna da Hora Fixa */
+    .col-time-sticky {
+        position: sticky;
+        left: 0;
+        background: white;
+        z-index: 10;
+        width: 50px;
+        min-width: 50px;
+        border-right: 2px solid #e2e8f0;
+        font-size: 11px;
+        font-weight: 600;
+        color: #94a3b8;
+        text-align: right;
+        padding-right: 8px;
+    }
+    
+    /* Link de Agendamento (Cobre a célula toda) */
+    a.slot-click-area {
+        display: block;
+        width: 100%;
+        height: 100%;
+        text-decoration: none;
+    }
+    a.slot-click-area:active {
+        background-color: #f0fdf4;
+    }
+    
+    /* Cards */
+    .html-evt {
+        background: #e0f2fe;
+        border-left: 3px solid #0284c7;
+        color: #0369a1;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 4px;
+        border-radius: 4px;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        overflow: hidden;
+        white-space: nowrap;
+    }
+    .html-blocked {
+        background: #f1f5f9;
+        color: #94a3b8;
+        border-left: 3px solid #cbd5e1;
+        justify-content: center;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -136,7 +218,6 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
     horarios_selecionados = []
     valor_final = 0.0
     
-    # Recalcula listas
     dia_sem = dt.weekday()
     if dia_sem == 6: lista_horas = []; st.error("Domingo Fechado")
     elif dia_sem == 5: lista_horas = [f"{h:02d}:00" for h in range(7, 14)]; 
@@ -195,13 +276,20 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
                 st.toast("Sucesso!", icon="✅"); time.sleep(1); st.rerun()
         except: st.error("Erro.")
 
-# --- 6. RENDERIZADOR HTML (COM LINKS NATIVOS "TARGET=_TOP") ---
-def render_calendar_html(sala, is_admin_mode=False):
+# --- 6. RENDERIZADOR HTML DIRETO (SEM IFRAME) ---
+def render_calendar_interface(sala, is_admin_mode=False):
+    # NAVEGAÇÃO
+    c1, c2, c3 = st.columns([1, 4, 1])
+    c1.button("❮", on_click=lambda: navegar('prev'), use_container_width=True)
+    c3.button("❯", on_click=lambda: navegar('next'), use_container_width=True)
+    
     ref = st.session_state.data_ref
     d_start = ref - timedelta(days=ref.weekday())
     d_end = d_start + timedelta(days=6)
-    agora = datetime.datetime.now()
-    
+    mes_nome = d_start.strftime("%b").upper()
+    c2.markdown(f"<div style='text-align:center; font-weight:bold; margin-top:5px'>{mes_nome} {d_start.day}-{d_end.day}</div>", unsafe_allow_html=True)
+
+    # 1. DADOS
     reservas = []
     try:
         r = supabase.table("reservas").select("*").eq("sala_nome", sala).neq("status", "cancelada").gte("data_reserva", str(d_start)).lte("data_reserva", str(d_end)).execute()
@@ -216,141 +304,53 @@ def render_calendar_html(sala, is_admin_mode=False):
 
     dias_visiveis = [d_start + timedelta(days=i) for i in range(7)]
     dias_sem = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
+    agora = datetime.datetime.now()
 
-    # HTML
-    html = """
-    <style>
-        body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; overflow-x: hidden; background: transparent; }
-        
-        .calendar-container {
-            width: 100%;
-            overflow-x: auto; 
-            white-space: nowrap;
-            padding-bottom: 10px;
-            -webkit-overflow-scrolling: touch;
-        }
-        
-        .calendar-table {
-            border-collapse: separate;
-            border-spacing: 0;
-            width: max-content;
-            min-width: 800px;
-        }
-        
-        th, td {
-            border-bottom: 1px solid #f1f5f9;
-            border-right: 1px solid #f8fafc;
-            padding: 0; margin: 0;
-            box-sizing: border-box;
-        }
-        
-        .col-time {
-            position: sticky; left: 0; background: white; z-index: 10;
-            width: 45px; min-width: 45px;
-            border-right: 2px solid #e2e8f0;
-            text-align: right; padding-right: 5px;
-            font-size: 11px; color: #94a3b8; font-weight: 600;
-            vertical-align: middle;
-        }
-        
-        .col-day { width: 105px; min-width: 105px; vertical-align: top; }
-        
-        .header-cell {
-            text-align: center; height: 40px; background: #f8fafc; border-bottom: 2px solid #e2e8f0;
-        }
-        .day-name { font-size: 11px; font-weight: 700; color: #64748b; display: block; }
-        .day-num { font-size: 16px; font-weight: 800; color: #1e293b; display: block; }
-        .today .day-num { color: #0284c7 !important; }
-        
-        .slot-cell { height: 50px; position: relative; }
-        
-        /* O LINK QUE COBRE A CÉLULA */
-        .slot-link {
-            display: block; width: 100%; height: 100%;
-            text-decoration: none; cursor: pointer;
-            background: transparent;
-        }
-        .slot-link:active { background-color: #f0fdf4; } /* Feedback */
-        
-        .evt-card {
-            background: #e0f2fe; border-left: 3px solid #0284c7; color: #0369a1;
-            font-size: 10px; font-weight: 700;
-            padding: 2px 4px; margin: 2px; border-radius: 3px;
-            height: 44px; display: flex; align-items: center;
-            white-space: normal; line-height: 1.1; overflow: hidden;
-        }
-        .blocked { background: #f1f5f9; color: #94a3b8; justify-content: center; border-left: 3px solid #cbd5e1; }
-        .slot-disabled { background: #fafafa; opacity: 0.5; }
-    </style>
+    # 2. CONSTRUÇÃO DA TABELA HTML
+    # Note que usamos target="_self" para recarregar a mesma página com os params
+    html = '<div class="calendar-wrapper"><table class="custom-cal-table"><thead><tr><th class="col-time-sticky"></th>'
     
-    <div class="calendar-container">
-        <table class="calendar-table">
-            <thead>
-                <tr>
-                    <th class="col-time"></th>
-    """
-    
+    # Cabeçalhos
     for d in dias_visiveis:
         is_hj = (d == datetime.date.today())
-        cls = "today" if is_hj else ""
-        html += f"""
-            <th class="col-day header-cell {cls}">
-                <span class="day-name">{dias_sem[d.weekday()]}</span>
-                <span class="day-num">{d.day}</span>
-            </th>
-        """
-    html += "</tr></thead><tbody>"
+        cor = "#0284c7" if is_hj else "#334155"
+        html += f'<th><div style="color:{cor}">{dias_sem[d.weekday()]}<br><span style="font-size:16px">{d.day}</span></div></th>'
+    html += '</tr></thead><tbody>'
     
-    # 7h até 22h
+    # Horários (7h as 22h - exclusive 23)
     for h in range(7, 23):
-        html += f"""<tr><td class="col-time">{h:02d}:00</td>"""
+        html += f'<tr><td class="col-time-sticky">{h:02d}:00</td>'
         for d in dias_visiveis:
             d_s = str(d)
             h_s = f"{h:02d}:00:00"
             res = mapa.get(d_s, {}).get(h_s)
             
+            # Regras
             dt_check = datetime.datetime.combine(d, datetime.time(h, 0))
             is_past = dt_check < agora
             is_sunday = d.weekday() == 6
             is_sat_closed = (d.weekday() == 5 and h >= 14)
             is_disabled = is_past or is_sunday or is_sat_closed
             
-            html += "<td class='slot-cell'>"
-            
+            html += '<td>'
             if res:
                 nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
-                cls_evt = "blocked" if res['status'] == 'bloqueado' else ""
+                cls = "html-blocked" if res['status'] == 'bloqueado' else "html-evt"
                 txt = "BLOQ" if res['status'] == 'bloqueado' else nm
-                html += f"<div class='evt-card {cls_evt}'>{txt}</div>"
+                html += f'<div class="{cls}">{txt}</div>'
             elif is_disabled:
-                html += "<div class='slot-disabled' style='height:100%;'></div>"
+                html += '<div style="background:#fafafa; height:100%;"></div>'
             else:
-                # LINK SIMPLES E DIRETO: TARGET_TOP É A CHAVE
-                # Isso força o navegador a recarregar a URL inteira
+                # O LINK QUE SALVA O DIA
                 link = f"?booking=1&d={d_s}&h={h}"
-                html += f"<a href='{link}' target='_top' class='slot-link'></a>"
-            
-            html += "</td>"
-        html += "</tr>"
+                html += f'<a href="{link}" target="_self" class="slot-click-area"></a>'
+            html += '</td>'
+        html += '</tr>'
     
-    html += "</tbody></table></div>"
-    return html
-
-def render_calendar_interface(sala, is_admin_mode=False):
-    # NAVEGAÇÃO
-    c1, c2, c3 = st.columns([1, 4, 1])
-    c1.button("❮", on_click=lambda: navegar('prev'), use_container_width=True)
-    c3.button("❯", on_click=lambda: navegar('next'), use_container_width=True)
+    html += '</tbody></table></div>'
     
-    ref = st.session_state.data_ref
-    d_start = ref - timedelta(days=ref.weekday())
-    d_end = d_start + timedelta(days=6)
-    mes_nome = d_start.strftime("%b").upper()
-    c2.markdown(f"<div style='text-align:center; font-weight:bold; margin-top:5px'>{mes_nome} {d_start.day}-{d_end.day}</div>", unsafe_allow_html=True)
-
-    # RENDERIZA O HTML COM LINKS TARGET_TOP
-    html_code = render_calendar_html(sala, is_admin_mode)
-    components.html(html_code, height=1000, scrolling=False) 
+    # 3. INJEÇÃO DIRETA NO DOM (Sem Iframe)
+    st.markdown(html, unsafe_allow_html=True)
 
 def tela_admin_master():
     tabs = st.tabs(["💰 Config", "📅 Visualizar", "🚫 Bloqueios", "📄 Relatórios", "👥 Usuários"])
