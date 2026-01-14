@@ -30,7 +30,7 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS GLOBAL ---
+# --- 3. CSS "MICROCIRURGIA" ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -184,96 +184,86 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
                 st.toast("Sucesso!", icon="✅"); time.sleep(1); st.rerun()
         except: st.error("Erro.")
 
-# --- 6. RENDERIZADOR PYTHON NATIVO (COM CSS "NANO") ---
+# --- 6. RENDERIZADOR PYTHON NATIVO (COM MICROCIRURGIA DE CSS) ---
 def render_calendar_interface(sala, is_admin_mode=False):
     
-    # CSS: O PODER DO ZOOM NO MOBILE
+    # CSS FOCADO: BOTÕES DE 35PX E SCROLL
     st.markdown("""
     <style>
     @media only screen and (max-width: 768px) {
         
-        /* 1. CONTAINER: APLICA ZOOM PARA TUDO FICAR PEQUENO */
-        .block-container {
-            padding: 5px 2px !important;
-            max-width: 100vw !important;
-            overflow-x: hidden !important;
-        }
-        
-        /* 2. FORÇA A LINHA A SER RÍGIDA E ROLÁVEL */
-        /* Usa 'display: flex' e 'flex-wrap: nowrap' com !important */
-        div[data-testid="stHorizontalBlock"] {
+        /* 1. FORÇA SCROLL HORIZONTAL */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
             overflow-x: auto !important;
             width: 100% !important;
-            min-width: 100% !important;
             gap: 1px !important;
-            margin-bottom: 2px !important;
-            
-            /* TRUQUE DO ZOOM: Reduz o tamanho de tudo dentro deste bloco para 65% */
-            zoom: 0.65 !important;
+            padding-bottom: 5px !important;
         }
 
-        /* 3. COLUNAS (DIAS) - Tamanho visualmente maior para compensar o zoom, mas fixo */
-        div[data-testid="column"] {
-            flex: 0 0 auto !important;
-            min-width: 130px !important; /* No zoom 0.65, isso vira ~85px */
-            width: 130px !important;
-        }
-        
-        /* 4. COLUNA DA HORA */
-        div[data-testid="column"]:first-child {
-            min-width: 60px !important; /* No zoom 0.65 vira ~40px */
-            width: 60px !important;
+        /* 2. LARGURAS FIXAS (COLUNA DA HORA E DO DIA) */
+        /* Hora */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"]:first-child {
+            width: 35px !important;
+            min-width: 35px !important;
+            flex: 0 0 35px !important;
             position: sticky !important;
             left: 0 !important;
             background: white !important;
-            z-index: 50;
-            border-right: 2px solid #ddd !important;
+            z-index: 50 !important;
+            border-right: 1px solid #ddd !important;
+        }
+        /* Dia */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"] {
+            width: 85px !important;
+            min-width: 85px !important;
+            flex: 0 0 85px !important;
         }
 
-        /* 5. BOTÕES: REMOVE ESPAÇO E BORDA */
+        /* 3. O SEGREDO: BOTÃO DE 35PX DE ALTURA */
+        /* Forçamos o botão nativo a ser fino e sem margens */
         div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-            height: 60px !important; /* Visualmente ~40px */
-            min-height: 60px !important;
+            height: 35px !important;
+            min-height: 35px !important;
             width: 100% !important;
             padding: 0 !important;
             margin: 0 !important;
+            font-size: 10px !important;
             border: 1px solid #f1f5f9 !important;
-            color: transparent !important;
+            color: transparent !important; /* Esconde texto 'Agendar' */
         }
         
-        /* 6. CABEÇALHOS */
+        /* 4. CABEÇALHOS */
         .day-header-box { 
-            height: 50px !important; 
+            height: 35px !important; 
             display: flex; align-items: center; justify-content: center; 
             background: #f8fafc; border-bottom: 2px solid #e2e8f0;
-            font-size: 16px !important; /* Fonte maior para resistir ao zoom */
-            text-align: center;
+            font-size: 10px !important; text-align: center;
         }
         
         .time-label { 
-            font-size: 14px !important; top: 20px !important; position: relative; 
+            font-size: 9px !important; top: 12px !important; position: relative; 
         }
         
-        /* Header App Hidden */
+        /* 5. GERAL */
+        .block-container { padding: 5px 2px !important; overflow-x: hidden !important; }
         .stApp > header { display: none !important; }
+        div[data-testid="stVerticalBlock"] { gap: 0px !important; }
     }
     
     /* DESKTOP */
     @media (min-width: 769px) {
-        .evt-card { height: 46px; padding: 0 4px; font-size:11px; }
-        .day-header-box { font-size:12px; }
+        button[kind="secondary"] { color: transparent !important; height: 45px !important; border: 1px solid #f1f5f9 !important; }
+        button[kind="secondary"]:hover { background: #f8fafc !important; }
     }
 
-    /* GERAL */
+    /* CARD EVENTO */
     .evt-card {
         background-color: #e0f2fe; border-left: 3px solid #0284c7; color: #0369a1; font-weight: 700; 
         border-radius: 4px; overflow: hidden; cursor: pointer; display: flex; align-items: center; padding: 2px;
-        height: 100%; width: 100%; white-space: normal; line-height: 1.1;
-        /* No mobile, o card tbm sofre zoom, entao aumentamos a fonte base */
-        font-size: 14px; 
+        height: 33px; font-size: 9px; line-height: 1; white-space: nowrap; margin: 1px 0;
     }
     .blocked { background: #f1f5f9; color: #94a3b8; justify-content: center; border-left: 3px solid #cbd5e1; }
     </style>
@@ -346,9 +336,9 @@ def render_calendar_interface(sala, is_admin_mode=False):
                             supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute()
                             st.rerun()
                 elif is_past or is_sunday or is_sat_closed:
-                    st.markdown("<div style='height:60px; background:#f9fafb; border-radius:4px;'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='height:35px; background:#f9fafb; border-radius:4px;'></div>", unsafe_allow_html=True)
                 else:
-                    # BOTÃO NATIVO
+                    # BOTÃO: Texto "Agendar" escondido pelo CSS
                     if cont.button("Agendar", key=f"btn_{d}_{h}", type="secondary", use_container_width=True):
                         modal_agendamento(sala, d, h)
 
@@ -482,6 +472,7 @@ def tela_admin_master():
 # --- 7. MAIN ---
 def main():
     if not st.session_state.user:
+        # MODO LOGIN
         c1, c2, c3 = st.columns([1, 1.2, 1])
         with c2:
             st.write("") 
@@ -507,6 +498,7 @@ def main():
             if c_b.button("Recuperar"): st.session_state.auth_mode = 'forgot'; st.rerun()
         return
 
+    # LOGADO
     u = st.session_state['user']
     if u is None: st.session_state.auth_mode = 'login'; st.rerun(); return
 
