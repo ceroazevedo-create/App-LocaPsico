@@ -31,50 +31,51 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS VISUAL (ESTILO CLEAN & CORREÇÃO MOBILE) ---
+# --- 3. CSS "FUSÃO V105 + PROTEÇÃO LOGIN" ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-    
     .stApp { background-color: #ffffff; font-family: 'Inter', sans-serif; color: #1e293b; }
     .block-container { padding-top: 1rem !important; max-width: 100% !important; padding-left: 5px; padding-right: 5px; }
 
     /* ============================================================ */
-    /* 🧠 CSS SELETIVO: SÓ AFETA O CALENDÁRIO (MOBILE)              */
+    /* 📱 MOBILE CALENDAR FIX (BASEADO NA V105)                     */
     /* ============================================================ */
     
     @media only screen and (max-width: 768px) {
         
-        /* O seletor :has() verifica se o bloco tem 8 colunas (Calendário) */
+        /* SELETOR INTELIGENTE: Só aplica se houver 8 colunas (Calendário) */
+        /* Isso impede que o Login (3 colunas) quebre */
         div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) {
             display: flex !important;
-            flex-wrap: nowrap !important;       /* Não quebra linha */
-            overflow-x: auto !important;        /* Scroll lateral */
+            flex-wrap: nowrap !important; /* Obriga ficar na linha */
+            overflow-x: auto !important;  /* Scroll lateral */
             gap: 1px !important;
             padding-bottom: 5px;
         }
 
-        /* Aplica largura mínima SOMENTE nas colunas do calendário */
+        /* Colunas do Calendário: Largura Mínima Zero para caber */
         div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"] {
-            flex: 1 0 auto !important;
+            flex: 1 1 0 !important;
+            min-width: 0 !important;
             width: auto !important;
-            min-width: 48px !important;        /* Largura estreita do dia */
             padding: 0 1px !important;
         }
-        
-        /* Esconde a coluna da HORA no mobile para ganhar espaço */
+
+        /* Coluna da Hora (Eixo Y): Esconde no mobile para dar espaço */
         div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"]:first-child {
             display: none !important; 
         }
 
-        /* VISUALIZAÇÃO DUPLA (Mobile vs Desktop) */
+        /* --- DUAL RENDERING (O SEGREDO DA V105) --- */
         .evt-desktop { display: none !important; }
         .evt-mobile { display: block !important; }
-        
+
+        /* Tipografia Micro */
         .day-header-name { font-size: 8px !important; text-transform: uppercase; }
         .day-header-num { font-size: 12px !important; font-weight: 700; }
         
-        /* Botões de Agendar (Slot Livre) mais finos */
+        /* Botões de Agendar (Slot Livre) */
         div[data-testid="stVerticalBlock"] button[kind="secondary"] {
             padding: 0 !important;
             height: 35px !important;
@@ -90,7 +91,6 @@ st.markdown("""
         .evt-desktop { display: block !important; }
         .evt-mobile { display: none !important; }
         
-        /* Garante que a coluna de hora apareça no PC */
         div[data-testid="column"]:first-child {
             display: block !important;
             min-width: 50px !important;
@@ -99,7 +99,7 @@ st.markdown("""
 
     /* --- ESTILOS GERAIS --- */
     
-    /* Login Card */
+    /* Login Clean (Restaurado) */
     div[data-testid="column"]:nth-of-type(2) > div { 
         background-color: #ffffff; 
         padding: 30px; 
@@ -108,19 +108,21 @@ st.markdown("""
         box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
     }
     
-    /* Eventos */
+    /* Eventos V105 */
     .evt-desktop {
         background-color: #e0f2fe; border-left: 3px solid #0284c7; color: #0369a1;
         font-size: 10px; font-weight: 600; padding: 4px; border-radius: 4px;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         height: 40px; line-height: 1.2; margin-bottom: 2px;
     }
+    
     .evt-mobile {
         background-color: #0ea5e9; /* Azul sólido */
         height: 35px; width: 100%;
         border-radius: 2px;
         margin-bottom: 2px;
     }
+    
     .evt-blocked-mobile { background-color: #64748b; height: 35px; border-radius: 2px; }
     .evt-blocked-desktop { background: #334155; color: white; font-size: 10px; padding: 4px; border-radius: 4px; height: 40px; text-align: center; }
 
@@ -130,10 +132,9 @@ st.markdown("""
     .day-header-num { font-size: 20px; font-weight: 700; color: #1e293b; }
     .today-hl { color: #0284c7; }
 
-    /* Inputs e Botões */
-    .stTextInput input { background: #f8fafc; border: 1px solid #e2e8f0; height: 45px; }
+    /* Botões Padrão */
     div[data-testid="stForm"] button, button[kind="primary"] { background: #0f766e !important; color: white !important; border: none; height: 45px; }
-    button[kind="secondary"] { background-color: white; border: 1px solid #cbd5e1; color: #475569; border-radius: 6px; height: 45px; }
+    .stTextInput input { background: #f8fafc; border: 1px solid #e2e8f0; height: 45px; }
     
     /* Desktop Cells */
     @media (min-width: 769px) {
@@ -143,10 +144,7 @@ st.markdown("""
         }
     }
     
-    /* Hora lateral (Desktop) */
-    .time-label { font-size: 11px; font-weight: 600; color: #94a3b8; text-align: right; margin-top: 12px; padding-right: 5px;}
-    
-    /* Remove tralha nativa */
+    /* Remover tralha nativa */
     header {display: none;} footer {display: none;}
 </style>
 """, unsafe_allow_html=True)
@@ -290,143 +288,80 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
 
 def render_calendar(sala, is_admin_mode=False):
     # NAVEGAÇÃO
-    # CORREÇÃO AQUI: Unpacking correto de 3 colunas
     c1, c2, c3 = st.columns([1, 4, 1])
-    
-    with c1: 
-        if st.button("◀", use_container_width=True, key=f"nav_prev_{is_admin_mode}"): navegar('prev'); st.rerun()
-    with c3: 
-        if st.button("▶", use_container_width=True, key=f"nav_next_{is_admin_mode}"): navegar('next'); st.rerun()
+    c1.button("❮", on_click=lambda: navegar('prev'), use_container_width=True)
+    c3.button("❯", on_click=lambda: navegar('next'), use_container_width=True)
     
     ref = st.session_state.data_ref
     d_start = ref - timedelta(days=ref.weekday())
     d_end = d_start + timedelta(days=6)
     mes_nome = d_start.strftime("%b").upper()
+    c2.markdown(f"<div style='text-align:center; font-weight:bold; margin-top:5px'>{mes_nome} {d_start.day}-{d_end.day}</div>", unsafe_allow_html=True)
+
+    # DADOS
+    reservas = []
+    try:
+        r = supabase.table("reservas").select("*").eq("sala_nome", sala).neq("status", "cancelada").gte("data_reserva", str(d_start)).lte("data_reserva", str(d_end)).execute()
+        reservas = r.data
+    except: pass
+    mapa = {}
+    for x in reservas:
+        d = x['data_reserva']
+        if d not in mapa: mapa[d] = {}
+        mapa[d][x['hora_inicio']] = x
+
+    # GRADE (8 Colunas: 1 Hora + 7 Dias)
+    dias_visiveis = [d_start + timedelta(days=i) for i in range(7)]
+    dias_sem = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
     
-    # Título no meio
-    with c2:
-        st.markdown(f"<div style='text-align:center; font-weight:bold; margin-top:5px'>{mes_nome} {d_start.day}-{d_end.day}</div>", unsafe_allow_html=True)
-
-    # VISUALIZAÇÃO
-    mode = st.session_state.view_mode
-    def set_mode(m): st.session_state.view_mode = m
-    bt_sty = lambda m: "primary" if mode == m else "secondary"
-    b1, b2, b3 = st.columns(3)
-    with b1: 
-        if st.button("Dia", type=bt_sty('DIA'), use_container_width=True, key=f"v_dia_{is_admin_mode}"): set_mode('DIA'); st.rerun()
-    with b2: 
-        if st.button("Semana", type=bt_sty('SEMANA'), use_container_width=True, key=f"v_sem_{is_admin_mode}"): set_mode('SEMANA'); st.rerun()
-    with b3: 
-        if st.button("Mês", type=bt_sty('MÊS'), use_container_width=True, key=f"v_mes_{is_admin_mode}"): set_mode('MÊS'); st.rerun()
+    cols = st.columns([0.3, 1, 1, 1, 1, 1, 1, 1])
+    cols[0].write("") # Espaço hora
     
-    if mode == 'MÊS':
-        ano, mes = ref.year, ref.month
-        last_day = calendar.monthrange(ano, mes)[1]
-        d_start, d_end = datetime.date(ano, mes, 1), datetime.date(ano, mes, last_day)
-        
-        reservas = []
-        try:
-            r = supabase.table("reservas").select("*").eq("sala_nome", sala).neq("status", "cancelada").gte("data_reserva", str(d_start)).lte("data_reserva", str(d_end)).execute()
-            reservas = r.data
-        except: pass
-        mapa = {}
-        for x in reservas:
-            d = x['data_reserva']
-            if d not in mapa: mapa[d] = {}
-            mapa[d][x['hora_inicio']] = x
-            
-        cols = st.columns(7)
-        dias = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
-        for i, d in enumerate(dias): cols[i].markdown(f"<div style='text-align:center; font-weight:bold; color:#64748b; font-size:12px; margin-bottom:5px'>{d}</div>", unsafe_allow_html=True)
-        cal_matrix = calendar.monthcalendar(ref.year, ref.month)
-        for week in cal_matrix:
-            cols = st.columns(7)
-            for i, day in enumerate(week):
-                if day == 0: cols[i].write("")
-                else:
-                    d_obj = datetime.date(ref.year, ref.month, day)
-                    d_str = str(d_obj)
-                    with cols[i]:
-                        if not is_admin_mode:
-                            if st.button(f"{day}", key=f"btn_day_{day}_{mes}_{is_admin_mode}", use_container_width=True):
-                                if d_obj < datetime.date.today(): st.toast("Data passada.", icon="🚫")
-                                elif d_obj.weekday() == 6: st.toast("Domingo fechado.", icon="🚫")
-                                else: modal_agendamento(sala, d_obj)
-                        else:
-                            st.markdown(f"<div style='text-align:center; font-weight:bold; padding:5px'>{day}</div>", unsafe_allow_html=True)
-                    eventos_html = ""
-                    if d_str in mapa:
-                        for h in sorted(mapa[d_str].keys()):
-                            res = mapa[d_str][h]
-                            if res['status'] == 'bloqueado': eventos_html += f"<div style='background:#1e293b; color:white; font-size:9px; padding:2px; border-radius:3px; margin-bottom:2px;'>⛔ BLOQ</div>"
-                            else:
-                                nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
-                                eventos_html += f"<div style='background:#ccfbf1; color:#115e59; font-size:9px; padding:2px; border-radius:3px; margin-bottom:2px; white-space:nowrap; overflow:hidden;'>{h[:5]} {nm}</div>"
-                    cols[i].markdown(f"{eventos_html}", unsafe_allow_html=True)
-    else:
-        visiveis = [d_start + timedelta(days=i) for i in range(7 if mode == 'SEMANA' else 1)]
-        reservas = []
-        try:
-            r = supabase.table("reservas").select("*").eq("sala_nome", sala).neq("status", "cancelada").gte("data_reserva", str(d_start)).lte("data_reserva", str(d_end)).execute()
-            reservas = r.data
-        except: pass
-        mapa = {}
-        for x in reservas:
-            d = x['data_reserva']
-            if d not in mapa: mapa[d] = {}
-            mapa[d][x['hora_inicio']] = x
+    for i, d in enumerate(dias_visiveis):
+        with cols[i+1]:
+            is_hj = (d == datetime.date.today())
+            cls_hj = "today-hl" if is_hj else ""
+            st.markdown(f"""
+            <div class='day-header-box'>
+                <div class='day-header-name'>{dias_sem[d.weekday()]}</div>
+                <div class='day-header-num {cls_hj}'>{d.day}</div>
+            </div>""", unsafe_allow_html=True)
 
-        # CABEÇALHO (8 Colunas: 1 Hora + 7 Dias)
-        cols = st.columns([0.3, 1, 1, 1, 1, 1, 1, 1])
-        cols[0].write("")
-        d_n = ["SEG","TER","QUA","QUI","SEX","SÁB","DOM"]
+    # LINHAS DE HORÁRIO
+    for h in range(7, 22):
+        row = st.columns([0.3, 1, 1, 1, 1, 1, 1, 1])
+        row[0].markdown(f"<div style='font-size:10px; text-align:right; margin-top:10px; color:#94a3b8'>{h:02d}:00</div>", unsafe_allow_html=True)
         
-        for i, d in enumerate(visiveis):
-            with cols[i+1]:
-                is_hj = (d == datetime.date.today())
-                cls_hj = "today-hl" if is_hj else ""
-                st.markdown(f"""
-                <div class='day-header-box'>
-                    <div class='day-header-name'>{d_n[d.weekday()]}</div>
-                    <div class='day-header-num {cls_hj}'>{d.day}</div>
-                </div>""", unsafe_allow_html=True)
-
-        # CORPO
-        for h in range(7, 22):
-            row = st.columns([0.3, 1, 1, 1, 1, 1, 1, 1])
-            row[0].markdown(f"<div class='time-label'>{h:02d}:00</div>", unsafe_allow_html=True)
-            
-            for i, d in enumerate(visiveis):
-                with row[i+1]:
-                    d_s = str(d)
-                    h_s = f"{h:02d}:00:00"
-                    res = mapa.get(d_s, {}).get(h_s)
-                    
-                    cont = st.container()
-                    dt_slot = datetime.datetime.combine(d, datetime.time(h, 0))
-                    agora = datetime.datetime.now()
-                    is_past = dt_slot < agora
-                    is_sun = d.weekday() == 6
-                    is_sat_close = (d.weekday() == 5 and h >= 14)
-                    
-                    if res:
-                        nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
-                        if res['status'] == 'bloqueado':
-                            st.markdown(f"""<div class='evt-desktop evt-blocked-desktop'>BLOQUEADO</div><div class='evt-mobile evt-blocked-mobile'></div>""", unsafe_allow_html=True)
-                            if is_admin_mode:
-                                 if cont.button("🗑️", key=f"d_blk_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
-                        else:
-                            st.markdown(f"""<div class='evt-desktop' title='{nm}'>{nm}</div><div class='evt-mobile' title='{nm}'></div>""", unsafe_allow_html=True)
-                            if is_admin_mode:
-                                 if cont.button("x", key=f"d_res_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
-                    elif is_sun or is_sat_close or is_past:
-                        cont.markdown("<div class='blocked-slot'></div>", unsafe_allow_html=True)
+        for i, d in enumerate(dias_visiveis):
+            with row[i+1]:
+                d_s = str(d)
+                h_s = f"{h:02d}:00:00"
+                res = mapa.get(d_s, {}).get(h_s)
+                
+                # --- RECURSO HTML DUPLO DA V105 (O SEGREDO) ---
+                if res:
+                    nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
+                    if res['status'] == 'bloqueado':
+                        st.markdown(f"""
+                        <div class='evt-desktop evt-blocked-desktop'>BLOQUEADO</div>
+                        <div class='evt-mobile evt-blocked-mobile'></div>
+                        """, unsafe_allow_html=True)
+                        if is_admin_mode:
+                             if st.button("🗑️", key=f"d_blk_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
                     else:
-                        if not is_admin_mode:
-                            if cont.button(" ", key=f"add_{d}_{h}", type="secondary", use_container_width=True):
-                                modal_agendamento(sala, d, h)
-                        else:
-                            cont.markdown("<div style='height:40px; border-right:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
+                        st.markdown(f"""
+                        <div class='evt-desktop' title='{nm}'>{nm}</div>
+                        <div class='evt-mobile' title='{nm}'></div>
+                        """, unsafe_allow_html=True)
+                        if is_admin_mode:
+                             if st.button("x", key=f"d_res_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
+                else:
+                    # Slot Livre
+                    if not is_admin_mode:
+                        if st.button(" ", key=f"add_{d}_{h}", type="secondary", use_container_width=True):
+                            modal_agendamento(sala, d, h)
+                    else:
+                        st.markdown("<div style='height:40px; border-right:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
 
 def tela_admin_master():
@@ -462,8 +397,8 @@ def tela_admin_master():
             salas = ["Sala 1", "Sala 2"] if sala_block == "Ambas" else [sala_block]
             for s in salas: supabase.table("reservas").delete().eq("sala_nome", s).eq("data_reserva", str(dt_block)).eq("status", "bloqueado").execute()
             st.success("Desbloqueado!")
-    
-    # --- RESTAURAÇÃO DAS ABAS REMOVIDAS ---
+            
+    # --- ABAS RECUPERADAS (ADMIN) ---
     with tabs[3]:
         col_m, col_u = st.columns(2)
         mes_sel = col_m.selectbox("Mês", ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"])
@@ -577,9 +512,10 @@ def main():
                                 st.session_state.user = u.user
                                 st.session_state.is_admin = (email == "admin@admin.com.br")
                                 st.rerun()
-                        except Exception as e: 
+                        except Exception as e:
+                            # CORREÇÃO ERRO FALSO LOGIN
                             if "StopException" not in str(type(e)):
-                                st.error("Erro no login. Verifique email/senha.")
+                                st.error("Erro login.")
                                 
                 c_a, c_b = st.columns(2)
                 if c_a.button("Criar Conta"): st.session_state.auth_mode = 'register'; st.rerun()
@@ -597,7 +533,7 @@ def main():
                 
             elif st.session_state.auth_mode == 'forgot':
                 em = st.text_input("Email")
-                if st.button("Enviar Código"): 
+                if st.button("Enviar"): 
                     try: supabase.auth.sign_in_with_otp({"email": em}); st.session_state.reset_email=em; st.session_state.auth_mode='verify_otp'; st.rerun()
                     except: st.error("Erro")
                 if st.button("Voltar"): st.session_state.auth_mode='login'; st.rerun()
