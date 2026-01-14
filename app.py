@@ -56,7 +56,6 @@ CSS_LOGIN_MOBILE = """
         .block-container { 
             max-width: 100% !important; 
             padding: 2rem 1rem !important; 
-            transform: none !important; /* Garante que não tenha escala no login */
             width: 100% !important;
         }
         button { min-height: 50px !important; }
@@ -64,106 +63,124 @@ CSS_LOGIN_MOBILE = """
 </style>
 """
 
-# CSS 2: AGENDA (A SIMULAÇÃO DE REALIDADE - SCALE FORCE)
-# Aqui forçamos a tela a ser gigante (180%) e depois encolhemos (0.55)
+# CSS 2: AGENDA (PROTOCOL: TRENCH RUN - SCROLL RÍGIDO)
 CSS_AGENDA_WIDE = """
 <style>
     /* ============================================================ */
-    /* 🛰️ PROTOCOLO ORBITAL VIEW (< 768px)                          */
-    /* Estratégia: Renderizar virtualmente largo e escalar visual.  */
+    /* 🛤️ PROTOCOLO TRENCH RUN (< 768px)                           */
+    /* Estratégia: Coluna da Hora Fixa + Dias com Scroll Lateral.   */
+    /* Sem zoom, sem scale. Apenas larguras fixas em pixels.        */
     /* ============================================================ */
     
     @media only screen and (max-width: 768px) {
         
-        /* 1. O HACK DE ESCALA */
+        /* 1. CONTAINER GERAL */
         .block-container {
-            width: 180% !important;            /* Cria uma tela virtual quase 2x maior */
-            max-width: 180% !important;
-            
-            transform: scale(0.55) !important; /* Encolhe tudo para caber na tela real */
-            transform-origin: top left !important; /* Ancora no canto superior esquerdo */
-            
-            padding: 0 5px !important;
-            margin-bottom: -100% !important;   /* Remove o espaço vazio gerado pelo scale */
-            overflow-x: hidden !important;
+            padding: 0 !important;
+            max-width: 100% !important;
+            overflow-x: hidden !important; /* O scroll é nos blocos internos */
         }
 
-        /* 2. FORÇA HORIZONTAL REAL */
+        /* 2. FORÇA LINHA HORIZONTAL (O TRILHO) */
         div[data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            gap: 0 !important;
+            flex-wrap: nowrap !important;       /* PROIBIDO QUEBRAR LINHA */
+            overflow-x: auto !important;        /* HABILITA SCROLL */
+            width: 100vw !important;            /* Ocupa a tela toda */
+            gap: 0 !important;                  /* Sem buracos */
+            border-bottom: 1px solid #f1f5f9;   /* Guia visual */
         }
 
-        /* 3. COLUNAS COMPACTAS NA TELA VIRTUAL */
-        div[data-testid="column"] {
-            min-width: 0 !important;
-            flex: 1 1 0 !important;
-            padding: 0 1px !important;
+        /* 3. A COLUNA DA HORA (FIXA NA ESQUERDA) */
+        /* Seleciona o primeiro filho do bloco horizontal */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child {
+            position: sticky !important;
+            left: 0 !important;
+            z-index: 100 !important;
+            background-color: #ffffff !important;
+            border-right: 2px solid #e2e8f0 !important; /* Divisória forte */
+            min-width: 45px !important;
+            max-width: 45px !important;
+            width: 45px !important;
+            flex: 0 0 45px !important;
+            box-shadow: 2px 0 5px -2px rgba(0,0,0,0.1); /* Sombra pra dar profundidade */
+        }
+
+        /* 4. AS COLUNAS DOS DIAS (MÓVEIS) */
+        /* Seleciona do segundo filho em diante */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(n+2) {
+            min-width: 100px !important;        /* LARGURA FIXA DO DIA */
+            max-width: 100px !important;
+            width: 100px !important;
+            flex: 0 0 100px !important;
+            border-right: 1px solid #f8fafc;
         }
         
-        /* 4. ALTURA E TAMANHO (Visualmente ficará metade disso) */
-        /* Como estamos numa tela "virtual" grande, podemos usar tamanhos normais */
-        /* Ao aplicar o scale 0.55, um botão de 40px parecerá ter 22px */
+        /* 5. ELIMINA ESPAÇOS VERTICAIS DO STREAMLIT */
+        div[data-testid="stVerticalBlock"] { gap: 0 !important; }
+        div[data-testid="element-container"] { margin-bottom: 0 !important; }
         
+        /* 6. CONTEÚDO DENTRO DAS CÉLULAS */
+        /* Botões Invisíveis da Grade */
         div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-            height: 40px !important;       
+            height: 40px !important;
             min-height: 40px !important;
             padding: 0 !important;
-            font-size: 11px !important; /* Vai parecer minúsculo (6px) */
-            border: 1px solid #eee !important;
+            border: none !important;
+            border-bottom: 1px solid #f1f5f9 !important;
         }
         
-        /* Ajuste do Card */
+        /* Card de Evento */
         .evt-card {
             height: 38px !important;
-            font-size: 11px !important;
+            font-size: 10px !important;
+            line-height: 1.1 !important;
+            padding: 2px !important;
+            white-space: normal !important; /* Permite quebra de texto se precisar */
         }
         
         /* Cabeçalhos */
-        .day-header-num { font-size: 24px !important; } /* Vai parecer 13px */
-        .day-header-name { font-size: 12px !important; }
+        .day-header-num { font-size: 16px !important; }
+        .day-header-name { font-size: 9px !important; }
+        .time-label { font-size: 10px !important; top: 12px !important; right: 5px !important; }
         
-        /* Garante que o usuário não precise rolar horizontalmente a janela */
-        .stApp { overflow-x: hidden !important; }
+        /* Esconde Header do App para ganhar altura */
+        .stApp > header { display: none !important; }
     }
 
-    /* --- ESTILOS GERAIS (DESKTOP) --- */
-    
-    div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-        background: transparent !important; border: none !important;
-        border-right: 1px solid #f1f5f9 !important; border-bottom: 1px solid #f1f5f9 !important;
-        border-radius: 0 !important; width: 100% !important; margin: 0 !important;
-        height: 45px; 
-    }
+    /* --- ESTILOS DESKTOP (MANTIDOS ORIGINAIS) --- */
     @media (min-width: 769px) {
+        div[data-testid="stVerticalBlock"] button[kind="secondary"] {
+            background: transparent !important; border: none !important;
+            border-right: 1px solid #f1f5f9 !important; border-bottom: 1px solid #f1f5f9 !important;
+            border-radius: 0 !important; width: 100% !important; margin: 0 !important; height: 45px; 
+        }
         div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover { background: #f8fafc !important; }
+        .evt-card {
+            height: 42px; font-size: 11px; padding: 0 4px;
+        }
     }
 
+    /* --- ESTILOS VISUAIS COMUNS --- */
     .evt-card {
-        background-color: #e0f2fe; color: #0369a1; 
-        font-size: 11px; font-weight: 700; 
-        padding: 0 4px; border-radius: 2px; border-left: 3px solid #0284c7;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        display: flex; align-items: center; cursor: pointer;
-        height: 42px;
+        background-color: #e0f2fe; color: #0369a1; font-weight: 700; 
+        border-radius: 2px; border-left: 3px solid #0284c7;
+        overflow: hidden; cursor: pointer; display: flex; align-items: center;
+        margin: 1px 0;
     }
-    
     .admin-blocked { 
-        background: #f1f5f9; color: #94a3b8; font-size: 10px;
+        background: #f1f5f9; color: #94a3b8; font-size: 9px;
         display: flex; align-items: center; justify-content: center;
         height: 100%; width: 100%;
     }
-
-    .day-header-box { text-align: center; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; background: #fff; }
-    .day-header-name { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; }
-    .day-header-num { font-size: 20px; font-weight: 800; color: #1e293b; line-height: 1; }
+    .day-header-box { text-align: center; border-bottom: 1px solid #cbd5e1; padding: 5px 0; background: #fff; }
+    .day-header-name { font-weight: 700; color: #64748b; text-transform: uppercase; }
+    .day-header-num { font-weight: 800; color: #1e293b; line-height: 1; }
     .today-hl { color: #0284c7; }
-    
     .time-label { 
-        font-size: 11px; font-weight: 600; color: #94a3b8; 
-        text-align: right; padding-right: 6px; position: relative; top: 12px; 
+        font-weight: 600; color: #94a3b8; 
+        text-align: right; position: relative;
     }
 </style>
 """
@@ -333,7 +350,7 @@ def render_calendar(sala, is_admin_mode=False):
     dias_visiveis = [d_start + timedelta(days=i) for i in range(7)]
     dias_sem = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
     
-    # Ratios
+    # Ratios (O CSS vai sobrescrever isso no mobile, mas mantemos para desktop)
     cols = st.columns([0.3, 1, 1, 1, 1, 1, 1, 1])
     cols[0].write("") # Espaço hora
     
@@ -375,14 +392,13 @@ def render_calendar(sala, is_admin_mode=False):
                         if is_admin_mode:
                              if cont.button("x", key=f"d_res_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
                 elif is_sun or is_sat_close:
-                    # Removemos o br aqui para não criar altura extra
-                    st.markdown("<div style='height:100%;'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='height:40px; background:#f9fafb;'></div>", unsafe_allow_html=True)
                 else:
                     if not is_admin_mode:
                         if cont.button(" ", key=f"add_{d}_{h}", type="secondary", use_container_width=True):
                             modal_agendamento(sala, d, h)
                     else:
-                        st.markdown("<div style='height:100%; border-right:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
+                        st.markdown("<div style='height:40px; border-right:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
 
 def tela_admin_master():
     tabs = st.tabs(["💰 Config", "📅 Visualizar", "🚫 Bloqueios", "📄 Relatórios", "👥 Usuários"])
@@ -546,7 +562,7 @@ def main():
             if c_b.button("Recuperar"): st.session_state.auth_mode = 'forgot'; st.rerun()
         return
 
-    # MODO AGENDA: CSS DE AGENDA (ORBITAL VIEW)
+    # MODO AGENDA: CSS DE AGENDA (PROTOCOL: TRENCH RUN)
     st.markdown(CSS_AGENDA_WIDE, unsafe_allow_html=True)
 
     u = st.session_state['user']
