@@ -31,56 +31,61 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS "FUSÃO V105 + PROTEÇÃO LOGIN" ---
+# --- 3. CSS NUCLEAR (MOBILE GRID FORCE) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     .stApp { background-color: #ffffff; font-family: 'Inter', sans-serif; color: #1e293b; }
-    .block-container { padding-top: 1rem !important; max-width: 100% !important; padding-left: 5px; padding-right: 5px; }
+    .block-container { padding-top: 1rem !important; max-width: 100% !important; padding-left: 4px !important; padding-right: 4px !important; }
 
     /* ============================================================ */
-    /* 📱 MOBILE CALENDAR FIX (BASEADO NA V105)                     */
+    /* ☢️ MOBILE GRID LOCK - FORÇA BRUTA CSS (< 768px)             */
     /* ============================================================ */
     
     @media only screen and (max-width: 768px) {
         
-        /* SELETOR INTELIGENTE: Só aplica se houver 8 colunas (Calendário) */
-        /* Isso impede que o Login (3 colunas) quebre */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) {
+        /* 1. SELETOR DE ALVO: Blocos horizontais com 7+ colunas (Calendário) */
+        /* Isso isola o calendário do resto do app */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(7)) {
             display: flex !important;
-            flex-wrap: nowrap !important; /* Obriga ficar na linha */
-            overflow-x: auto !important;  /* Scroll lateral */
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;       /* PROIBIDO QUEBRAR LINHA */
+            overflow-x: auto !important;        /* SCROLL LATERAL OBRIGATÓRIO */
+            align-items: stretch !important;
             gap: 1px !important;
-            padding-bottom: 5px;
+            padding-bottom: 5px;                /* Espaço para o dedo rolar */
+            width: 100% !important;
         }
 
-        /* Colunas do Calendário: Largura Mínima Zero para caber */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"] {
-            flex: 1 1 0 !important;
-            min-width: 0 !important;
-            width: auto !important;
-            padding: 0 1px !important;
+        /* 2. COLUNAS (DIAS): Largura fixa mínima */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(7)) > div[data-testid="column"] {
+            flex: 0 0 auto !important;          /* Não encolher */
+            width: 14.28% !important;           /* Tenta dividir por 7 */
+            min-width: 55px !important;         /* Mas força mínimo de 55px */
+            padding: 0 !important;
         }
-
-        /* Coluna da Hora (Eixo Y): Esconde no mobile para dar espaço */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"]:first-child {
+        
+        /* 3. COLUNA DA HORA (A primeira): Esconde no mobile para dar espaço */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(7)) > div[data-testid="column"]:first-child {
             display: none !important; 
         }
 
-        /* --- DUAL RENDERING (O SEGREDO DA V105) --- */
+        /* 4. VISIBILIDADE DOS EVENTOS (DUAL RENDERING) */
         .evt-desktop { display: none !important; }
         .evt-mobile { display: block !important; }
 
-        /* Tipografia Micro */
-        .day-header-name { font-size: 8px !important; text-transform: uppercase; }
-        .day-header-num { font-size: 12px !important; font-weight: 700; }
+        /* 5. CABEÇALHOS MINIMALISTAS */
+        .day-header-name { font-size: 8px !important; text-transform: uppercase; color: #94a3b8; }
+        .day-header-num { font-size: 14px !important; font-weight: 700; line-height: 1 !important; }
+        .day-header-box { padding: 2px !important; margin: 0 !important; border: none !important; }
         
-        /* Botões de Agendar (Slot Livre) */
+        /* 6. BOTÕES (SLOTS LIVRES) */
         div[data-testid="stVerticalBlock"] button[kind="secondary"] {
             padding: 0 !important;
             height: 35px !important;
             min-height: 35px !important;
-            border: 1px solid #f1f5f9 !important;
+            border: 1px dashed #e2e8f0 !important;
+            margin-bottom: 1px !important;
         }
     }
 
@@ -91,6 +96,7 @@ st.markdown("""
         .evt-desktop { display: block !important; }
         .evt-mobile { display: none !important; }
         
+        /* Mostra a hora */
         div[data-testid="column"]:first-child {
             display: block !important;
             min-width: 50px !important;
@@ -99,52 +105,57 @@ st.markdown("""
 
     /* --- ESTILOS GERAIS --- */
     
-    /* Login Clean (Restaurado) */
+    /* Login Card Limpo */
     div[data-testid="column"]:nth-of-type(2) > div { 
-        background-color: #ffffff; 
-        padding: 30px; 
-        border-radius: 12px; 
-        border: 1px solid #e2e8f0; 
+        background-color: #ffffff; padding: 25px; border-radius: 12px; border: 1px solid #e2e8f0; 
         box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
     }
     
-    /* Eventos V105 */
+    /* Eventos Desktop */
     .evt-desktop {
-        background-color: #e0f2fe; border-left: 3px solid #0284c7; color: #0369a1;
-        font-size: 10px; font-weight: 600; padding: 4px; border-radius: 4px;
+        background-color: #ecfdf5; border-left: 3px solid #059669; color: #047857;
+        font-size: 10px; font-weight: 600; padding: 4px; border-radius: 3px;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         height: 40px; line-height: 1.2; margin-bottom: 2px;
     }
     
+    /* Eventos Mobile (Apenas Barra) */
     .evt-mobile {
-        background-color: #0ea5e9; /* Azul sólido */
-        height: 35px; width: 100%;
+        background-color: #10b981; /* Verde Padrão */
+        height: 100%; width: 100%;
         border-radius: 2px;
-        margin-bottom: 2px;
+        min-height: 35px;
     }
     
-    .evt-blocked-mobile { background-color: #64748b; height: 35px; border-radius: 2px; }
-    .evt-blocked-desktop { background: #334155; color: white; font-size: 10px; padding: 4px; border-radius: 4px; height: 40px; text-align: center; }
+    /* Bloqueados */
+    .evt-blocked-desktop { background: #334155; color: white; font-size: 10px; padding: 4px; border-radius: 3px; height: 40px; text-align: center; }
+    .evt-blocked-mobile { background-color: #334155; height: 100%; min-height: 35px; width: 100%; border-radius: 2px; }
 
     /* Headers */
     .day-header-box { text-align: center; border-bottom: 1px solid #e2e8f0; margin-bottom: 5px; padding-bottom: 5px; }
     .day-header-name { font-size: 11px; font-weight: 600; color: #64748b; }
     .day-header-num { font-size: 20px; font-weight: 700; color: #1e293b; }
-    .today-hl { color: #0284c7; }
+    .today-hl { color: #059669; }
 
-    /* Botões Padrão */
+    /* Botões Gerais */
     div[data-testid="stForm"] button, button[kind="primary"] { background: #0f766e !important; color: white !important; border: none; height: 45px; }
     .stTextInput input { background: #f8fafc; border: 1px solid #e2e8f0; height: 45px; }
     
     /* Desktop Cells */
     @media (min-width: 769px) {
         div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-            background-color: #f0fdf4 !important; border: 1px solid #bbf7d0 !important; color: #15803d !important;
-            font-size: 11px !important; font-weight: 600; height: 40px !important; border-radius: 6px; width: 100%;
+            background-color: #ffffff !important; border: 1px solid #e2e8f0 !important; color: transparent !important;
+            height: 40px !important; min-height: 40px !important; width: 100%;
+        }
+        div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover {
+            border-color: #0d9488 !important; background-color: #f0fdf4 !important;
         }
     }
     
-    /* Remover tralha nativa */
+    /* Hora lateral (Desktop) */
+    .time-label { font-size: 11px; font-weight: 600; color: #94a3b8; text-align: right; margin-top: 12px; padding-right: 5px;}
+    
+    /* Limpeza */
     header {display: none;} footer {display: none;}
 </style>
 """, unsafe_allow_html=True)
@@ -182,7 +193,7 @@ def gerar_pdf_fatura(df, nome_usuario, mes_referencia):
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
     pdf.set_text_color(13, 148, 136)
-    pdf.cell(0, 10, "LOCAPSICO - Extrato", ln=True, align="C")
+    pdf.cell(0, 10, "LOCAPSICO - Extrato Detalhado", ln=True, align="C")
     pdf.set_font("Arial", "", 12)
     pdf.set_text_color(50, 50, 50)
     pdf.ln(5)
@@ -314,6 +325,7 @@ def render_calendar(sala, is_admin_mode=False):
     dias_visiveis = [d_start + timedelta(days=i) for i in range(7)]
     dias_sem = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
     
+    # Seletor de Ratios: No Mobile a primeira coluna (Hora) some via CSS
     cols = st.columns([0.3, 1, 1, 1, 1, 1, 1, 1])
     cols[0].write("") # Espaço hora
     
@@ -330,7 +342,7 @@ def render_calendar(sala, is_admin_mode=False):
     # LINHAS DE HORÁRIO
     for h in range(7, 22):
         row = st.columns([0.3, 1, 1, 1, 1, 1, 1, 1])
-        row[0].markdown(f"<div style='font-size:10px; text-align:right; margin-top:10px; color:#94a3b8'>{h:02d}:00</div>", unsafe_allow_html=True)
+        row[0].markdown(f"<div class='time-label'>{h:02d}:00</div>", unsafe_allow_html=True)
         
         for i, d in enumerate(dias_visiveis):
             with row[i+1]:
@@ -338,30 +350,31 @@ def render_calendar(sala, is_admin_mode=False):
                 h_s = f"{h:02d}:00:00"
                 res = mapa.get(d_s, {}).get(h_s)
                 
-                # --- RECURSO HTML DUPLO DA V105 (O SEGREDO) ---
+                cont = st.container()
+                dt_slot = datetime.datetime.combine(d, datetime.time(h, 0))
+                agora = datetime.datetime.now()
+                is_past = dt_slot < agora
+                is_sun = d.weekday() == 6
+                is_sat_close = (d.weekday() == 5 and h >= 14)
+                
                 if res:
                     nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
                     if res['status'] == 'bloqueado':
-                        st.markdown(f"""
-                        <div class='evt-desktop evt-blocked-desktop'>BLOQUEADO</div>
-                        <div class='evt-mobile evt-blocked-mobile'></div>
-                        """, unsafe_allow_html=True)
+                        st.markdown(f"""<div class='evt-desktop evt-blocked-desktop'>BLOQUEADO</div><div class='evt-mobile evt-blocked-mobile'></div>""", unsafe_allow_html=True)
                         if is_admin_mode:
-                             if st.button("🗑️", key=f"d_blk_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
+                             if cont.button("🗑️", key=f"d_blk_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
                     else:
-                        st.markdown(f"""
-                        <div class='evt-desktop' title='{nm}'>{nm}</div>
-                        <div class='evt-mobile' title='{nm}'></div>
-                        """, unsafe_allow_html=True)
+                        st.markdown(f"""<div class='evt-desktop' title='{nm}'>{nm}</div><div class='evt-mobile' title='{nm}'></div>""", unsafe_allow_html=True)
                         if is_admin_mode:
-                             if st.button("x", key=f"d_res_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
+                             if cont.button("x", key=f"d_res_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
+                elif is_sun or is_sat_close or is_past:
+                    cont.markdown("<div class='blocked-slot'></div>", unsafe_allow_html=True)
                 else:
-                    # Slot Livre
                     if not is_admin_mode:
-                        if st.button(" ", key=f"add_{d}_{h}", type="secondary", use_container_width=True):
+                        if cont.button(" ", key=f"add_{d}_{h}", type="secondary", use_container_width=True):
                             modal_agendamento(sala, d, h)
                     else:
-                        st.markdown("<div style='height:40px; border-right:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
+                        cont.markdown("<div style='height:40px; border-right:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
 
 def tela_admin_master():
@@ -397,7 +410,7 @@ def tela_admin_master():
             salas = ["Sala 1", "Sala 2"] if sala_block == "Ambas" else [sala_block]
             for s in salas: supabase.table("reservas").delete().eq("sala_nome", s).eq("data_reserva", str(dt_block)).eq("status", "bloqueado").execute()
             st.success("Desbloqueado!")
-            
+    
     # --- ABAS RECUPERADAS (ADMIN) ---
     with tabs[3]:
         col_m, col_u = st.columns(2)
@@ -499,7 +512,7 @@ def main():
         with c2:
             st.write("") 
             if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
-            else: st.markdown("<h1 style='color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
+            else: st.markdown("<h1 style='text-align:center; color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
             
             if st.session_state.auth_mode == 'login':
                 with st.form("login"):
