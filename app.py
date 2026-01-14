@@ -31,127 +31,124 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS "DOIS UNIVERSOS" ---
-
-# CSS BASE
-CSS_BASE = """
+# --- 3. CSS GLOBAL (SOLUÇÃO DEFINITIVA) ---
+st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     .stApp { background-color: #ffffff; font-family: 'Inter', sans-serif; color: #1e293b; }
+    
+    /* Remove Header/Footer Nativos */
     header, footer, [data-testid="stToolbar"] { display: none !important; }
+    
+    /* Botões Padrão (Login/Admin) */
     div[data-testid="stForm"] button, button[kind="primary"] { 
         background: #0f766e !important; color: white !important; border: none; border-radius: 6px; 
     }
-</style>
-"""
 
-# CSS 1: LOGIN (RESPONSIVO PADRÃO)
-CSS_LOGIN_MOBILE = """
-<style>
-    @media only screen and (max-width: 768px) {
-        .block-container { max-width: 100% !important; padding: 2rem 1rem !important; }
-        button { min-height: 50px !important; }
-    }
-</style>
-"""
-
-# CSS 2: AGENDA (PROTOCOLO ANTI-GRAVITY)
-CSS_AGENDA_WIDE = """
-<style>
     /* ============================================================ */
-    /* 🛸 PROTOCOLO ANTI-GRAVITY (< 768px)                          */
-    /* Proíbe quebra de linha (wrap) e força scroll horizontal.     */
+    /* ☢️ PROTOCOLO BUNKER: CSS GRID FORÇADO (MOBILE < 768px)       */
+    /* Ignora Flexbox. Usa Grid para proibir quebra de linha.       */
     /* ============================================================ */
     
     @media only screen and (max-width: 768px) {
         
-        /* 1. CONTAINER DA PÁGINA */
+        /* 1. O CONTAINER PRINCIPAL GANHA SCROLL */
         .block-container {
-            padding: 10px 5px !important;
+            padding: 1rem 0.5rem !important;
             max-width: 100vw !important;
-            overflow-x: hidden !important; /* O scroll é interno nos blocos */
+            overflow-x: hidden !important;
         }
 
-        /* 2. O BLOCO DO CALENDÁRIO (Identificado por ter 8 colunas) */
-        /* AQUI ESTÁ A MÁGICA: flex-wrap: nowrap !important */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) {
+        /* 2. FORÇA O BLOCO HORIZONTAL A VIRAR UM GRID RÍGIDO */
+        /* Isso substitui o comportamento padrão do st.columns */
+        div[data-testid="stHorizontalBlock"] {
+            display: grid !important;
+            grid-template-columns: 45px repeat(7, 100px) !important; /* 1 Hora (45px) + 7 Dias (100px cada) */
+            width: max-content !important;  /* Força a largura a ser a soma das colunas (745px) */
+            min-width: 100% !important;
+            gap: 0px !important;
+            margin-bottom: 0px !important;
+            
+            /* Habilita o scroll NO ELEMENTO PAI se necessário, mas geralmente o avô rola */
+            overflow-x: visible !important; 
+        }
+        
+        /* 3. COLUNAS INDIVIDUAIS */
+        div[data-testid="column"] {
             display: flex !important;
-            flex-direction: row !important;     /* FORÇA LINHA - NUNCA COLUNA */
-            flex-wrap: nowrap !important;       /* PROIBIDO QUEBRAR PARA BAIXO */
-            overflow-x: auto !important;        /* HABILITA SCROLL LATERAL */
-            gap: 2px !important;                /* Pequeno espaço entre dias */
-            padding-bottom: 5px !important;
-            margin-bottom: 5px !important;
-            align-items: stretch !important;
+            flex-direction: column !important;
+            min-width: 0 !important; /* Reseta travas */
+            width: auto !important;
         }
 
-        /* 3. A COLUNA DA HORA (1ª) */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"]:first-child {
-            min-width: 40px !important;
-            width: 40px !important;
-            flex: 0 0 40px !important;
-            position: sticky !important;        /* Tenta fixar */
+        /* 4. COLUNA DA HORA (STICKY MANUAL) */
+        /* A primeira coluna do grid fica fixa */
+        div[data-testid="column"]:nth-of-type(1) {
+            position: sticky !important;
             left: 0 !important;
-            z-index: 50;
+            z-index: 100 !important;
             background: white !important;
-            border-right: 2px solid #e2e8f0;
+            border-right: 2px solid #e2e8f0 !important;
         }
 
-        /* 4. AS COLUNAS DOS DIAS (2ª a 8ª) */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"]:nth-child(n+2) {
-            min-width: 95px !important;         /* LARGURA IDEAL PARA "SEG 12" */
-            width: 95px !important;
-            flex: 0 0 95px !important;          /* NÃO ENCOLHE */
+        /* 5. WRAPPER DE ROLAGEM */
+        /* O Streamlit envolve os blocos num container. Vamos garantir que ELE role. */
+        div[data-testid="stVerticalBlock"] > div:has(div[data-testid="stHorizontalBlock"]) {
+            overflow-x: auto !important;
+            width: 100vw !important;
+            display: block !important; /* Garante que respeite o overflow */
         }
+
+        /* --- ESTÉTICA MOBILE --- */
         
-        /* 5. ELIMINA ESPAÇOS VERTICAIS */
-        div[data-testid="stVerticalBlock"] { gap: 0 !important; }
-        div[data-testid="element-container"] { margin: 0 !important; }
-        
-        /* 6. CONTEÚDO (BOTÕES E CARDS) */
+        /* Botões Invisíveis (Células da Grade) */
         div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-            height: 45px !important;            /* ALTURA CONFORTÁVEL */
-            min-height: 45px !important;
+            height: 50px !important;
+            min-height: 50px !important;
             padding: 0 !important;
-            border: 1px solid #f1f5f9 !important;
+            border: none !important;
+            border-bottom: 1px solid #f1f5f9 !important;
+            border-right: 1px solid #f8fafc !important;
             margin: 0 !important;
+            width: 100% !important;
         }
         
+        /* Card de Evento */
         .evt-card {
-            height: 43px !important;
+            height: 46px !important;
             font-size: 10px !important;
             line-height: 1.1 !important;
-            margin: 1px 0 !important;
+            padding: 2px !important;
+            margin: 2px 0 !important;
             white-space: normal !important;
+            display: flex !important;
+            align-items: center !important;
         }
         
-        /* Cabeçalhos - AGORA ESTILIZADOS */
+        /* Bloqueio */
+        .admin-blocked { height: 48px !important; font-size: 9px !important; }
+        
+        /* Cabeçalho do Dia */
         .day-header-box {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 4px;
-            padding: 5px 0 !important;
-            text-align: center;
-            height: 40px !important;
+            height: 50px !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
+            background: #f8fafc !important;
+            border-bottom: 2px solid #e2e8f0 !important;
+            border-right: 1px solid #f1f5f9 !important;
         }
-        .day-header-text {
-            font-size: 11px !important;
-            font-weight: 700 !important;
-            color: #334155;
-            text-transform: uppercase;
-        }
+        .day-header-text { font-size: 11px !important; font-weight: 700 !important; color: #334155; text-align: center; }
         
+        /* Hora */
         .time-label { 
             font-size: 10px !important; 
-            top: 15px !important; 
-            right: 4px !important; 
+            top: 18px !important; 
+            padding-right: 4px !important; 
         }
     }
 
-    /* --- ESTILOS DESKTOP --- */
+    /* --- DESKTOP (MANTÉM ORIGINAL) --- */
     @media (min-width: 769px) {
         div[data-testid="stVerticalBlock"] button[kind="secondary"] {
             background: transparent !important; border: none !important;
@@ -166,7 +163,7 @@ CSS_AGENDA_WIDE = """
     .evt-card {
         background-color: #e0f2fe; color: #0369a1; font-weight: 700; 
         border-radius: 4px; border-left: 3px solid #0284c7;
-        overflow: hidden; cursor: pointer; display: flex; align-items: center;
+        overflow: hidden; cursor: pointer; display: block;
     }
     .admin-blocked { 
         background: #f1f5f9; color: #94a3b8; font-size: 9px;
@@ -178,7 +175,7 @@ CSS_AGENDA_WIDE = """
         text-align: right; position: relative;
     }
 </style>
-"""
+""", unsafe_allow_html=True)
 
 # Javascript Cleaner
 components.html("""<script>try{const doc=window.parent.document;const style=doc.createElement('style');style.innerHTML=`header, footer, .stApp > header { display: none !important; } [data-testid="stToolbar"] { display: none !important; } .viewerBadge_container__1QSob { display: none !important; }`;doc.head.appendChild(style);}catch(e){}</script>""", height=0)
@@ -387,13 +384,13 @@ def render_calendar(sala, is_admin_mode=False):
                         if is_admin_mode:
                              if cont.button("x", key=f"d_res_{res['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute(); st.rerun()
                 elif is_sun or is_sat_close:
-                    st.markdown("<div style='height:45px; background:#f9fafb;'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='height:50px; background:#f9fafb;'></div>", unsafe_allow_html=True)
                 else:
                     if not is_admin_mode:
                         if cont.button(" ", key=f"add_{d}_{h}", type="secondary", use_container_width=True):
                             modal_agendamento(sala, d, h)
                     else:
-                        st.markdown("<div style='height:45px; border-right:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
+                        st.markdown("<div style='height:50px; border-right:1px solid #f1f5f9'></div>", unsafe_allow_html=True)
 
 def tela_admin_master():
     tabs = st.tabs(["💰 Config", "📅 Visualizar", "🚫 Bloqueios", "📄 Relatórios", "👥 Usuários"])
@@ -557,7 +554,7 @@ def main():
             if c_b.button("Recuperar"): st.session_state.auth_mode = 'forgot'; st.rerun()
         return
 
-    # MODO AGENDA: CSS DE AGENDA (PROTOCOL: ANTI-GRAVITY)
+    # MODO AGENDA: CSS DE AGENDA (PROTOCOL: BUNKER)
     st.markdown(CSS_AGENDA_WIDE, unsafe_allow_html=True)
 
     u = st.session_state['user']
@@ -573,7 +570,7 @@ def main():
     else:
         nm = resolver_nome(u.email, u.user_metadata.get('nome'))
         
-        # HEADER PROTEGIDO PARA NÃO QUEBRAR
+        # HEADER PROTEGIDO
         c_head_text, c_head_btn = st.columns([4, 1]) 
         with c_head_text: st.markdown(f"<h3 style='color:#0d9488; margin:0'>LocaPsico | {nm}</h3>", unsafe_allow_html=True)
         with c_head_btn: 
