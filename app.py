@@ -71,93 +71,119 @@ CSS_LOGIN_MOBILE = """
 </style>
 """
 
-# ESTILO 2: AGENDA (A DITADURA DOS PIXELS + RAIO ENCOLHEDOR)
-# Esta é a solução final para o calendário. Força largura e aplica ZOOM OUT.
+# ESTILO 2: AGENDA (A BLINDAGEM ANTI-EMPILHAMENTO - IRON GRID)
+# Substitui a versão anterior. Foca em travar largura mínima e proibir quebra.
 CSS_AGENDA_WIDE = """
 <style>
     /* ============================================================ */
-    /* 🔭 MOBILE ZOOM OUT FORCE (< 768px)                           */
-    /* Estratégia: Renderizar largo (1100px) mas com ZOOM de 55%    */
-    /* Resultado: Visual de Desktop, tamanho de Mobile.             */
+    /* 🛡️ PROTOCOLO IRON GRID (< 768px)                             */
+    /* Estratégia: Travar largura mínima das colunas e proibir      */
+    /* quebra de linha com flex-shrink: 0.                          */
     /* ============================================================ */
     
     @media only screen and (max-width: 768px) {
         
-        /* 1. O TRUQUE DE MESTRE: ZOOM OUT */
+        /* 1. O CONTAINER PRINCIPAL */
+        /* Removemos larguras fixas globais para evitar tela "enorme" desnecessária */
         .block-container {
-            width: 1100px !important;       /* Largura física real para caber 7 colunas */
-            min-width: 1100px !important;
-            
-            /* A MÁGICA: Reduz tudo para 55% do tamanho original */
-            zoom: 0.55 !important;          
-            
-            padding: 5px !important;
-            overflow-x: visible !important;
+            max-width: 100% !important;
+            padding-left: 5px !important;
+            padding-right: 5px !important;
+            overflow-x: hidden !important; /* A rolagem será interna no bloco */
         }
 
-        /* 2. PERMITE QUE A TELA ROLE SE PRECISAR (SAFETY NET) */
-        .stApp {
-            overflow-x: auto !important;
+        /* 2. O BLOCO HORIZONTAL (A LINHA DOS DIAS/HORAS) */
+        div[data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important;     /* FORÇA LINHA */
+            flex-wrap: nowrap !important;       /* PROIBIDO QUEBRAR */
+            overflow-x: auto !important;        /* SCROLL LATERAL AUTOMÁTICO */
+            align-items: stretch !important;
+            width: 100% !important;
+            padding-bottom: 5px !important;     /* Espaço pro dedo rolar */
+        }
+
+        /* 3. AS COLUNAS (OS 7 DIAS) */
+        /* Aqui está a mágica: min-width força o tamanho, flex-shrink impede esmagar */
+        div[data-testid="column"] {
+            flex: 0 0 auto !important;          /* NÃO CRESCE, NÃO ENCOLHE */
+            width: 13% !important;              /* Tenta ser 1/7 da tela... */
+            min-width: 55px !important;         /* ...MAS se for < 55px, TRAVA em 55px */
+            padding: 0 1px !important;          /* Padding quase zero */
+            overflow: hidden !important;        /* Corta texto excedente */
         }
         
-        /* 3. LIMPEZA VISUAL (Para não desperdiçar pixels) */
+        /* 4. COLUNA DA HORA (A PRIMEIRA) */
+        /* Um pouco menor que as outras */
+        div[data-testid="column"]:first-child {
+            min-width: 35px !important;
+            width: 35px !important;
+            position: sticky !important;        /* Tenta fixar (pode variar browser) */
+            left: 0;
+            z-index: 10;
+            background: #fff;
+            border-right: 1px solid #e2e8f0;
+        }
+
+        /* 5. TEXTOS E BOTÕES (MINIATURIZAÇÃO) */
+        /* Reduz tudo para caber nas colunas de 55px */
+        p, span, div { font-size: 9px !important; }
+        button { 
+            font-size: 9px !important; 
+            padding: 0 !important; 
+            min-height: 35px !important; 
+            height: 35px !important;
+        }
+        
+        /* Cabeçalho do Dia */
+        .day-header-num { font-size: 14px !important; }
+        .day-header-name { font-size: 8px !important; }
+        
+        /* Esconde Header Nativo para ganhar espaço */
         header { display: none !important; }
         .stApp > header { display: none !important; }
         footer { display: none !important; }
-        
-        /* 4. AJUSTES DE COLUNA */
-        div[data-testid="column"] {
-            min-width: 0 !important; /* Remove travas de largura mínima nativas */
-            padding: 0 2px !important;
-        }
-        
-        /* 5. TEXTOS (Reajuste se ficar ilegível com o zoom) */
-        /* Como o zoom reduz pixels, aumentamos um pouco a base para compensar a nitidez */
-        p, div, button, span {
-            font-size: 14px !important; 
-        }
-        .day-header-num { font-size: 24px !important; }
     }
 
-    /* --- ESTILOS GERAIS DA GRADE (DESKTOP & MOBILE INTEGRADOS) --- */
+    /* --- ESTILOS VISUAIS GERAIS (DESKTOP E MOBILE) --- */
     
-    /* Botões de Agendamento (Grade Limpa) */
+    /* Remove estilo padrão dos botões da grade */
     div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-        background-color: transparent !important; border: none !important;
-        border-right: 1px solid #e2e8f0 !important; border-bottom: 1px solid #e2e8f0 !important;
-        border-radius: 0 !important; height: 50px !important; width: 100% !important;
-        margin: 0 !important;
+        background: transparent !important; border: none !important;
+        border-right: 1px solid #f1f5f9 !important; border-bottom: 1px solid #f1f5f9 !important;
+        border-radius: 0 !important; width: 100% !important; margin: 0 !important;
     }
-    div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover { background-color: #f8fafc !important; }
+    /* Hover apenas desktop */
+    @media (min-width: 769px) {
+        div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover { background: #f8fafc !important; }
+    }
 
-    /* Card de Evento (Estilo Google Agenda Compacto) */
+    /* Card de Evento Compacto */
     .evt-card {
         background-color: #e0f2fe; color: #0369a1; 
-        font-size: 12px; font-weight: 700; 
-        padding: 2px 4px; border-radius: 3px; border-left: 4px solid #0284c7;
+        font-size: 10px; font-weight: 700; 
+        padding: 1px 2px; border-radius: 2px; border-left: 3px solid #0284c7;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        height: 46px; line-height: 1.2; margin: 1px 0; cursor: pointer;
-        display: flex; align-items: center;
+        height: 100%; display: flex; align-items: center; justify-content: flex-start;
+        cursor: pointer;
     }
     
-    /* Bloqueio Admin */
+    /* Bloqueio */
     .admin-blocked { 
-        background: repeating-linear-gradient(45deg, #f1f5f9, #f1f5f9 10px, #e2e8f0 10px, #e2e8f0 20px);
-        color: #94a3b8; font-size: 10px; font-weight: bold; letter-spacing: 1px;
+        background: #f1f5f9; color: #94a3b8; font-size: 9px;
         display: flex; align-items: center; justify-content: center;
-        height: 46px; border-radius: 0;
+        height: 100%; border-radius: 0;
     }
 
-    /* Cabeçalhos de Dia */
-    .day-header-box { text-align: center; padding-bottom: 4px; border-bottom: 2px solid #cbd5e1; background: #fff; }
-    .day-header-name { font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
-    .day-header-num { font-size: 26px; font-weight: 800; color: #1e293b; line-height: 1; margin-top: 2px; }
+    /* Cabeçalhos */
+    .day-header-box { text-align: center; border-bottom: 1px solid #cbd5e1; padding-bottom: 2px; }
+    .day-header-name { font-size: 11px; font-weight: 600; color: #64748b; }
+    .day-header-num { font-size: 20px; font-weight: 700; color: #1e293b; line-height: 1; }
     .today-hl { color: #0284c7; }
     
-    /* Hora Lateral */
     .time-label { 
-        font-size: 12px; font-weight: 600; color: #94a3b8; 
-        text-align: right; padding-right: 8px; position: relative; top: -12px; 
+        font-size: 10px; font-weight: 500; color: #94a3b8; 
+        text-align: right; padding-right: 4px; position: relative; top: -10px; 
     }
 </style>
 """
@@ -585,7 +611,7 @@ def main():
                                 c1.markdown(f"**{row['data_reserva']}** às **{row['hora_inicio'][:5]}** - {row['sala_nome']}")
                                 if dt_res > agora + timedelta(hours=24):
                                     if c2.button("Cancelar", key=f"c_{row['id']}"): supabase.table("reservas").update({"status": "cancelada"}).eq("id", row['id']).execute(); st.rerun()
-                                else: c2.caption("🚫 <24h")
+                                else: c2.caption("🚫 < 24h")
                                 st.divider()
                 else: st.info("Nada este mês.")
             except: pass
