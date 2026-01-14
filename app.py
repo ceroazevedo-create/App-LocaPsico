@@ -16,9 +16,7 @@ st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide", initia
 if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
 if 'user' not in st.session_state: st.session_state.user = None
 if 'is_admin' not in st.session_state: st.session_state.is_admin = False
-if 'reset_email' not in st.session_state: st.session_state.reset_email = ""
 if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
-if 'view_mode' not in st.session_state: st.session_state.view_mode = 'SEMANA'
 
 NOME_DO_ARQUIVO_LOGO = "logo.png"
 
@@ -30,127 +28,17 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS "BULLDOZER" (FORÇA BRUTA) ---
-# Este CSS não pede licença. Ele obriga o layout a ficar horizontal.
+# --- 3. CSS BÁSICO (SEGURO PARA LOGIN) ---
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     .stApp { background-color: #ffffff; font-family: 'Inter', sans-serif; color: #1e293b; }
-    
-    /* Remove tralha nativa */
     header, footer, [data-testid="stToolbar"] { display: none !important; }
     
-    /* Botões Padrão */
+    /* Botões Gerais */
     div[data-testid="stForm"] button, button[kind="primary"] { 
         background: #0f766e !important; color: white !important; border: none; border-radius: 6px; 
     }
-
-    /* ============================================================ */
-    /* 🚜 PROTOCOLO BULLDOZER (< 768px)                             */
-    /* Estratégia: Definir min-width absurdo para impedir quebra.   */
-    /* ============================================================ */
-    
-    @media only screen and (max-width: 768px) {
-        
-        /* 1. O PAI DE TODOS (Permite o scroll) */
-        .block-container {
-            padding: 10px 5px !important;
-            max-width: 100vw !important;
-            overflow-x: auto !important; /* O pulo do gato: scroll na raiz se precisar */
-        }
-
-        /* 2. A LINHA HORIZONTAL (Obrigada a ser larga) */
-        /* Selecionamos qualquer bloco horizontal que tenha 8 colunas (nossa agenda) */
-        [data-testid="stHorizontalBlock"] {
-            min-width: 800px !important; /* FORÇA LARGURA GIGANTE */
-            display: flex !important;
-            flex-direction: row !important; /* OBRIGA LINHA */
-            flex-wrap: nowrap !important;   /* PROIBIDO QUEBRAR */
-            overflow-x: visible !important;
-        }
-
-        /* 3. AS COLUNAS (Filhas da linha gigante) */
-        [data-testid="column"] {
-            flex: 1 !important;
-            min-width: 0 !important; /* Deixa o flex controlar o tamanho */
-        }
-        
-        /* 4. A PRIMEIRA COLUNA (HORA - Fixa e Pequena) */
-        [data-testid="stHorizontalBlock"] > [data-testid="column"]:first-child {
-            width: 45px !important;
-            min-width: 45px !important;
-            max-width: 45px !important;
-            flex: 0 0 45px !important;
-            position: sticky !important;
-            left: 0 !important;
-            background: white !important;
-            z-index: 100 !important;
-            border-right: 2px solid #e2e8f0 !important;
-        }
-
-        /* 5. WRAPPER DE ROLAGEM ESPECÍFICO */
-        /* Garante que o scroll apareça no lugar certo */
-        div[data-testid="stVerticalBlock"] > div:has([data-testid="stHorizontalBlock"]) {
-            overflow-x: auto !important;
-        }
-
-        /* --- VISUAL DOS BOTÕES NATIVOS --- */
-        /* Transformando botões nativos em células de tabela */
-        
-        button[kind="secondary"] {
-            height: 50px !important;
-            min-height: 50px !important;
-            width: 100% !important;
-            border: 1px solid #f1f5f9 !important;
-            border-radius: 0 !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            color: transparent !important; /* Texto invisível para parecer célula vazia */
-            background-color: transparent !important;
-        }
-        
-        /* Ajuste do Card de Evento */
-        .evt-card {
-            height: 46px !important;
-            font-size: 10px !important;
-            line-height: 1.1 !important;
-            padding: 2px !important;
-            margin: 2px 0 !important;
-            white-space: normal !important; /* Permite quebra de texto */
-            display: flex !important;
-            align-items: center !important;
-        }
-        
-        /* Cabeçalho do Dia */
-        .day-header-box {
-            height: 45px;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            background: #f8fafc; border-bottom: 2px solid #e2e8f0;
-            text-align: center;
-        }
-        .day-header-text { font-size: 11px !important; font-weight: 700 !important; color: #334155; }
-        
-        .time-label { 
-            font-size: 10px !important; top: 18px !important; padding-right: 4px !important; 
-        }
-    }
-
-    /* Desktop (Mantém original) */
-    @media (min-width: 769px) {
-        button[kind="secondary"] {
-            border: 1px solid #f1f5f9 !important; border-radius: 0 !important; height: 50px; width: 100%; color: transparent !important;
-        }
-        button[kind="secondary"]:hover { background: #f8fafc !important; }
-        .evt-card { height: 46px; font-size: 11px; padding: 0 4px; }
-    }
-
-    /* Comuns */
-    .evt-card {
-        background-color: #e0f2fe; border-left: 3px solid #0284c7; color: #0369a1; font-weight: 700; 
-        border-radius: 4px; overflow: hidden; cursor: pointer; display: block;
-    }
-    .blocked { background: #f1f5f9; color: #94a3b8; justify-content: center; border-left: 3px solid #cbd5e1; }
-    .time-label { font-weight: 600; color: #94a3b8; text-align: right; position: relative; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -221,7 +109,6 @@ def navegar(direcao):
     if direcao == 'prev': st.session_state.data_ref -= timedelta(days=delta)
     else: st.session_state.data_ref += timedelta(days=delta)
 
-# --- 5. AGENDAMENTO ---
 @st.dialog("Novo Agendamento")
 def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
     st.markdown(f"#### {data_sugerida.strftime('%d/%m/%Y')}")
@@ -231,7 +118,6 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
     horarios_selecionados = []
     valor_final = 0.0
     
-    # Recalcula listas
     dia_sem = dt.weekday()
     if dia_sem == 6: lista_horas = []; st.error("Domingo Fechado")
     elif dia_sem == 5: lista_horas = [f"{h:02d}:00" for h in range(7, 14)]; 
@@ -290,8 +176,77 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int=None):
                 st.toast("Sucesso!", icon="✅"); time.sleep(1); st.rerun()
         except: st.error("Erro.")
 
-# --- 6. RENDERIZADOR PYTHON NATIVO (COM BOTÕES E CSS BULLDOZER) ---
+# --- 6. RENDERIZADOR PYTHON NATIVO COM CSS SCOPED ---
 def render_calendar_interface(sala, is_admin_mode=False):
+    
+    # CSS INJETADO APENAS AQUI (PARA NÃO QUEBRAR O LOGIN)
+    # Força os botões do calendário a se comportarem como tabela
+    st.markdown("""
+    <style>
+    /* FORÇA HORIZONTAL NO MOBILE */
+    @media only screen and (max-width: 768px) {
+        
+        /* Seleciona o container das colunas do calendário (identificado por ter 8 filhos) */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            width: 100% !important;
+            gap: 2px !important;
+        }
+        
+        /* Força largura mínima nas colunas para ativar o scroll */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"] {
+            flex: 0 0 auto !important;
+            min-width: 100px !important; /* LARGURA FIXA DO DIA */
+        }
+        
+        /* Coluna da hora menor */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"]:first-child {
+            min-width: 45px !important;
+            position: sticky !important;
+            left: 0;
+            background: white;
+            z-index: 10;
+            border-right: 1px solid #eee;
+        }
+        
+        /* Botões */
+        div[data-testid="stVerticalBlock"] button[kind="secondary"] {
+            height: 50px !important;
+            width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        
+        /* Eventos */
+        .evt-card {
+            height: 46px !important;
+            font-size: 10px !important;
+            overflow: hidden;
+            display: flex; align-items: center;
+        }
+        
+        /* Ajuste cabeçalho dia */
+        .day-header-box { height: 45px !important; display: flex; align-items: center; justify-content: center; text-align: center; }
+        
+        /* Ajuste hora label */
+        .time-label { top: 18px; position: relative; font-size: 10px; }
+    }
+    
+    /* GERAL */
+    .evt-card {
+        background-color: #e0f2fe; border-left: 3px solid #0284c7; color: #0369a1; font-weight: 700; 
+        border-radius: 4px; overflow: hidden; cursor: pointer; display: block; padding: 2px;
+    }
+    .blocked { background: #f1f5f9; color: #94a3b8; justify-content: center; border-left: 3px solid #cbd5e1; }
+    .day-header-box { background: #f8fafc; border-bottom: 2px solid #e2e8f0; padding: 5px; margin-bottom: 5px; }
+    .time-label { font-weight: 600; color: #94a3b8; text-align: right; }
+    
+    </style>
+    """, unsafe_allow_html=True)
+
     # Navegação
     c1, c2, c3 = st.columns([1, 4, 1])
     c1.button("❮", on_click=lambda: navegar('prev'), use_container_width=True)
@@ -343,7 +298,6 @@ def render_calendar_interface(sala, is_admin_mode=False):
                 h_s = f"{h:02d}:00:00"
                 res = mapa.get(d_s, {}).get(h_s)
                 
-                # Regras de Bloqueio
                 agora = datetime.datetime.now()
                 dt_check = datetime.datetime.combine(d, datetime.time(h, 0))
                 is_past = dt_check < agora
@@ -357,7 +311,6 @@ def render_calendar_interface(sala, is_admin_mode=False):
                     cls_evt = "blocked" if res['status'] == 'bloqueado' else "evt-card"
                     txt = "BLOQ" if res['status'] == 'bloqueado' else nm
                     st.markdown(f"<div class='{cls_evt}'>{txt}</div>", unsafe_allow_html=True)
-                    # Admin delete button
                     if is_admin_mode:
                         if cont.button("x", key=f"del_{res['id']}"): 
                             supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute()
@@ -365,8 +318,9 @@ def render_calendar_interface(sala, is_admin_mode=False):
                 elif is_past or is_sunday or is_sat_closed:
                     st.markdown("<div style='height:50px; background:#f9fafb; border-radius:4px;'></div>", unsafe_allow_html=True)
                 else:
-                    # BOTÃO NATIVO: TRANSPARENTE E CLICÁVEL
-                    # O texto "Agendar" fica escondido pelo CSS 'color: transparent' para parecer vazio
+                    # BOTÃO NATIVO: Este botão não causa refresh de página (apenas rerun do script), 
+                    # então o login se mantém.
+                    # O CSS (CSS_AGENDA_NATIVE) vai garantir que ele não empilhe.
                     if cont.button("Agendar", key=f"btn_{d}_{h}", type="secondary", use_container_width=True):
                         modal_agendamento(sala, d, h)
 
