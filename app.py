@@ -31,77 +31,104 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS GLOBAL (SOLUÇÃO DEFINITIVA) ---
-st.markdown("""
+# --- 3. CSS DEFINIDO EM VARIÁVEIS (CORREÇÃO DO ERRO) ---
+
+# 3.1 CSS GERAL
+CSS_BASE = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     .stApp { background-color: #ffffff; font-family: 'Inter', sans-serif; color: #1e293b; }
     
-    /* Remove Header/Footer Nativos */
+    /* Remove tralha nativa */
     header, footer, [data-testid="stToolbar"] { display: none !important; }
     
-    /* Botões Padrão (Login/Admin) */
+    /* Botões Gerais */
     div[data-testid="stForm"] button, button[kind="primary"] { 
         background: #0f766e !important; color: white !important; border: none; border-radius: 6px; 
     }
+</style>
+"""
 
+# 3.2 CSS LOGIN (RESPONSIVO)
+CSS_LOGIN_MOBILE = """
+<style>
+    @media only screen and (max-width: 768px) {
+        .block-container { 
+            max-width: 100% !important; 
+            padding: 2rem 1rem !important; 
+            width: 100% !important;
+            overflow-x: hidden !important;
+        }
+        button { min-height: 50px !important; }
+    }
+</style>
+"""
+
+# 3.3 CSS AGENDA (PROTOCOLO GRID DE AÇO)
+# Aqui usamos CSS GRID para obrigar a estrutura de tabela e impedir empilhamento
+CSS_AGENDA_WIDE = """
+<style>
     /* ============================================================ */
-    /* ☢️ PROTOCOLO BUNKER: CSS GRID FORÇADO (MOBILE < 768px)       */
-    /* Ignora Flexbox. Usa Grid para proibir quebra de linha.       */
+    /* ☢️ PROTOCOLO GRID DE AÇO (< 768px)                           */
+    /* Substitui Flex por Grid. Impede quebra de linha.             */
     /* ============================================================ */
     
     @media only screen and (max-width: 768px) {
         
-        /* 1. O CONTAINER PRINCIPAL GANHA SCROLL */
+        /* 1. CONTAINER GERAL COM SCROLL */
         .block-container {
-            padding: 1rem 0.5rem !important;
+            padding: 10px 5px !important;
             max-width: 100vw !important;
             overflow-x: hidden !important;
         }
 
-        /* 2. FORÇA O BLOCO HORIZONTAL A VIRAR UM GRID RÍGIDO */
-        /* Isso substitui o comportamento padrão do st.columns */
-        div[data-testid="stHorizontalBlock"] {
+        /* 2. FORÇA O GRID LAYOUT (8 Colunas Rígidas) */
+        /* Identifica o bloco do calendário */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) {
             display: grid !important;
-            grid-template-columns: 45px repeat(7, 100px) !important; /* 1 Hora (45px) + 7 Dias (100px cada) */
-            width: max-content !important;  /* Força a largura a ser a soma das colunas (745px) */
-            min-width: 100% !important;
+            grid-template-columns: 45px repeat(7, 100px) !important; /* 45px Hora + 7 Dias de 100px */
+            min-width: 745px !important; /* Soma das larguras acima */
+            width: max-content !important;
             gap: 0px !important;
             margin-bottom: 0px !important;
             
-            /* Habilita o scroll NO ELEMENTO PAI se necessário, mas geralmente o avô rola */
+            /* Permite scroll se o pai limitar, mas o wrap abaixo garante */
             overflow-x: visible !important; 
         }
         
-        /* 3. COLUNAS INDIVIDUAIS */
-        div[data-testid="column"] {
-            display: flex !important;
-            flex-direction: column !important;
-            min-width: 0 !important; /* Reseta travas */
-            width: auto !important;
+        /* 3. WRAPPER DE ROLAGEM (Importante para o Grid funcionar no mobile) */
+        div[data-testid="stVerticalBlock"] > div:has(div[data-testid="stHorizontalBlock"]) {
+            overflow-x: auto !important;
+            display: block !important;
+            width: 100vw !important;
         }
 
-        /* 4. COLUNA DA HORA (STICKY MANUAL) */
-        /* A primeira coluna do grid fica fixa */
-        div[data-testid="column"]:nth-of-type(1) {
+        /* 4. COLUNA DA HORA (STICKY) */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"]:nth-of-type(1) {
             position: sticky !important;
             left: 0 !important;
             z-index: 100 !important;
             background: white !important;
             border-right: 2px solid #e2e8f0 !important;
+            width: 100% !important;
+            min-width: 0 !important;
         }
 
-        /* 5. WRAPPER DE ROLAGEM */
-        /* O Streamlit envolve os blocos num container. Vamos garantir que ELE role. */
-        div[data-testid="stVerticalBlock"] > div:has(div[data-testid="stHorizontalBlock"]) {
-            overflow-x: auto !important;
-            width: 100vw !important;
-            display: block !important; /* Garante que respeite o overflow */
+        /* 5. AS OUTRAS COLUNAS */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"] {
+            min-width: 0 !important; /* Grid controla o tamanho */
+            width: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
         }
+
+        /* 6. REMOVE GAPS VERTICAIS */
+        div[data-testid="stVerticalBlock"] { gap: 0 !important; }
+        div[data-testid="element-container"] { margin: 0 !important; }
 
         /* --- ESTÉTICA MOBILE --- */
         
-        /* Botões Invisíveis (Células da Grade) */
+        /* Botões Invisíveis */
         div[data-testid="stVerticalBlock"] button[kind="secondary"] {
             height: 50px !important;
             min-height: 50px !important;
@@ -113,7 +140,7 @@ st.markdown("""
             width: 100% !important;
         }
         
-        /* Card de Evento */
+        /* Eventos */
         .evt-card {
             height: 46px !important;
             font-size: 10px !important;
@@ -146,9 +173,12 @@ st.markdown("""
             top: 18px !important; 
             padding-right: 4px !important; 
         }
+        
+        /* Header App Escondido */
+        .stApp > header { display: none !important; }
     }
 
-    /* --- DESKTOP (MANTÉM ORIGINAL) --- */
+    /* --- DESKTOP --- */
     @media (min-width: 769px) {
         div[data-testid="stVerticalBlock"] button[kind="secondary"] {
             background: transparent !important; border: none !important;
@@ -175,7 +205,7 @@ st.markdown("""
         text-align: right; position: relative;
     }
 </style>
-""", unsafe_allow_html=True)
+"""
 
 # Javascript Cleaner
 components.html("""<script>try{const doc=window.parent.document;const style=doc.createElement('style');style.innerHTML=`header, footer, .stApp > header { display: none !important; } [data-testid="stToolbar"] { display: none !important; } .viewerBadge_container__1QSob { display: none !important; }`;doc.head.appendChild(style);}catch(e){}</script>""", height=0)
@@ -554,7 +584,7 @@ def main():
             if c_b.button("Recuperar"): st.session_state.auth_mode = 'forgot'; st.rerun()
         return
 
-    # MODO AGENDA: CSS DE AGENDA (PROTOCOL: BUNKER)
+    # MODO AGENDA: CSS DE AGENDA (PROTOCOL: GRID DE AÇO)
     st.markdown(CSS_AGENDA_WIDE, unsafe_allow_html=True)
 
     u = st.session_state['user']
