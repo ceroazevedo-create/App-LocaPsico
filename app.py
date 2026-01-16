@@ -16,6 +16,7 @@ st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide", initia
 if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
 if 'user' not in st.session_state: st.session_state.user = None
 if 'is_admin' not in st.session_state: st.session_state.is_admin = False
+if 'reset_email' not in st.session_state: st.session_state.reset_email = ""
 if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
 
 NOME_DO_ARQUIVO_LOGO = "logo.png"
@@ -28,21 +29,21 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS GLOBAL (LOGIN E BÁSICO) ---
+# --- 3. CSS GLOBAL (LOGIN E GERAL) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     .stApp { background-color: #ffffff; font-family: 'Inter', sans-serif; color: #1e293b; }
     
-    /* Esconde elementos nativos */
+    /* Esconde barra superior nativa */
     header, footer, [data-testid="stToolbar"] { display: none !important; }
     
-    /* Botões Padrão */
+    /* Botões Padrão (Login, Modais) */
     div[data-testid="stForm"] button, button[kind="primary"] { 
         background: #0f766e !important; color: white !important; border: none; border-radius: 6px; 
     }
     
-    /* Ajuste Mobile Geral */
+    /* Ajuste padding mobile */
     @media only screen and (max-width: 768px) {
         .block-container { padding: 1rem 0.2rem !important; }
     }
@@ -120,7 +121,7 @@ def navegar(direcao):
     else: st.session_state.data_ref += timedelta(days=delta)
 
 # --- 5. MODAL DE AGENDAMENTO ---
-@st.dialog("Agendar Horário")
+@st.dialog("Novo Agendamento")
 def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int):
     st.markdown(f"### {data_sugerida.strftime('%d/%m/%Y')} às {hora_sugerida_int}:00")
     config_precos = get_config_precos()
@@ -186,92 +187,101 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int):
                 
         except Exception as e: st.error(f"Erro: {e}")
 
-# --- 6. RENDERIZADOR DA AGENDA (O CÓDIGO NUCLEAR) ---
+# --- 6. RENDERIZADOR DA AGENDA (CSS ANTI-STACKING + ESTILO EXCEL) ---
 def render_calendar_interface(sala, is_admin_mode=False):
     
-    # CSS FORÇA BRUTA: SÓ APLICA NA AGENDA
-    # A mágica: min-width: 900px no container horizontal. O celular NÃO TEM ESCOLHA a não ser rolar.
+    # CSS LEI MARCIAL: Aplica-se a qualquer bloco horizontal dentro do app quando logado
     st.markdown("""
     <style>
     @media only screen and (max-width: 768px) {
         
-        /* 1. OBRIGA O BLOCO A SER GIGANTE (HORIZONTALMENTE) */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) {
+        /* 1. FORÇA BRUTA: TODOS OS BLOCOS HORIZONTAIS DEVEM FICAR EM LINHA */
+        /* Isso impede o empilhamento. Ponto. */
+        div[data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
-            min-width: 900px !important;  /* LARGURA MÍNIMA ABSOLUTA */
             overflow-x: auto !important;
+            width: 100% !important;
             gap: 0px !important;
             margin-bottom: 0px !important;
+            align-items: stretch !important;
         }
         
         /* 2. HABILITA SCROLL NO PAI */
         .block-container {
-            overflow-x: auto !important;
+            overflow-x: hidden !important; /* Esconde scroll da página inteira */
         }
 
-        /* 3. COLUNAS (DIAS) - Largura Fixa */
+        /* 3. COLUNAS (DIAS) - Largura Fixa e Estreita */
         div[data-testid="column"] {
             flex: 0 0 auto !important;
-            min-width: 100px !important;
-            width: 100px !important;
+            min-width: 55px !important;
+            width: 55px !important;
             padding: 0 !important;
         }
         
         /* 4. COLUNA DA HORA (1ª) - FIXA NA ESQUERDA */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"]:first-child {
-            width: 50px !important;
-            min-width: 50px !important;
+        /* O seletor nth-child(1) pega a primeira coluna de qualquer linha */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child {
+            width: 40px !important;
+            min-width: 40px !important;
             position: sticky !important;
             left: 0 !important;
             background: white !important;
             z-index: 100 !important;
-            border-right: 1px solid #ccc !important;
+            border-right: 2px solid #999 !important; /* Linha divisória forte */
         }
 
         /* 5. BOTÕES "EXCEL" (RETANGULARES E GRUDADOS) */
         div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-            height: 45px !important;
-            min-height: 45px !important;
+            height: 40px !important;
+            min-height: 40px !important;
             width: 100% !important;
             padding: 0 !important;
             margin: 0 !important;
             border-radius: 0px !important;
-            border: 1px solid #e5e7eb !important;
-            font-size: 20px !important;
-            background-color: white !important;
-            color: #10b981 !important; /* Cor do + */
+            border: 1px solid #ccc !important;
+            font-size: 1px !important; /* Esconde texto se houver */
+            background-color: #f3f4f6 !important; /* Cinza Excel Livre */
+            color: transparent !important;
         }
         
+        /* Remove espaços verticais */
         div[data-testid="stVerticalBlock"] { gap: 0px !important; }
         
         /* CABEÇALHOS */
         .day-header-box { 
-            height: 45px !important; 
-            font-size: 12px !important; 
-            display:flex; align-items:center; justify-content:center; text-align:center; 
-            background:#f3f4f6; border: 1px solid #ccc;
+            height: 40px !important; 
+            font-size: 10px !important; 
+            display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; 
+            background:#e5e7eb; border: 1px solid #ccc; font-weight: bold; color: #374151;
         }
-        .time-label { top: 15px; position: relative; font-size: 11px !important; font-weight: bold; }
+        .time-label { 
+            top: 15px; position: relative; font-size: 10px !important; font-weight: bold; padding-right: 2px;
+        }
         
+        /* Esconde Header App */
         .stApp > header { display: none !important; }
     }
     
     /* DESKTOP */
     @media (min-width: 769px) {
         div[data-testid="stVerticalBlock"] { gap: 0px !important; }
-        button[kind="secondary"] { border-radius: 0px !important; height: 45px !important; border: 1px solid #eee !important; }
+        button[kind="secondary"] { border-radius: 0px !important; height: 45px !important; border: 1px solid #ddd !important; }
     }
 
-    /* ESTILOS COMUNS */
+    /* ESTILOS DE STATUS (Vermelho para ocupado) */
     .evt-card {
-        background-color: #ef4444; border: 1px solid #991b1b; color: white; font-weight: bold;
-        width: 100%; height: 45px; font-size: 10px; display: flex; align-items: center; justify-content: center;
-        overflow: hidden; white-space: normal; line-height: 1; text-align: center;
+        background-color: #ef4444; /* Vermelho Ocupado */
+        border: 1px solid #b91c1c; color: white;
+        width: 100%; height: 40px; font-size: 9px; 
+        display: flex; align-items: center; justify-content: center;
+        overflow: hidden; white-space: nowrap; line-height: 1; text-align: center;
+        font-weight: bold;
     }
-    .blocked { background: #64748b; }
-    .slot-closed { height: 45px; background: #e5e5e5; border: 1px solid #ccc; }
+    .blocked { background: #475569; }
+    .slot-past { background-color: #d1d5db; height: 40px; border:1px solid #9ca3af; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -304,17 +314,17 @@ def render_calendar_interface(sala, is_admin_mode=False):
     dias_sem = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
 
     # 1. CABEÇALHO
-    cols = st.columns([0.5] + [1]*7) 
+    # Cria estrutura de colunas
+    cols = st.columns([0.6] + [1]*7) 
     cols[0].write("") 
     for i, d in enumerate(dias_visiveis):
         with cols[i+1]:
-            is_hj = (d == datetime.date.today())
-            bg = "#dbeafe" if is_hj else "#f3f4f6"
-            st.markdown(f"""<div class='day-header-box' style='background:{bg}'>{dias_sem[d.weekday()]}<br><strong>{d.day}</strong></div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class='day-header-box'>{dias_sem[d.weekday()]}<br>{d.day}</div>""", unsafe_allow_html=True)
 
-    # 2. GRADE (7h-21h)
+    # 2. GRADE (7h-21h) - Até 22h fim
     for h in range(7, 22):
-        row = st.columns([0.5] + [1]*7)
+        row = st.columns([0.6] + [1]*7)
+        # Coluna da Hora
         row[0].markdown(f"<div class='time-label'>{h:02d}:00</div>", unsafe_allow_html=True)
         
         for i, d in enumerate(dias_visiveis):
@@ -325,6 +335,7 @@ def render_calendar_interface(sala, is_admin_mode=False):
                 
                 agora = get_agora_br()
                 dt_check = datetime.datetime.combine(d, datetime.time(h, 0))
+                
                 is_past = dt_check < (agora - timedelta(minutes=15)) 
                 is_sunday = d.weekday() == 6
                 is_sat_closed = (d.weekday() == 5 and h >= 14)
@@ -334,21 +345,19 @@ def render_calendar_interface(sala, is_admin_mode=False):
                 if res:
                     nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
                     cls_evt = "blocked" if res['status'] == 'bloqueado' else "evt-card"
-                    txt = "BLOQ" if res['status'] == 'bloqueado' else nm
                     
                     if is_admin_mode:
-                        # Admin: Botão para apagar
-                        if cont.button("X", key=f"del_{res['id']}", type="primary", use_container_width=True):
-                             supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute()
-                             st.rerun()
+                         if cont.button("X", key=f"del_{res['id']}", type="primary", use_container_width=True):
+                            supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute()
+                            st.rerun()
                     else:
-                        st.markdown(f"<div class='{cls_evt}'>{txt}</div>", unsafe_allow_html=True)
+                        st.markdown(f"<div class='{cls_evt}'>{nm}</div>", unsafe_allow_html=True)
                         
                 elif is_past or is_sunday or is_sat_closed:
-                    st.markdown("<div class='slot-closed'></div>", unsafe_allow_html=True)
+                    st.markdown("<div class='slot-past'></div>", unsafe_allow_html=True)
                 else:
-                    # CLIQUE DIRETO NA GRADE (BOTÃO +)
-                    if cont.button("＋", key=f"btn_{d}_{h}", type="secondary", use_container_width=True):
+                    # BOTÃO LIVRE (Cinza, estilo Excel)
+                    if cont.button(" ", key=f"btn_{d}_{h}", type="secondary", use_container_width=True):
                         modal_agendamento(sala, d, h)
 
 def tela_admin_master():
@@ -481,7 +490,7 @@ def tela_admin_master():
 # --- 7. MAIN ---
 def main():
     if not st.session_state.user:
-        # LOGIN ISOLADO E PEQUENO
+        # LOGIN ISOLADO
         c_v1, c_main, c_v2 = st.columns([1, 1.5, 1])
         with c_main:
             st.write("") 
