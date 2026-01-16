@@ -18,9 +18,8 @@ if 'user' not in st.session_state: st.session_state.user = None
 if 'is_admin' not in st.session_state: st.session_state.is_admin = False
 if 'reset_email' not in st.session_state: st.session_state.reset_email = ""
 if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
-# Estado para controlar o modal de agendamento via clique
-if 'modal_open' not in st.session_state: st.session_state.modal_open = False
-if 'modal_data' not in st.session_state: st.session_state.modal_data = None
+# Variáveis para controle do modal via clique na tabela
+if 'selected_slot' not in st.session_state: st.session_state.selected_slot = None
 
 NOME_DO_ARQUIVO_LOGO = "logo.png"
 
@@ -32,7 +31,7 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS GLOBAL E TABELA RÍGIDA ---
+# --- 3. CSS (Apenas para esconder elementos nativos e ajustar a tabela) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
@@ -43,85 +42,11 @@ st.markdown("""
     div[data-testid="stForm"] button, button[kind="primary"] { 
         background: #0f766e !important; color: white !important; border: none; border-radius: 6px; 
     }
-
-    /* === CSS PARA A GRADE (MOBILE E DESKTOP) === */
-    @media only screen and (max-width: 768px) {
-        
-        /* Container Horizontal com Scroll Obrigatório */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            overflow-x: auto !important;
-            width: 100% !important;
-            min-width: 750px !important; 
-            gap: 0px !important;
-            padding-bottom: 5px !important;
-        }
-
-        .block-container { overflow-x: auto !important; padding: 0.5rem 0.2rem !important; }
-
-        /* Colunas (Dia) */
-        div[data-testid="column"] {
-            flex: 0 0 100px !important;
-            width: 100px !important;
-            min-width: 100px !important;
-            padding: 0 !important;
-        }
-        
-        /* Coluna (Hora) - Fixa na esquerda */
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child {
-            width: 50px !important;
-            min-width: 50px !important;
-            flex: 0 0 50px !important;
-            position: sticky !important;
-            left: 0 !important;
-            background: white !important;
-            z-index: 200 !important; /* Z-index alto para ficar acima */
-            border-right: 2px solid #94a3b8 !important;
-        }
-
-        /* BOTÕES (Células) - Garantindo que sejam clicáveis */
-        div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-            height: 45px !important;
-            width: 100% !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            border-radius: 0px !important;
-            border: 1px solid #cbd5e1 !important;
-            background-color: #f8fafc !important;
-            color: transparent !important;
-            position: relative !important;
-            z-index: 10 !important; /* Garante que o botão esteja clicável */
-        }
-        
-        div[data-testid="stVerticalBlock"] { gap: 0px !important; }
-        
-        /* Cabeçalhos */
-        .day-header-box { 
-            height: 45px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; 
-            background: #e2e8f0; border: 1px solid #94a3b8; font-size: 11px; font-weight: bold; color: #334155;
-        }
-        .time-label { 
-            height: 45px; display:flex; align-items:center; justify-content:center;
-            font-size: 11px !important; font-weight: bold; color: #475569; border-bottom: 1px solid #cbd5e1;
-        }
-    }
     
-    /* Desktop */
-    @media (min-width: 769px) {
-        div[data-testid="stVerticalBlock"] { gap: 0px !important; }
-        button[kind="secondary"] { border-radius: 0px !important; height: 45px !important; border: 1px solid #eee !important; }
+    /* Remove padding excessivo do mobile */
+    @media only screen and (max-width: 768px) {
+        .block-container { padding: 1rem 0.5rem !important; }
     }
-
-    /* Status */
-    .evt-card {
-        background-color: #ef4444; border: 1px solid #b91c1c; color: white;
-        width: 100%; height: 45px; font-size: 9px; font-weight: bold;
-        display: flex; align-items: center; justify-content: center;
-        overflow: hidden; white-space: nowrap; line-height: 1; text-align: center;
-    }
-    .slot-past { background-color: #cbd5e1; height: 45px; border:1px solid #94a3b8; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -195,29 +120,20 @@ def navegar(direcao):
     if direcao == 'prev': st.session_state.data_ref -= timedelta(days=delta)
     else: st.session_state.data_ref += timedelta(days=delta)
 
-# --- 5. LÓGICA DE CLIQUE (CALLBACK) ---
-def selecionar_horario(sala, dia, hora_int):
-    # Esta função é chamada QUANDO O BOTÃO É CLICADO
-    st.session_state.modal_open = True
-    st.session_state.modal_data = {
-        'sala': sala,
-        'dia': dia,
-        'hora': hora_int
-    }
-
-# --- 6. MODAL (DIALOG) ---
-@st.dialog("Novo Agendamento")
-def modal_agendamento():
-    if not st.session_state.modal_data:
-        st.error("Erro interno.")
+# --- 5. MODAL DE AGENDAMENTO (ACIONADO PELA TABELA) ---
+@st.dialog("Agendar")
+def modal_agendamento_tabela():
+    if not st.session_state.selected_slot:
+        st.error("Erro na seleção.")
         return
 
-    dados = st.session_state.modal_data
+    dados = st.session_state.selected_slot
     sala_padrao = dados['sala']
-    data_sugerida = dados['dia']
-    hora_sugerida_int = dados['hora']
+    data_obj = dados['data']
+    hora_str = dados['hora'] # "07:00"
+    hora_int = int(hora_str.split(':')[0])
 
-    st.markdown(f"### {data_sugerida.strftime('%d/%m/%Y')} às {hora_sugerida_int}:00")
+    st.markdown(f"### {data_obj.strftime('%d/%m/%Y')} às {hora_str}")
     config_precos = get_config_precos()
     
     modo = st.radio("Tipo", ["Por Hora", "Por Período"], horizontal=True)
@@ -225,13 +141,13 @@ def modal_agendamento():
     valor_final = 0.0
     
     if modo == "Por Hora":
-        horarios_selecionados = [(f"{hora_sugerida_int:02d}:00", f"{hora_sugerida_int+1:02d}:00")]
+        horarios_selecionados = [(f"{hora_int:02d}:00", f"{hora_int+1:02d}:00")]
         valor_final = config_precos['preco_hora']
         st.info(f"Valor: R$ {valor_final:.2f}")
     else:
-        if 7 <= hora_sugerida_int < 12: p = "Manhã (07-12h)"; start, end, price = 7, 12, config_precos['preco_manha']
-        elif 13 <= hora_sugerida_int < 18: p = "Tarde (13-18h)"; start, end, price = 13, 18, config_precos['preco_tarde']
-        elif 18 <= hora_sugerida_int < 22: p = "Noite (18-22h)"; start, end, price = 18, 22, config_precos['preco_noite']
+        if 7 <= hora_int < 12: p = "Manhã (07-12h)"; start, end, price = 7, 12, config_precos['preco_manha']
+        elif 13 <= hora_int < 18: p = "Tarde (13-18h)"; start, end, price = 13, 18, config_precos['preco_tarde']
+        elif 18 <= hora_int < 22: p = "Noite (18-22h)"; start, end, price = 18, 22, config_precos['preco_noite']
         else: p = "Diária"; start, end, price = 7, 22, config_precos['preco_diaria']
         
         st.write(f"Período: **{p}**")
@@ -249,17 +165,15 @@ def modal_agendamento():
         agora = get_agora_br()
         
         try:
-            dias_reserva = [data_sugerida]
+            dias_reserva = [data_obj]
             if is_recurring:
-                for k in range(1, 4): dias_reserva.append(data_sugerida + timedelta(days=7*k))
+                for k in range(1, 4): dias_reserva.append(data_obj + timedelta(days=7*k))
             
             inserts = []
             for d_res in dias_reserva:
                 if d_res.weekday() == 6: continue 
-                
                 for h_start, h_end in horarios_selecionados:
                     dt_check = datetime.datetime.combine(d_res, datetime.datetime.strptime(h_start, "%H:%M").time())
-                    
                     if dt_check < agora: st.error(f"Horário {h_start} já passou."); return
                     if d_res.weekday() == 5 and int(h_start[:2]) >= 14: st.error("Sábado fecha 14h."); return
                     
@@ -275,15 +189,14 @@ def modal_agendamento():
             
             if inserts:
                 supabase.table("reservas").insert(inserts).execute()
-                st.session_state.modal_open = False # Fecha modal
-                st.session_state.modal_data = None
+                st.session_state.selected_slot = None # Limpa seleção
                 st.toast("Agendado!", icon="✅")
                 time.sleep(1)
                 st.rerun()
                 
         except Exception as e: st.error(f"Erro: {e}")
 
-# --- 7. RENDERIZADOR DA AGENDA ---
+# --- 6. RENDERIZADOR DA AGENDA (DATAFRAME INTERATIVO) ---
 def render_calendar_interface(sala, is_admin_mode=False):
     # NAVEGAÇÃO
     c1, c2, c3 = st.columns([1, 4, 1])
@@ -292,76 +205,101 @@ def render_calendar_interface(sala, is_admin_mode=False):
     
     ref = st.session_state.data_ref
     d_start = ref - timedelta(days=ref.weekday())
+    
     mes_nome = d_start.strftime("%b").upper()
     c2.markdown(f"<div style='text-align:center; font-weight:bold; margin-top:5px'>{mes_nome} {d_start.day}</div>", unsafe_allow_html=True)
 
-    # DADOS
-    reservas = []
+    # 1. PREPARAÇÃO DOS DADOS (MATRIZ)
+    dias_visiveis = [d_start + timedelta(days=i) for i in range(7)]
+    # Nomes das colunas para o DataFrame (Ex: "14/01 SEG")
+    col_names = [f"{d.day:02d}/{d.month:02d} {['SEG','TER','QUA','QUI','SEX','SAB','DOM'][d.weekday()]}" for d in dias_visiveis]
+    # Nomes das linhas (Horas)
+    row_names = [f"{h:02d}:00" for h in range(7, 22)]
+    
+    # Cria Dataframe Pandas vazio (Matriz Horas x Dias)
+    # Inicializa tudo com None ou string vazia
+    df = pd.DataFrame("", index=row_names, columns=col_names)
+
+    # 2. BUSCA DO BANCO E PREENCHIMENTO
+    agora = get_agora_br()
+    d_end_q = d_start + timedelta(days=7)
+    
     try:
-        agora_sp = get_agora_br()
-        d_end_q = d_start + timedelta(days=7)
         r = supabase.table("reservas").select("*").eq("sala_nome", sala).neq("status", "cancelada").gte("data_reserva", str(d_start)).lte("data_reserva", str(d_end_q)).execute()
         reservas = r.data
-    except: pass
-    mapa = {}
-    for x in reservas:
-        d_r = x['data_reserva']
-        if d_r not in mapa: mapa[d_r] = {}
-        mapa[d_r][x['hora_inicio']] = x
-
-    dias_visiveis = [d_start + timedelta(days=i) for i in range(7)]
-    dias_sem = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
-
-    # 1. CABEÇALHO
-    cols = st.columns(8) 
-    cols[0].write("") 
-    for i, d in enumerate(dias_visiveis):
-        with cols[i+1]:
-            bg = "#bfdbfe" if d == datetime.date.today() else "#e2e8f0"
-            st.markdown(f"""<div class='day-header-box' style='background:{bg}'>{dias_sem[d.weekday()]}<br>{d.day}</div>""", unsafe_allow_html=True)
-
-    # 2. GRADE (7h-21h)
-    for h in range(7, 22):
-        row = st.columns(8)
-        row[0].markdown(f"<div class='time-label'>{h:02d}:00</div>", unsafe_allow_html=True)
         
-        for i, d in enumerate(dias_visiveis):
-            with row[i+1]:
-                d_s = str(d)
-                h_s = f"{h:02d}:00:00"
-                res = mapa.get(d_s, {}).get(h_s)
+        # Mapa para acesso rápido
+        mapa_reservas = {} # Chave: "YYYY-MM-DD HH:00:00", Valor: Nome/Bloq
+        for x in reservas:
+            k = f"{x['data_reserva']} {x['hora_inicio']}"
+            nm = resolver_nome(x['email_profissional'], nome_banco=x['nome_profissional'])
+            val = "🔒 BLOQ" if x['status'] == 'bloqueado' else f"👤 {nm}"
+            mapa_reservas[k] = val
+
+        # Preenche o DF
+        for i_col, d in enumerate(dias_visiveis):
+            col_name = col_names[i_col]
+            for h in range(7, 22):
+                h_str = f"{h:02d}:00"
+                h_full = f"{h:02d}:00:00"
+                key = f"{d} {h_full}"
                 
-                agora = get_agora_br()
+                # Verifica Passado/Fechado
                 dt_check = datetime.datetime.combine(d, datetime.time(h, 0))
-                is_past = dt_check < (agora - timedelta(minutes=15)) 
-                is_sunday = d.weekday() == 6
-                is_sat_closed = (d.weekday() == 5 and h >= 14)
+                is_past = dt_check < (agora - timedelta(minutes=15))
+                is_closed = (d.weekday() == 6) or (d.weekday() == 5 and h >= 14)
                 
-                cont = st.container()
-                
-                if res:
-                    nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
-                    cls_evt = "blocked" if res['status'] == 'bloqueado' else "evt-card"
-                    
-                    if is_admin_mode:
-                         if cont.button("X", key=f"del_{res['id']}", type="primary", use_container_width=True):
-                            supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute()
-                            st.rerun()
-                    else:
-                        st.markdown(f"<div class='{cls_evt}'>{nm}</div>", unsafe_allow_html=True)
-                        
-                elif is_past or is_sunday or is_sat_closed:
-                    st.markdown("<div class='slot-past'></div>", unsafe_allow_html=True)
+                cell_val = None
+                if key in mapa_reservas:
+                    cell_val = mapa_reservas[key]
+                elif is_past or is_closed:
+                    cell_val = "🚫" # Símbolo de fechado/passado
                 else:
-                    # AQUI ESTÁ O TRUQUE: on_click
-                    cont.button(
-                        " ", 
-                        key=f"btn_{d}_{h}", 
-                        type="secondary", 
-                        use_container_width=True,
-                        on_click=selecionar_horario, # CHAMA A FUNÇÃO DIRETO
-                        args=(sala, d, h)
-                    )
+                    cell_val = "✅" # Símbolo de livre
+                
+                df.at[h_str, col_name] = cell_val
+
+    except Exception as e: st.error(f"Erro dados: {e}")
+
+    # 3. RENDERIZA O DATAFRAME INTERATIVO
+    # Este componente NUNCA empilha. Ele cria scroll nativo.
+    event = st.dataframe(
+        df,
+        use_container_width=True,
+        height=650, # Altura fixa para caber todas as horas
+        on_select="rerun", # O PULO DO GATO: Recarrega ao clicar
+        selection_mode="single-cell", # Seleciona uma célula só
+    )
+
+    # 4. PROCESSA O CLIQUE
+    if event and event.selection and event.selection.rows and event.selection.columns:
+        # Pega índices clicados
+        r_idx = event.selection.rows[0]
+        c_idx = event.selection.columns[0]
+        
+        # Recupera valores reais
+        hora_clicada = row_names[r_idx] # "08:00"
+        data_obj = dias_visiveis[c_idx] # Objeto Date
+        
+        valor_celula = df.iat[r_idx, c_idx]
+        
+        # Lógica de ação
+        if valor_celula == "✅":
+            # Salva no estado para o modal abrir
+            st.session_state.selected_slot = {
+                'sala': sala,
+                'data': data_obj,
+                'hora': hora_clicada
+            }
+            modal_agendamento_tabela()
+            
+        elif "👤" in str(valor_celula) or "🔒" in str(valor_celula):
+            st.toast("Horário ocupado.", icon="⚠️")
+            if is_admin_mode:
+                # Lógica simplificada de delete admin (apenas aviso aqui, ideal seria abrir modal de exclusão)
+                st.warning("Admin: Use a aba 'Meus Agendamentos' ou 'Bloqueios' para gerenciar.")
+        else:
+            st.toast("Horário indisponível (passado ou fechado).", icon="🚫")
 
 def tela_admin_master():
     tabs = st.tabs(["💰 Config", "📅 Visualizar", "🚫 Bloqueios", "📄 Relatórios", "👥 Usuários"])
@@ -490,10 +428,10 @@ def tela_admin_master():
         else:
             st.info("Nenhum usuário encontrado.")
 
-# --- 8. MAIN ---
+# --- 7. MAIN ---
 def main():
     if not st.session_state.user:
-        c_v1, c_main, c_v2 = st.columns([1, 1.5, 1])
+        c1, c2, c3 = st.columns([1, 1.5, 1])
         with c_main:
             st.write("") 
             if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
@@ -520,10 +458,6 @@ def main():
 
     u = st.session_state['user']
     if u is None: st.session_state.auth_mode = 'login'; st.rerun(); return
-
-    # VERIFICA SE DEVE ABRIR O MODAL (APÓS RERUN)
-    if st.session_state.modal_open:
-        modal_agendamento()
 
     if st.session_state.get('is_admin'):
         c_head_text, c_head_btn = st.columns([5, 1])
