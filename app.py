@@ -29,23 +29,19 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS "PIXEL PERFECT" ---
-# Define tamanhos exatos. Não usa porcentagem.
+# --- 3. CSS GLOBAL (BÁSICO) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     .stApp { background-color: #ffffff; font-family: 'Inter', sans-serif; color: #1e293b; }
-    
     header, footer, [data-testid="stToolbar"] { display: none !important; }
     
-    /* Botões Gerais */
     div[data-testid="stForm"] button, button[kind="primary"] { 
         background: #0f766e !important; color: white !important; border: none; border-radius: 6px; 
     }
     
-    /* Ajustes Mobile Gerais */
     @media only screen and (max-width: 768px) {
-        .block-container { padding: 0.5rem 0.2rem !important; overflow-x: auto !important; }
+        .block-container { padding: 0.5rem 0.2rem !important; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -121,7 +117,7 @@ def navegar(direcao):
     else: st.session_state.data_ref += timedelta(days=delta)
 
 # --- 5. MODAL DE AGENDAMENTO ---
-@st.dialog("Novo Agendamento")
+@st.dialog("Confirmar Agendamento")
 def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int):
     st.markdown(f"### {data_sugerida.strftime('%d/%m/%Y')} às {hora_sugerida_int}:00")
     config_precos = get_config_precos()
@@ -130,6 +126,7 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int):
     horarios_selecionados = []
     valor_final = 0.0
     
+    # Recalcula com base na hora clicada
     if modo == "Por Hora":
         horarios_selecionados = [(f"{hora_sugerida_int:02d}:00", f"{hora_sugerida_int+1:02d}:00")]
         valor_final = config_precos['preco_hora']
@@ -140,7 +137,7 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int):
         elif 18 <= hora_sugerida_int < 22: p = "Noite (18-22h)"; start, end, price = 18, 22, config_precos['preco_noite']
         else: p = "Diária"; start, end, price = 7, 22, config_precos['preco_diaria']
         
-        st.write(f"Período Sugerido: **{p}**")
+        st.write(f"Período: **{p}**")
         st.info(f"Valor: R$ {price:.2f}")
         for h in range(start, end):
             horarios_selecionados.append((f"{h:02d}:00", f"{h+1:02d}:00"))
@@ -187,45 +184,37 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int):
                 
         except Exception as e: st.error(f"Erro: {e}")
 
-# --- 6. RENDERIZADOR DA AGENDA (CSS Tabela Fixa) ---
+# --- 6. RENDERIZADOR DA AGENDA (CSS GRID FORÇADO) ---
 def render_calendar_interface(sala, is_admin_mode=False):
     
-    # CSS: OBRIGA LARGURA FIXA E SCROLL
+    # CSS GRID: A SOLUÇÃO "TABELA DE VERDADE"
     st.markdown("""
     <style>
     @media only screen and (max-width: 768px) {
         
-        /* 1. CONTAINER DA GRADE: LARGURA FIXA DE 750px */
-        /* Isso garante que ele sempre seja maior que a tela e ative o scroll */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            min-width: 750px !important;  
-            width: 750px !important;
+        /* CONTAINER MESTRE COM SCROLL */
+        div[data-testid="stHorizontalBlock"] {
             overflow-x: auto !important;
-            gap: 0px !important;
-            margin-bottom: 0px !important;
-        }
-        
-        /* 2. FORÇA O SCROLL NO CONTAINER PAI */
-        .block-container, .stMain {
-            overflow-x: auto !important;
+            display: block !important; /* Reseta o flex padrão */
+            white-space: nowrap !important;
+            padding-bottom: 5px !important;
         }
 
-        /* 3. COLUNAS DO DIA (100px FIXO) */
-        /* Flex: none impede que o navegador encolha a coluna para caber na tela */
+        /* FORÇA O LAYOUT DE GRADE COM LARGURA FIXA */
+        /* Isso impede o navegador de quebrar as linhas */
         div[data-testid="column"] {
-            flex: none !important; 
-            width: 100px !important;
-            min-width: 100px !important;
+            display: inline-block !important; /* Coloca um ao lado do outro na marra */
+            width: 85px !important;
+            min-width: 85px !important;
+            margin: 0 !important;
             padding: 0 !important;
+            vertical-align: top !important;
         }
         
-        /* 4. COLUNA DA HORA (1ª - 50px FIXO) */
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child {
-            width: 50px !important;
-            min-width: 50px !important;
+        /* A PRIMEIRA COLUNA (HORA) É MAIS ESTREITA E FIXA */
+        div[data-testid="column"]:first-child {
+            width: 45px !important;
+            min-width: 45px !important;
             position: sticky !important;
             left: 0 !important;
             background: white !important;
@@ -233,37 +222,36 @@ def render_calendar_interface(sala, is_admin_mode=False):
             border-right: 1px solid #ccc !important;
         }
 
-        /* 5. BOTÕES "CÉLULAS" */
+        /* BOTÕES ESTILO CÉLULA (QUADRADOS, SEM MARGEM) */
         div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-            height: 45px !important;
-            min-height: 45px !important;
+            height: 40px !important;
             width: 100% !important;
             padding: 0 !important;
             margin: 0 !important;
             border-radius: 0px !important;
             border: 1px solid #e0e0e0 !important;
             background-color: #f9f9f9 !important;
-            color: transparent !important; /* Esconde texto para parecer célula */
+            color: transparent !important; /* Esconde texto para ficar limpo */
         }
         
+        /* Remove gaps verticais */
         div[data-testid="stVerticalBlock"] { gap: 0px !important; }
         
         /* CABEÇALHOS */
         .day-header-box { 
-            height: 45px !important; 
-            font-size: 11px !important; 
-            display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; 
-            background: #eef2f6; border: 1px solid #ccc;
-            font-weight: bold;
+            height: 40px; display:flex; align-items:center; justify-content:center; text-align:center; 
+            background: #f1f5f9; border: 1px solid #ccc; font-weight: bold; font-size: 11px;
         }
         .time-label { 
-            top: 15px; position: relative; font-size: 11px !important; font-weight: bold; text-align: right; padding-right: 5px;
+            height: 40px; display:flex; align-items:center; justify-content:flex-end; padding-right:5px;
+            font-size: 10px !important; font-weight: bold; color: #64748b; border-bottom: 1px solid #eee;
         }
         
+        /* Esconde Header do App */
         .stApp > header { display: none !important; }
     }
     
-    /* DESKTOP */
+    /* DESKTOP (Ajustes) */
     @media (min-width: 769px) {
         div[data-testid="stVerticalBlock"] { gap: 0px !important; }
         button[kind="secondary"] { border-radius: 0px !important; height: 45px !important; border: 1px solid #ddd !important; }
@@ -271,15 +259,13 @@ def render_calendar_interface(sala, is_admin_mode=False):
 
     /* ESTILOS DE STATUS */
     .evt-card {
-        background-color: #ef4444; /* Vermelho */
-        border: 1px solid #991b1b; color: white;
-        width: 100%; height: 45px; font-size: 9px; 
+        background-color: #ef4444; color: white;
+        width: 100%; height: 40px; font-size: 9px; font-weight: bold;
         display: flex; align-items: center; justify-content: center;
-        overflow: hidden; white-space: nowrap; line-height: 1; text-align: center;
-        font-weight: bold;
+        overflow: hidden; white-space: nowrap; border: 1px solid #b91c1c;
     }
     .blocked { background: #64748b; }
-    .slot-past { background-color: #e5e7eb; height: 45px; border:1px solid #d1d5db; }
+    .slot-past { background-color: #e2e8f0; height: 40px; border:1px solid #cbd5e1; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -311,16 +297,17 @@ def render_calendar_interface(sala, is_admin_mode=False):
     dias_visiveis = [d_start + timedelta(days=i) for i in range(7)]
     dias_sem = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
 
-    # 1. CABEÇALHO
-    # IMPORTANTE: st.columns(8) cria 8 colunas de largura igual (flex: 1).
-    # O CSS acima (div[data-testid="column"]) SOBRESCREVE isso e força widths fixos.
-    cols = st.columns(8) 
-    cols[0].write("") 
+    # 1. CABEÇALHO (LINHA 1)
+    cols = st.columns(8) # Gera a estrutura base
+    cols[0].write("") # Coluna da hora vazia no header
     for i, d in enumerate(dias_visiveis):
         with cols[i+1]:
-            st.markdown(f"""<div class='day-header-box'>{dias_sem[d.weekday()]}<br>{d.day}</div>""", unsafe_allow_html=True)
+            # Cabeçalho Colorido
+            bg = "#bfdbfe" if d == datetime.date.today() else "#f1f5f9"
+            if i % 2 == 0 and d != datetime.date.today(): bg = "#e2e8f0" # Alterna cores levemente
+            st.markdown(f"""<div class='day-header-box' style='background:{bg}'>{dias_sem[d.weekday()]}<br>{d.day}</div>""", unsafe_allow_html=True)
 
-    # 2. GRADE (7h-21h)
+    # 2. GRADE (07h - 21h) -> Fim 22h
     for h in range(7, 22):
         row = st.columns(8)
         # Coluna da Hora
@@ -335,6 +322,7 @@ def render_calendar_interface(sala, is_admin_mode=False):
                 agora = get_agora_br()
                 dt_check = datetime.datetime.combine(d, datetime.time(h, 0))
                 
+                # Regra de Passado: 15 min de tolerância
                 is_past = dt_check < (agora - timedelta(minutes=15)) 
                 is_sunday = d.weekday() == 6
                 is_sat_closed = (d.weekday() == 5 and h >= 14)
@@ -355,7 +343,8 @@ def render_calendar_interface(sala, is_admin_mode=False):
                 elif is_past or is_sunday or is_sat_closed:
                     st.markdown("<div class='slot-past'></div>", unsafe_allow_html=True)
                 else:
-                    # BOTÃO NATIVO (TRANSPARENTE PARA PARECER CÉLULA)
+                    # BOTÃO DE AGENDAMENTO (Célula Vazia Clicável)
+                    # Texto invisível (" ")
                     if cont.button(" ", key=f"btn_{d}_{h}", type="secondary", use_container_width=True):
                         modal_agendamento(sala, d, h)
 
