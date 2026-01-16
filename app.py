@@ -29,7 +29,7 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS GLOBAL ---
+# --- 3. CSS (VISUAL LIMPO) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
@@ -41,10 +41,9 @@ st.markdown("""
         background: #0f766e !important; color: white !important; border: none; border-radius: 6px; 
     }
     
+    /* Remove padding excessivo do mobile para ganhar espaço */
     @media only screen and (max-width: 768px) {
         .block-container { padding: 0.5rem 0.2rem !important; }
-        /* Ajuste fino para a tabela não ter padding estranho */
-        div[data-testid="stDataFrame"] { width: 100%; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -119,29 +118,29 @@ def navegar(direcao):
     if direcao == 'prev': st.session_state.data_ref -= timedelta(days=delta)
     else: st.session_state.data_ref += timedelta(days=delta)
 
-# --- 5. MODAL DE AGENDAMENTO ---
-@st.dialog("Novo Agendamento")
+# --- 5. MODAL DE AGENDAMENTO (CHAMADA DIRETA) ---
+@st.dialog("📅 Novo Agendamento")
 def modal_agendamento(sala_padrao, data_obj, hora_str):
     hora_int = int(hora_str.split(':')[0])
-    st.markdown(f"### {data_obj.strftime('%d/%m/%Y')} às {hora_str}")
+    st.markdown(f"**Data:** {data_obj.strftime('%d/%m/%Y')} | **Hora:** {hora_str}")
     config_precos = get_config_precos()
     
-    modo = st.radio("Tipo", ["Por Hora", "Por Período"], horizontal=True)
+    modo = st.radio("Tipo de Cobrança", ["Por Hora", "Por Período"], horizontal=True)
     horarios_selecionados = []
     valor_final = 0.0
     
     if modo == "Por Hora":
         horarios_selecionados = [(f"{hora_int:02d}:00", f"{hora_int+1:02d}:00")]
         valor_final = config_precos['preco_hora']
-        st.info(f"Valor: R$ {valor_final:.2f}")
+        st.success(f"Valor: R$ {valor_final:.2f}")
     else:
         if 7 <= hora_int < 12: p = "Manhã (07-12h)"; start, end, price = 7, 12, config_precos['preco_manha']
         elif 13 <= hora_int < 18: p = "Tarde (13-18h)"; start, end, price = 13, 18, config_precos['preco_tarde']
         elif 18 <= hora_int < 22: p = "Noite (18-22h)"; start, end, price = 18, 22, config_precos['preco_noite']
         else: p = "Diária"; start, end, price = 7, 22, config_precos['preco_diaria']
         
-        st.write(f"Período: **{p}**")
-        st.info(f"Valor: R$ {price:.2f}")
+        st.write(f"Período Detectado: **{p}**")
+        st.success(f"Valor: R$ {price:.2f}")
         for h in range(start, end):
             horarios_selecionados.append((f"{h:02d}:00", f"{h+1:02d}:00"))
         valor_final = price
@@ -179,7 +178,7 @@ def modal_agendamento(sala_padrao, data_obj, hora_str):
             
             if inserts:
                 supabase.table("reservas").insert(inserts).execute()
-                st.toast("Agendado!", icon="✅")
+                st.toast("Agendado com sucesso!", icon="✅")
                 time.sleep(1)
                 st.rerun()
                 
@@ -200,15 +199,16 @@ def render_calendar_interface(sala, is_admin_mode=False):
 
     # 1. PREPARAÇÃO DOS DADOS
     dias_visiveis = [d_start + timedelta(days=i) for i in range(7)]
-    # Nomes das Colunas (Data + Dia)
-    col_names = [f"{d.strftime('%d/%m')}\n{['SEG','TER','QUA','QUI','SEX','SAB','DOM'][d.weekday()]}" for d in dias_visiveis]
+    
+    # Nomes das Colunas com quebra de linha para ficar bonito
+    col_names = [f"{d.strftime('%d/%m')} {['SEG','TER','QUA','QUI','SEX','SAB','DOM'][d.weekday()]}" for d in dias_visiveis]
     # Nomes das Linhas (Horas 7h-21h)
     row_names = [f"{h:02d}:00" for h in range(7, 22)]
     
-    # Dataframe Base (Preenchido com string vazia)
+    # DF Vazio
     df = pd.DataFrame("", index=row_names, columns=col_names)
 
-    # 2. BUSCA DO BANCO
+    # 2. BUSCA E POPULA
     agora = get_agora_br()
     d_end_q = d_start + timedelta(days=7)
     
@@ -223,7 +223,6 @@ def render_calendar_interface(sala, is_admin_mode=False):
             val = "🔒 BLOQ" if x['status'] == 'bloqueado' else f"👤 {nm}"
             mapa_reservas[k] = val
 
-        # Preenche DF
         for i_col, d in enumerate(dias_visiveis):
             col_name = col_names[i_col]
             for h in range(7, 22):
@@ -244,38 +243,39 @@ def render_calendar_interface(sala, is_admin_mode=False):
 
     except Exception as e: st.error(f"Erro dados: {e}")
 
-    # 3. RENDERIZA E CAPTURA EVENTO
-    st.markdown("<small style='color:gray'>Clique em 'LIVRE' para agendar:</small>", unsafe_allow_html=True)
+    # 3. RENDERIZA E CAPTURA O CLIQUE NA HORA
+    st.caption("Clique em 'LIVRE' na tabela abaixo para agendar:")
     
+    # Key fixa para não perder o estado
     event = st.dataframe(
         df,
         use_container_width=True,
-        height=580, 
-        on_select="rerun", # ISSO É O IMPORTANTE
-        selection_mode="single-cell"
+        height=600, 
+        on_select="rerun",
+        selection_mode="single-cell",
+        key=f"grid_{sala}" 
     )
 
-    # 4. TRATAMENTO DO CLIQUE
+    # 4. LÓGICA IMEDIATA DE CLIQUE
     if event and event.selection and event.selection.rows and event.selection.columns:
         r_idx = event.selection.rows[0]
         c_idx = event.selection.columns[0]
         
-        # Converte índices de volta para dados
+        # Traduz índices para dados reais
         hora_clicada = row_names[r_idx]
         data_obj = dias_visiveis[c_idx]
+        valor_celula = df.iat[r_idx, c_idx]
         
-        # Valor da célula clicada
-        valor = df.iat[r_idx, c_idx]
-        
-        if valor == "LIVRE":
-            # CHAMA O MODAL AQUI MESMO
+        if valor_celula == "LIVRE":
+            # CHAMA O DIALOG DIRETO AQUI!
             modal_agendamento(sala, data_obj, hora_clicada)
-        elif "👤" in valor or "🔒" in valor:
-            st.toast(f"Horário ocupado: {valor}", icon="⚠️")
+            
+        elif "👤" in str(valor_celula) or "🔒" in str(valor_celula):
+            st.toast(f"Horário ocupado: {valor_celula}", icon="⚠️")
             if is_admin_mode:
-                st.warning(f"Admin: Use a aba 'Bloqueios' ou 'Meus Agendamentos' para gerenciar.")
+                st.info(f"Para cancelar {valor_celula}, use o botão 'Bloqueios' ou a lista abaixo.")
         else:
-            st.toast("Horário indisponível.", icon="🚫")
+            st.toast("Horário fechado ou passado.", icon="🚫")
 
 def tela_admin_master():
     tabs = st.tabs(["💰 Config", "📅 Visualizar", "🚫 Bloqueios", "📄 Relatórios", "👥 Usuários"])
@@ -407,8 +407,8 @@ def tela_admin_master():
 # --- 7. MAIN ---
 def main():
     if not st.session_state.user:
-        c_v1, c_main, c_v2 = st.columns([1, 1.2, 1])
-        with c_main:
+        c1, c2, c3 = st.columns([1, 1.2, 1])
+        with c2:
             st.write("") 
             if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
             else: st.markdown("<h1 style='text-align:center; color:#0d9488'>LocaPsico</h1>", unsafe_allow_html=True)
