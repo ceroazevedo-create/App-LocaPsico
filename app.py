@@ -16,7 +16,6 @@ st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide", initia
 if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
 if 'user' not in st.session_state: st.session_state.user = None
 if 'is_admin' not in st.session_state: st.session_state.is_admin = False
-if 'reset_email' not in st.session_state: st.session_state.reset_email = ""
 if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
 
 NOME_DO_ARQUIVO_LOGO = "logo.png"
@@ -29,16 +28,23 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS GLOBAL (BÁSICO) ---
+# --- 3. CSS GLOBAL (LOGIN E BÁSICO) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     .stApp { background-color: #ffffff; font-family: 'Inter', sans-serif; color: #1e293b; }
+    
+    /* Esconde elementos nativos */
     header, footer, [data-testid="stToolbar"] { display: none !important; }
     
-    /* Botões Gerais (Login, Modais) - Mantém bonitos */
+    /* Botões Padrão */
     div[data-testid="stForm"] button, button[kind="primary"] { 
         background: #0f766e !important; color: white !important; border: none; border-radius: 6px; 
+    }
+    
+    /* Ajuste Mobile Geral */
+    @media only screen and (max-width: 768px) {
+        .block-container { padding: 1rem 0.2rem !important; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -114,7 +120,7 @@ def navegar(direcao):
     else: st.session_state.data_ref += timedelta(days=delta)
 
 # --- 5. MODAL DE AGENDAMENTO ---
-@st.dialog("Novo Agendamento")
+@st.dialog("Agendar Horário")
 def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int):
     st.markdown(f"### {data_sugerida.strftime('%d/%m/%Y')} às {hora_sugerida_int}:00")
     config_precos = get_config_precos()
@@ -133,7 +139,7 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int):
         elif 18 <= hora_sugerida_int < 22: p = "Noite (18-22h)"; start, end, price = 18, 22, config_precos['preco_noite']
         else: p = "Diária"; start, end, price = 7, 22, config_precos['preco_diaria']
         
-        st.write(f"Período Sugerido: **{p}**")
+        st.write(f"Período: **{p}**")
         st.info(f"Valor: R$ {price:.2f}")
         for h in range(start, end):
             horarios_selecionados.append((f"{h:02d}:00", f"{h+1:02d}:00"))
@@ -180,113 +186,92 @@ def modal_agendamento(sala_padrao, data_sugerida, hora_sugerida_int):
                 
         except Exception as e: st.error(f"Erro: {e}")
 
-# --- 6. RENDERIZADOR DA AGENDA (ESTILO TABELA DA FOTO) ---
+# --- 6. RENDERIZADOR DA AGENDA (O CÓDIGO NUCLEAR) ---
 def render_calendar_interface(sala, is_admin_mode=False):
     
-    # CSS PARA IMITAR A TABELA DA FOTO (DENSO, CINZA, SEM GAP)
+    # CSS FORÇA BRUTA: SÓ APLICA NA AGENDA
+    # A mágica: min-width: 900px no container horizontal. O celular NÃO TEM ESCOLHA a não ser rolar.
     st.markdown("""
     <style>
-    /* Apenas para telas pequenas (Mobile) */
     @media only screen and (max-width: 768px) {
         
-        /* O Container Geral */
-        .block-container { 
-            padding: 0px 5px !important; 
-            max-width: 100vw !important; 
-            overflow-x: hidden !important; 
-        }
-
-        /* O Bloco Horizontal da Grade */
+        /* 1. OBRIGA O BLOCO A SER GIGANTE (HORIZONTALMENTE) */
         div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) {
             display: flex !important;
             flex-direction: row !important;
-            flex-wrap: nowrap !important; /* Nunca empilha */
-            overflow-x: auto !important;  /* Scroll sim */
-            width: 100% !important;
-            gap: 0px !important;          /* SEM ESPAÇO ENTRE COLUNAS */
+            flex-wrap: nowrap !important;
+            min-width: 900px !important;  /* LARGURA MÍNIMA ABSOLUTA */
+            overflow-x: auto !important;
+            gap: 0px !important;
             margin-bottom: 0px !important;
         }
+        
+        /* 2. HABILITA SCROLL NO PAI */
+        .block-container {
+            overflow-x: auto !important;
+        }
 
-        /* Colunas (Dias) */
+        /* 3. COLUNAS (DIAS) - Largura Fixa */
         div[data-testid="column"] {
             flex: 0 0 auto !important;
-            min-width: 50px !important;   /* Fininho igual a foto */
-            width: 50px !important;
+            min-width: 100px !important;
+            width: 100px !important;
             padding: 0 !important;
         }
         
-        /* Coluna Hora (Primeira) */
-        div[data-testid="column"]:nth-of-type(1) {
-            width: 40px !important;
-            min-width: 40px !important;
+        /* 4. COLUNA DA HORA (1ª) - FIXA NA ESQUERDA */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) > div[data-testid="column"]:first-child {
+            width: 50px !important;
+            min-width: 50px !important;
             position: sticky !important;
-            left: 0;
-            background: white;
-            z-index: 99;
-            border-right: 1px solid #999; /* Borda mais escura */
+            left: 0 !important;
+            background: white !important;
+            z-index: 100 !important;
+            border-right: 1px solid #ccc !important;
         }
 
-        /* BOTÕES (Células da Tabela) */
+        /* 5. BOTÕES "EXCEL" (RETANGULARES E GRUDADOS) */
         div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-            height: 40px !important;
-            min-height: 40px !important;
+            height: 45px !important;
+            min-height: 45px !important;
             width: 100% !important;
             padding: 0 !important;
             margin: 0 !important;
-            border-radius: 0px !important; /* Retângulo perfeito */
-            border: 1px solid #ccc !important; /* Grade cinza */
-            background-color: #e5e7eb !important; /* Cinza claro da foto */
-            color: transparent !important; /* Sem texto dentro */
+            border-radius: 0px !important;
+            border: 1px solid #e5e7eb !important;
+            font-size: 20px !important;
+            background-color: white !important;
+            color: #10b981 !important; /* Cor do + */
         }
         
-        /* Botão quando clicado/ativo */
-        div[data-testid="stVerticalBlock"] button[kind="secondary"]:active {
-            background-color: #cbd5e1 !important;
-        }
-
-        /* Remove espaços verticais entre botões */
-        div[data-testid="stVerticalBlock"] {
-            gap: 0px !important;
-        }
+        div[data-testid="stVerticalBlock"] { gap: 0px !important; }
         
-        /* CABEÇALHO DO DIA */
+        /* CABEÇALHOS */
         .day-header-box { 
-            height: 40px !important; 
-            font-size: 10px !important; 
-            display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; 
-            background: #f3f4f6; /* Cinza claro */
-            border: 1px solid #ccc;
-            border-bottom: 2px solid #999;
-            font-weight: bold;
+            height: 45px !important; 
+            font-size: 12px !important; 
+            display:flex; align-items:center; justify-content:center; text-align:center; 
+            background:#f3f4f6; border: 1px solid #ccc;
         }
+        .time-label { top: 15px; position: relative; font-size: 11px !important; font-weight: bold; }
         
-        /* LABEL DA HORA */
-        .time-label { 
-            height: 40px; display:flex; align-items:center; justify-content:flex-end; padding-right:5px;
-            font-size: 10px !important; font-weight: bold; color: #333; border-bottom: 1px solid #ccc;
-        }
-        
-        /* Esconde Header do App */
         .stApp > header { display: none !important; }
     }
     
-    /* Desktop: Mantém um visual mais limpo */
+    /* DESKTOP */
     @media (min-width: 769px) {
-        button[kind="secondary"] { height: 45px !important; border: 1px solid #ddd !important; border-radius:0px !important; color:transparent !important; background:#f8fafc !important; }
         div[data-testid="stVerticalBlock"] { gap: 0px !important; }
+        button[kind="secondary"] { border-radius: 0px !important; height: 45px !important; border: 1px solid #eee !important; }
     }
 
-    /* ESTILOS DE STATUS (Vermelho para ocupado) */
+    /* ESTILOS COMUNS */
     .evt-card {
-        background-color: #ef4444; /* Vermelho igual a foto */
-        width: 100%; height: 40px;
-        border: 1px solid #991b1b;
-        display: flex; align-items: center; justify-content: center;
-        color: white; font-weight: bold; font-size: 9px;
-        overflow: hidden;
+        background-color: #ef4444; border: 1px solid #991b1b; color: white; font-weight: bold;
+        width: 100%; height: 45px; font-size: 10px; display: flex; align-items: center; justify-content: center;
+        overflow: hidden; white-space: normal; line-height: 1; text-align: center;
     }
     .blocked { background: #64748b; }
-    .slot-past { background-color: #d1d5db; height: 40px; border:1px solid #ccc; }
+    .slot-closed { height: 45px; background: #e5e5e5; border: 1px solid #ccc; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -304,6 +289,7 @@ def render_calendar_interface(sala, is_admin_mode=False):
     # DADOS
     reservas = []
     try:
+        agora_sp = get_agora_br()
         d_end_q = d_start + timedelta(days=7)
         r = supabase.table("reservas").select("*").eq("sala_nome", sala).neq("status", "cancelada").gte("data_reserva", str(d_start)).lte("data_reserva", str(d_end_q)).execute()
         reservas = r.data
@@ -318,18 +304,17 @@ def render_calendar_interface(sala, is_admin_mode=False):
     dias_sem = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
 
     # 1. CABEÇALHO
-    # Note: st.columns agora cria a estrutura que o CSS acima vai formatar
-    cols = st.columns([0.6] + [1]*7) 
-    cols[0].write("") # Espaço da hora
+    cols = st.columns([0.5] + [1]*7) 
+    cols[0].write("") 
     for i, d in enumerate(dias_visiveis):
         with cols[i+1]:
-            # Cabeçalho estilo "tabela"
-            st.markdown(f"""<div class='day-header-box'>{dias_sem[d.weekday()]}<br>{d.day}</div>""", unsafe_allow_html=True)
+            is_hj = (d == datetime.date.today())
+            bg = "#dbeafe" if is_hj else "#f3f4f6"
+            st.markdown(f"""<div class='day-header-box' style='background:{bg}'>{dias_sem[d.weekday()]}<br><strong>{d.day}</strong></div>""", unsafe_allow_html=True)
 
     # 2. GRADE (7h-21h)
     for h in range(7, 22):
-        row = st.columns([0.6] + [1]*7)
-        # Coluna da Hora
+        row = st.columns([0.5] + [1]*7)
         row[0].markdown(f"<div class='time-label'>{h:02d}:00</div>", unsafe_allow_html=True)
         
         for i, d in enumerate(dias_visiveis):
@@ -340,7 +325,6 @@ def render_calendar_interface(sala, is_admin_mode=False):
                 
                 agora = get_agora_br()
                 dt_check = datetime.datetime.combine(d, datetime.time(h, 0))
-                
                 is_past = dt_check < (agora - timedelta(minutes=15)) 
                 is_sunday = d.weekday() == 6
                 is_sat_closed = (d.weekday() == 5 and h >= 14)
@@ -348,24 +332,23 @@ def render_calendar_interface(sala, is_admin_mode=False):
                 cont = st.container()
                 
                 if res:
-                    # OCUPADO (Vermelho)
                     nm = resolver_nome(res['email_profissional'], nome_banco=res.get('nome_profissional'))
                     cls_evt = "blocked" if res['status'] == 'bloqueado' else "evt-card"
-                    # Se for admin, mostra botão de deletar, se não, mostra o bloco vermelho
+                    txt = "BLOQ" if res['status'] == 'bloqueado' else nm
+                    
                     if is_admin_mode:
-                         if cont.button("x", key=f"del_{res['id']}"): 
-                            supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute()
-                            st.rerun()
+                        # Admin: Botão para apagar
+                        if cont.button("X", key=f"del_{res['id']}", type="primary", use_container_width=True):
+                             supabase.table("reservas").update({"status": "cancelada"}).eq("id", res['id']).execute()
+                             st.rerun()
                     else:
-                        st.markdown(f"<div class='{cls_evt}'>{nm}</div>", unsafe_allow_html=True)
+                        st.markdown(f"<div class='{cls_evt}'>{txt}</div>", unsafe_allow_html=True)
                         
                 elif is_past or is_sunday or is_sat_closed:
-                    # PASSADO/FECHADO (Cinza escuro)
-                    st.markdown("<div class='slot-past'></div>", unsafe_allow_html=True)
+                    st.markdown("<div class='slot-closed'></div>", unsafe_allow_html=True)
                 else:
-                    # LIVRE (Botão Nativo Cinza Claro - "Fake Empty Cell")
-                    # O CSS esconde o texto "+" e deixa quadrado
-                    if cont.button(" ", key=f"btn_{d}_{h}", type="secondary", use_container_width=True):
+                    # CLIQUE DIRETO NA GRADE (BOTÃO +)
+                    if cont.button("＋", key=f"btn_{d}_{h}", type="secondary", use_container_width=True):
                         modal_agendamento(sala, d, h)
 
 def tela_admin_master():
@@ -498,8 +481,8 @@ def tela_admin_master():
 # --- 7. MAIN ---
 def main():
     if not st.session_state.user:
-        # LOGIN ISOLADO
-        c_v1, c_main, c_v2 = st.columns([1, 1.5, 1]) 
+        # LOGIN ISOLADO E PEQUENO
+        c_v1, c_main, c_v2 = st.columns([1, 1.5, 1])
         with c_main:
             st.write("") 
             if os.path.exists(NOME_DO_ARQUIVO_LOGO): st.image(NOME_DO_ARQUIVO_LOGO, use_container_width=True) 
