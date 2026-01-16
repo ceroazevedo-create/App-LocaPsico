@@ -16,6 +16,7 @@ st.set_page_config(page_title="LocaPsico", page_icon="Ψ", layout="wide", initia
 if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
 if 'user' not in st.session_state: st.session_state.user = None
 if 'is_admin' not in st.session_state: st.session_state.is_admin = False
+if 'reset_email' not in st.session_state: st.session_state.reset_email = ""
 if 'data_ref' not in st.session_state: st.session_state.data_ref = datetime.date.today()
 
 NOME_DO_ARQUIVO_LOGO = "logo.png"
@@ -28,7 +29,7 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- 3. CSS GLOBAL (LOGIN) ---
+# --- 3. CSS GLOBAL ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
@@ -39,7 +40,7 @@ st.markdown("""
         background: #0f766e !important; color: white !important; border: none; border-radius: 6px; 
     }
     
-    /* Ajustes Mobile Login */
+    /* Login Responsivo */
     @media only screen and (max-width: 768px) {
         .block-container { padding: 1rem 0.5rem !important; }
     }
@@ -135,7 +136,7 @@ def modal_agendamento(sala_padrao, data_sugerida=None, hora_sugerida_int=None):
     dia_sem = dt.weekday()
     if dia_sem == 6: lista_horas = []; st.error("Domingo Fechado")
     elif dia_sem == 5: lista_horas = [f"{h:02d}:00" for h in range(7, 14)]; 
-    else: lista_horas = [f"{h:02d}:00" for h in range(7, 22)] # Até 21h
+    else: lista_horas = [f"{h:02d}:00" for h in range(7, 22)]
 
     if modo == "Por Hora":
         idx_padrao = 0
@@ -162,6 +163,7 @@ def modal_agendamento(sala_padrao, data_sugerida=None, hora_sugerida_int=None):
         valor_final = dados_p['price']
     
     st.write("")
+    is_recurring = st.checkbox("Repetir por 4 semanas")
     if st.button("Confirmar Reserva", type="primary", use_container_width=True):
         if not horarios_selecionados: st.error("Erro: Selecione um horário."); return
         user = st.session_state.user
@@ -172,58 +174,68 @@ def modal_agendamento(sala_padrao, data_sugerida=None, hora_sugerida_int=None):
             inserts = []
             for d_res in [dt]:
                 if d_res.weekday() == 6: continue
-                for h_start, h_end in horarios_selecionados:
-                    dt_check = datetime.datetime.combine(d_res, datetime.datetime.strptime(h_start, "%H:%M").time())
-                    if dt_check < agora: st.error("Horário já passou."); return
-                    if d_res.weekday() == 5 and int(h_start[:2]) >= 14: st.error("Sábado fecha 14h."); return
-                    
-                    chk = supabase.table("reservas").select("id").eq("sala_nome", sala_padrao).eq("data_reserva", str(d_res)).eq("hora_inicio", f"{h_start}:00").neq("status", "cancelada").execute()
-                    if chk.data: st.error(f"Horário {h_start} ocupado."); return 
-                    
-                    val_to_save = valor_final if (h_start, h_end) == horarios_selecionados[0] or modo == "Por Hora" else 0.0
-                    inserts.append({
-                        "sala_nome": sala_padrao, "data_reserva": str(d_res), "hora_inicio": f"{h_start}:00", "hora_fim": f"{h_end}:00",
-                        "user_id": user.id, "email_profissional": user.email, "nome_profissional": nm, "valor_cobrado": val_to_save, "status": "confirmada"
-                    })
+                if is_recurring:
+                    # Se repeticao, adiciona mais dias
+                    for i in range(1, 4): 
+                        # logica de repeticao aqui se necessario, mas o loop original estava fora
+                        pass
+
+                # Loop de dias (1 ou 4)
+                dias_loop = [dt]
+                if is_recurring:
+                    for k in range(1,4): dias_loop.append(dt + timedelta(days=7*k))
+
+                for d_l in dias_loop:
+                    if d_l.weekday() == 6: continue
+                    for h_start, h_end in horarios_selecionados:
+                        dt_check = datetime.datetime.combine(d_l, datetime.datetime.strptime(h_start, "%H:%M").time())
+                        if dt_check < agora: st.error(f"Horário {h_start} já passou."); return
+                        if d_l.weekday() == 5 and int(h_start[:2]) >= 14: st.error("Sábado fecha 14h."); return
+                        
+                        chk = supabase.table("reservas").select("id").eq("sala_nome", sala_padrao).eq("data_reserva", str(d_l)).eq("hora_inicio", f"{h_start}:00").neq("status", "cancelada").execute()
+                        if chk.data: st.error(f"Horário {h_start} dia {d_l} ocupado."); return 
+                        
+                        val_to_save = valor_final if (h_start, h_end) == horarios_selecionados[0] or modo == "Por Hora" else 0.0
+                        inserts.append({
+                            "sala_nome": sala_padrao, "data_reserva": str(d_l), "hora_inicio": f"{h_start}:00", "hora_fim": f"{h_end}:00",
+                            "user_id": user.id, "email_profissional": user.email, "nome_profissional": nm, "valor_cobrado": val_to_save, "status": "confirmada"
+                        })
             if inserts:
                 supabase.table("reservas").insert(inserts).execute()
                 st.toast("Sucesso!", icon="✅"); time.sleep(1); st.rerun()
         except Exception as e: st.error(f"Erro: {e}")
 
-# --- 6. RENDERIZADOR DA AGENDA (CSS NANO + SCROLL) ---
+# --- 6. RENDERIZADOR DA AGENDA (CSS ZOOM 60%) ---
 def render_calendar_interface(sala, is_admin_mode=False):
     
-    # CSS AVANÇADO PARA FORÇAR GRID HORIZONTAL E BOTÕES PEQUENOS
+    # CSS: O RAIO ENCOLHEDOR (ZOOM 0.6)
     st.markdown("""
     <style>
-    /* MOBILE: FORÇA BRUTA PARA NÃO EMPILHAR */
     @media only screen and (max-width: 768px) {
         
-        /* 1. O PAI DEVE TER SCROLL */
-        .block-container { overflow-x: auto !important; }
-
-        /* 2. A LINHA DA AGENDA DEVE SER MAIOR QUE A TELA */
-        /* Isso impede o wrap. Forçamos a largura para 700px (maior que celular) */
-        div[data-testid="stHorizontalBlock"] {
+        /* 1. FORÇA O CONTAINER A TER SCROLL E SER MAIOR QUE A TELA */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(8)) {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
-            min-width: 700px !important; 
-            width: 700px !important;
+            overflow-x: auto !important;
+            width: 150% !important; /* Força largura extra */
+            zoom: 0.6 !important;   /* <--- AQUI ESTÁ A MÁGICA DO TAMANHO */
             gap: 1px !important;
+            padding-bottom: 10px !important;
         }
 
-        /* 3. COLUNAS COM LARGURA FIXA */
+        /* 2. COLUNAS */
         div[data-testid="column"] {
             flex: 0 0 auto !important;
             width: 80px !important;
             min-width: 80px !important;
         }
         
-        /* 4. HORA MENOR E FIXA */
+        /* 3. COLUNA HORA */
         div[data-testid="column"]:nth-of-type(1) {
-            width: 40px !important;
-            min-width: 40px !important;
+            width: 50px !important;
+            min-width: 50px !important;
             position: sticky !important;
             left: 0;
             background: white;
@@ -231,36 +243,46 @@ def render_calendar_interface(sala, is_admin_mode=False):
             border-right: 1px solid #eee;
         }
 
-        /* 5. BOTÕES "FININHOS" */
-        /* Removemos o padding padrão gigante do Streamlit */
+        /* 4. BOTÕES APERTADINHOS */
         div[data-testid="stVerticalBlock"] button[kind="secondary"] {
-            height: 35px !important;
-            min-height: 35px !important;
+            height: 40px !important;
+            min-height: 40px !important;
             width: 100% !important;
-            padding: 0px !important;
-            margin: 0px !important;
-            line-height: 1 !important;
-            font-size: 16px !important;
-            border: 1px solid #f3f4f6 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            font-size: 14px !important;
             color: #0f766e !important;
+            border: 1px solid #f3f4f6 !important;
         }
         
-        /* 6. CABEÇALHOS */
-        .day-header-box { height: 40px !important; font-size: 11px !important; display:flex; align-items:center; justify-content:center; text-align:center; background:#f9fafb; }
-        .time-label { top: 12px; position: relative; font-size: 10px !important; }
+        /* 5. CABEÇALHOS */
+        .day-header-box { 
+            height: 45px !important; 
+            font-size: 14px !important; 
+            display:flex; align-items:center; justify-content:center; text-align:center; 
+            background:#f9fafb; 
+        }
+        .time-label { top: 12px; position: relative; font-size: 12px !important; font-weight: bold; color: #9ca3af; }
         
+        /* Header App Hidden */
         .stApp > header { display: none !important; }
     }
     
-    /* GERAL */
+    /* DESKTOP */
+    @media (min-width: 769px) {
+        button[kind="secondary"] { height: 45px !important; border: 1px solid #f1f5f9 !important; color: #0f766e !important; }
+        button[kind="secondary"]:hover { background: #f8fafc !important; }
+    }
+
+    /* ESTILOS COMUNS */
     .evt-card {
         background-color: #e0f2fe; border-left: 3px solid #0284c7; color: #0369a1; font-weight: 700; 
         border-radius: 3px; overflow: hidden; cursor: pointer; display: flex; align-items: center; padding: 2px;
-        height: 33px; font-size: 9px; line-height: 1.1; white-space: normal;
+        height: 38px; font-size: 10px; line-height: 1.1; white-space: normal;
     }
     .blocked { background: #f1f5f9; color: #9ca3af; justify-content: center; border-left: 3px solid #d1d5db; }
     .slot-blocked {
-        height: 33px; display: flex; align-items: center; justify-content: center;
+        height: 38px; display: flex; align-items: center; justify-content: center;
         background: #f1f5f9; color: #cbd5e1; font-size: 18px;
     }
     </style>
@@ -281,7 +303,6 @@ def render_calendar_interface(sala, is_admin_mode=False):
     reservas = []
     try:
         agora_sp = get_agora_br()
-        # Pega uma margem grande de datas para garantir
         d_end = d_start + timedelta(days=7)
         r = supabase.table("reservas").select("*").eq("sala_nome", sala).neq("status", "cancelada").gte("data_reserva", str(d_start)).lte("data_reserva", str(d_end)).execute()
         reservas = r.data
@@ -304,8 +325,8 @@ def render_calendar_interface(sala, is_admin_mode=False):
             cls_hj = "color:#0284c7;" if is_hj else "color:#334155;"
             st.markdown(f"""<div class='day-header-box'><div style='{cls_hj}'>{dias_sem[d.weekday()]}<br><strong>{d.day}</strong></div></div>""", unsafe_allow_html=True)
 
-    # 2. GRADE (7h-22h) - Ajustado para ir até 22h no display
-    for h in range(7, 22): # Vai gerar 07:00, ..., 21:00. A de 21:00 termina as 22:00.
+    # 2. GRADE (7h-22h)
+    for h in range(7, 22):
         row = st.columns([0.3, 1, 1, 1, 1, 1, 1, 1])
         row[0].markdown(f"<div class='time-label'>{h:02d}:00</div>", unsafe_allow_html=True)
         
@@ -317,11 +338,8 @@ def render_calendar_interface(sala, is_admin_mode=False):
                 
                 agora = get_agora_br()
                 dt_check = datetime.datetime.combine(d, datetime.time(h, 0))
-                # Ajuste de timezone simples para comparação
-                dt_check_aware = dt_check # Assume que a comparação será manual
                 
-                # Validação Manual de Passado
-                is_past = dt_check < (agora - timedelta(minutes=15)) # Tolerancia
+                is_past = dt_check < (agora - timedelta(minutes=15)) 
                 is_sunday = d.weekday() == 6
                 is_sat_closed = (d.weekday() == 5 and h >= 14)
                 
@@ -339,7 +357,7 @@ def render_calendar_interface(sala, is_admin_mode=False):
                 elif is_past or is_sunday or is_sat_closed:
                     st.markdown("<div class='slot-blocked'>•</div>", unsafe_allow_html=True)
                 else:
-                    # O CLIQUE QUE FUNCIONA: Botão nativo com CSS para parecer célula
+                    # CLIQUE DIRETO NO BOTÃO NATIVO (+)
                     if cont.button("＋", key=f"btn_{d}_{h}", type="secondary", use_container_width=True):
                         modal_agendamento(sala, d, h)
 
